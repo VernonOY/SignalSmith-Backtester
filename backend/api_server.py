@@ -22,15 +22,16 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, validator
 
-# Ensure we can import the existing backtesting engine
-BACKTEST_ROOT = pathlib.Path(__file__).resolve().parents[2]
-if str(BACKTEST_ROOT) not in sys.path:
-    sys.path.append(str(BACKTEST_ROOT))
-
+# Ensure we can import the existing backtesting engine and locate data assets
+BACKEND_ROOT = pathlib.Path(__file__).resolve().parent
+PROJECT_ROOT = BACKEND_ROOT.parent
+for path in (PROJECT_ROOT, BACKEND_ROOT):
+    if str(path) not in sys.path:
+        sys.path.append(str(path))
 
 import backtest_system  # type: ignore
 
-DATA_DIR = BACKTEST_ROOT / "data"
+DATA_DIR = PROJECT_ROOT / "data"
 
 app = FastAPI(title="Backtesting Adapter API")
 app.add_middleware(
