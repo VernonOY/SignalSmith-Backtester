@@ -27,7 +27,7 @@ BACKTEST_ROOT = pathlib.Path(__file__).resolve().parents[2]
 if str(BACKTEST_ROOT) not in sys.path:
     sys.path.append(str(BACKTEST_ROOT))
 
-import data_pipeline  # type: ignore
+
 import backtest_system  # type: ignore
 
 DATA_DIR = BACKTEST_ROOT / "data"
