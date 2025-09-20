@@ -214,7 +214,7 @@ const App = () => {
         </PanelGroup>
       </div>
       <footer className="app-footer">
-          <p>By Wendi OUYANG – Chinese University of Hong Kong, Shenzhen</p>
+          <p>By Wendi OUYANG – The Chinese University of Hong Kong, Shenzhen</p>
           <p>Contact: vernonouyang@gmail.com</p>
       </footer>
     </ConfigProvider>
