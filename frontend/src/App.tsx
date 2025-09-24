@@ -244,6 +244,7 @@ const App = () => {
       <footer className="app-footer">
         <p>By Wendi OUYANG – Chinese University of Hong Kong, Shenzhen</p>
         <p>Contact: vernonouyang@gmail.com</p>
+        <p>Version: 2025.1.2</p>
       </footer>
     </ConfigProvider>
   );
