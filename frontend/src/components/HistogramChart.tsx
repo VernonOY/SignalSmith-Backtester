@@ -39,18 +39,21 @@ const HistogramChart = ({ data, loading, onReady, height = 400 }: Props) => {
       type: "category",
       data: categories,
       axisLabel: {
-        rotate: 40,
+        rotate: 30,
         interval: 0,
+        margin: 12,
       },
     },
     yAxis: {
       type: "value",
       name: "Frequency",
+      nameLocation: "middle",
+      nameGap: 48,
     },
     series: [
       {
         type: "bar",
-        barMaxWidth: 24,
+        barMaxWidth: 32,
         data: data.buckets.map((bucket) => bucket.count),
         itemStyle: {
           color: "#4c6ef5",
@@ -59,10 +62,10 @@ const HistogramChart = ({ data, loading, onReady, height = 400 }: Props) => {
       },
     ],
     grid: {
-      left: 70,
-      right: 28,
-      bottom: 130,
-      top: 24,
+      left: 64,
+      right: 32,
+      bottom: 72,
+      top: 48,
       containLabel: true,
     },
   };
