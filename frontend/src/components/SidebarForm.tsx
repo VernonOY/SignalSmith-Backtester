@@ -290,16 +290,19 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
         return (
           <>
             <Paragraph>
-              Strategy presets pre-load sensible indicator combinations: <Text strong>Mean Reversion</Text> emphasises RSI and EMA
-              crosses, <Text strong>Momentum</Text> highlights MACD / OBV / Stochastic confirmation, and <Text strong>Multifactor</Text>
-              activates every study so you can fine-tune thresholds yourself. You can override any field after choosing a preset.
+              Strategy presets load curated indicator blends inspired by common discretionary playbooks. <Text strong>Mean
+              Reversion</Text> emphasises RSI extremes and EMA crosses to hunt for prices that have stretched too far from trend.
+              <Text strong>Momentum</Text> highlights MACD, OBV, and stochastic agreement to ride persistent directional moves.
+              <Text strong>Multifactor</Text> activates every study so you can tune confirmation rules manually. You can always
+              adjust any field after selecting a preset to tailor the logic to your preferred style.
             </Paragraph>
             <Paragraph>
               <Text strong>Strategy.</Text> Select the preset to determine which indicators are switched on by default.
             </Paragraph>
             <Paragraph>
               <Text strong>Backtest Range.</Text> Pick start and end dates between 2020-01-01 and today. The span may not exceed five
-              calendar years so the test stays within the data window.
+              calendar years so the test stays within the available history and avoids comparing regimes with materially different
+              liquidity or volatility backdrops.
             </Paragraph>
           </>
         );
@@ -307,24 +310,29 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
         return (
           <>
             <Paragraph>
-              <Text strong>Initial Capital.</Text> Sets the starting portfolio value in US dollars. All P&amp;L and position sizing are
-              scaled from this figure.
+              <Text strong>Initial Capital.</Text> Defines the cash balance your test begins with. Every position size, return, and
+              drawdown is translated into dollars using this amount, so doubling it would double the simulated profits and losses
+              while leaving percentage metrics unchanged.
             </Paragraph>
             <Paragraph>
-              <Text strong>Fee (bps).</Text> Brokerage cost charged on both entry and exit. 1 basis point equals 0.01%, so 25 bps
-              removes 0.25% from every round trip.
+              <Text strong>Fee (bps).</Text> Estimated round-trip trading friction expressed in basis points (1 bp = 0.01%). The
+              platform deducts the cost on both entry and exit, meaning that a 25 bp setting shaves 0.25% from each trade’s gross
+              performance to mimic commissions and slippage. Higher fees naturally reduce win rates for shorter-term strategies.
             </Paragraph>
             <Paragraph>
-              <Text strong>Hold Days.</Text> Maximum number of trading days a position may remain open before it is automatically
-              closed.
+              <Text strong>Hold Days.</Text> Caps the lifespan of any open trade. Once this limit is hit, the engine force-closes the
+              position at the prevailing price, ensuring that signals which fail to resolve quickly cannot linger and distort
+              capital availability for new ideas.
             </Paragraph>
             <Paragraph>
-              <Text strong>Stop Loss (%).</Text> Optional downside guardrail. Enter 5 to exit if a trade falls 5% below the entry
-              price. Leave blank to disable.
+              <Text strong>Stop Loss (%).</Text> Optional protective floor based on percentage drop from entry. Setting this to 5
+              means the trade exits if price declines 5%, crystallising a controlled loss and preventing deeper drawdowns during
+              volatile swings. Leave blank to disable the safety valve.
             </Paragraph>
             <Paragraph>
-              <Text strong>Take Profit (%).</Text> Optional upside cap. Enter 10 to secure gains once the trade rises 10%. Leave
-              blank for no profit target.
+              <Text strong>Take Profit (%).</Text> Optional profit target measured from entry. A value of 10 locks in gains once price
+              advances 10%, banking momentum-driven wins before they can mean-revert. Leaving the field empty keeps winners running
+              until other exit rules intervene.
             </Paragraph>
           </>
         );
@@ -332,42 +340,52 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
         return (
           <>
             <Paragraph>
-              The Relative Strength Index compares the magnitude of recent gains and losses to spot momentum extremes.
+              The Relative Strength Index compares the magnitude of recent gains and losses to spot momentum extremes. Traders
+              watch for the oscillator to push into extreme zones (typically below 30 or above 70) as early signals that a swing is
+              stretched and may soon revert, a technique popularised by J. Welles Wilder and still widely cited in modern technical
+              analysis primers.
             </Paragraph>
             <Paragraph>
               <Text strong>Enable RSI.</Text> Toggles the indicator on or off for signal generation.
             </Paragraph>
             <Paragraph>
-              <Text strong>RSI Lookback.</Text> Number of days included when calculating average gains and losses. Shorter windows
-              react faster but are noisier.
+              <Text strong>RSI Lookback.</Text> Number of days used when averaging up and down moves. Shorter windows (e.g., 7-14
+              periods) react faster to fresh momentum shifts but introduce more whipsaws; longer windows smooth noise at the cost of
+              slower turns.
             </Paragraph>
             <Paragraph>
               <Text strong>RSI Mode.</Text> Choose <Text strong>Oversold (&lt;= threshold)</Text> to buy dips or <Text strong>Overbought (&gt;=
               threshold)</Text> to fade rallies.
             </Paragraph>
             <Paragraph>
-              <Text strong>RSI Threshold.</Text> Sets the oversold or overbought trigger level (0-100). Lower thresholds require deeper
-              pullbacks; higher thresholds require stronger rallies.
+              <Text strong>RSI Threshold.</Text> Sets the oversold or overbought trigger level (0-100). Lower oversold triggers demand
+              heavier pullbacks before acting, while higher overbought triggers wait for exceptionally strong rallies before fading
+              them.
             </Paragraph>
           </>
         );
       case "macd":
         return (
           <>
-            <Paragraph>MACD compares two exponential moving averages to reveal trend momentum shifts.</Paragraph>
+            <Paragraph>
+              Moving Average Convergence Divergence (MACD) compares a fast and slow exponential moving average to reveal the
+              direction and pace of trend momentum. Histogram flips or signal-line crossovers often flag the transition from
+              accumulation to distribution and vice versa.
+            </Paragraph>
             <Paragraph>
               <Text strong>Enable MACD.</Text> Include or exclude MACD from the voting process.
             </Paragraph>
             <Paragraph>
-              <Text strong>Fast / Slow.</Text> Length of the short- and long-term EMAs that form the MACD line. Wider separation captures
-              slower trends.
+              <Text strong>Fast / Slow.</Text> Length of the short- and long-term EMAs that form the MACD line. Wider separation (e.g.,
+              12/26) focuses on medium-term swings, whereas tighter spans pick up shorter bursts of momentum but whipsaw more often.
             </Paragraph>
             <Paragraph>
-              <Text strong>Signal.</Text> Smoothing period applied to the MACD line. Short values give quicker crossovers.
+              <Text strong>Signal.</Text> Smoothing period applied to the MACD line. Short values yield quicker crossovers and early
+              warnings; longer ones filter noise at the expense of timeliness.
             </Paragraph>
             <Paragraph>
-              <Text strong>MACD Rule.</Text> Decide whether a trade triggers when the MACD crosses its signal line or simply remains
-              above zero.
+              <Text strong>MACD Rule.</Text> Decide whether a trade triggers when the MACD crosses its signal line—classic momentum
+              confirmation—or simply remains above zero to capture periods when the short EMA stays above the long EMA.
             </Paragraph>
           </>
         );
@@ -375,15 +393,16 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
         return (
           <>
             <Paragraph>
-              On-Balance Volume cumulates volume on up days and subtracts it on down days to confirm participation behind price
-              moves.
+              On-Balance Volume cumulates volume on up days and subtracts it on down days to confirm participation behind price moves.
+              Rising OBV alongside price can validate a breakout’s strength, while divergences warn that momentum lacks conviction.
             </Paragraph>
             <Paragraph>
               <Text strong>Enable OBV.</Text> Turn the volume confirmation filter on or off.
             </Paragraph>
             <Paragraph>
               <Text strong>OBV Rule.</Text> Choose between requiring OBV to cross above its moving average (<Text strong>Rise</Text>) or
-              simply turn positive (<Text strong>Positive</Text>).
+              simply turn positive (<Text strong>Positive</Text>). The moving-average approach waits for a momentum surge in volume,
+              while the positive filter reacts as soon as buying pressure outweighs selling pressure.
             </Paragraph>
           </>
         );
@@ -391,30 +410,35 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
         return (
           <>
             <Paragraph>
-              The EMA crossover looks for shifts in trend when a fast-moving average overtakes a slower one.
+              The EMA crossover looks for shifts in trend when a fast-moving average overtakes a slower one. Many traders treat these
+              events as objective evidence that price has shifted regimes because exponential weighting emphasises the latest data.
             </Paragraph>
             <Paragraph>
               <Text strong>Enable EMA Cross.</Text> Toggle whether the crossover contributes to signals.
             </Paragraph>
             <Paragraph>
-              <Text strong>Short / Long.</Text> Window length (in days) for the fast and slow EMAs. Shorter spans react more quickly,
-              while longer spans smooth noise.
+              <Text strong>Short / Long.</Text> Window length (in days) for the fast and slow EMAs. Short spans track swing trading
+              setups with faster, but noisier, reactions; longer spans smooth noise and favour primary trend following.
             </Paragraph>
           </>
         );
       case "adx":
         return (
           <>
-            <Paragraph>Average Directional Index (ADX) measures the strength of a trend regardless of direction.</Paragraph>
+            <Paragraph>
+              Average Directional Index (ADX) measures the strength of a trend regardless of direction. Values above roughly 25 often
+              indicate an established trend, whereas readings below 20 suggest range-bound markets prone to false breakouts.
+            </Paragraph>
             <Paragraph>
               <Text strong>Enable ADX.</Text> Adds or removes the trend-strength filter.
             </Paragraph>
             <Paragraph>
-              <Text strong>Lookback.</Text> Number of periods used to calculate ADX. Longer lookbacks smooth the reading.
+              <Text strong>Lookback.</Text> Number of periods used to calculate ADX. Longer lookbacks smooth the reading and avoid
+              knee-jerk spikes, while shorter ones adjust faster to fresh surges in directional strength.
             </Paragraph>
             <Paragraph>
-              <Text strong>Min ADX.</Text> Minimum value required before signals are allowed, helping you avoid choppy, low-trend
-              environments.
+              <Text strong>Min ADX.</Text> Minimum value required before signals are allowed. Requiring at least 20–25 helps avoid
+              choppy, low-trend environments where breakout systems underperform.
             </Paragraph>
           </>
         );
@@ -422,17 +446,19 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
         return (
           <>
             <Paragraph>
-              Aroon Up and Down indicate how recently price has made new highs or lows to gauge emerging trends.
+              Aroon Up and Down indicate how recently price has made new highs or lows to gauge emerging trends. When Aroon Up stays
+              elevated while Aroon Down sinks, the market is consistently printing fresh highs, hinting at bullish control.
             </Paragraph>
             <Paragraph>
               <Text strong>Enable Aroon.</Text> Switch the indicator participation on or off.
             </Paragraph>
             <Paragraph>
-              <Text strong>Lookback.</Text> Days inspected when determining recent highs and lows.
+              <Text strong>Lookback.</Text> Days inspected when determining recent highs and lows. Larger windows slow the indicator and
+              spotlight dominant multi-week trends; smaller windows sharpen its sensitivity to fresh breakouts.
             </Paragraph>
             <Paragraph>
-              <Text strong>Aroon Up / Down.</Text> Thresholds (0-100) that define when bullish or bearish momentum is considered
-              strong enough to vote.
+              <Text strong>Aroon Up / Down.</Text> Thresholds (0-100) that define when bullish or bearish momentum is strong enough to
+              vote. Higher requirements demand sustained momentum before trades fire, reducing noise but delaying entries.
             </Paragraph>
           </>
         );
@@ -441,16 +467,19 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
           <>
             <Paragraph>
               The stochastic oscillator compares the latest close with the recent high-low range to spot overbought or oversold
-              conditions.
+              conditions. It highlights moments when price closes near the extreme of its range, signalling potential exhaustion or
+              continuation depending on crossovers and threshold rules.
             </Paragraph>
             <Paragraph>
               <Text strong>Enable Stochastic.</Text> Include or exclude the oscillator from the rules.
             </Paragraph>
             <Paragraph>
-              <Text strong>%K / %D.</Text> %K controls the base oscillator lookback; %D sets the smoothing applied to %K.
+              <Text strong>%K / %D.</Text> %K controls the base oscillator lookback; %D sets the smoothing applied to %K. Shorter %K
+              settings react rapidly to fresh highs or lows, while longer %D smooths the noise and focuses on decisive turns.
             </Paragraph>
             <Paragraph>
-              <Text strong>Threshold.</Text> Level used for oversold or overbought checks when those modes are selected.
+              <Text strong>Threshold.</Text> Level used for oversold or overbought checks when those modes are selected. Lower
+              thresholds catch deeper pullbacks, whereas higher ones wait for exceptionally strong overbought readings before acting.
             </Paragraph>
             <Paragraph>
               <Text strong>Rule.</Text> Choose between acting on signal-line crossovers or extreme zone tests.
