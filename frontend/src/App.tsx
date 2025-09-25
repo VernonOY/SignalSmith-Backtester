@@ -305,13 +305,10 @@ const App = () => {
         onCancel={() => setSignalsInfoVisible(false)}
         footer={null}
         width={720}
-        title="Signal Annotations / 信号说明"
+        title="Signal Annotations"
       >
         <Paragraph>
-          <strong>English:</strong> A blue line shows the average price of the securities in the filtered universe. A green triangle marks a day where the enabled indicators all agreed to open a position (a <em>buy signal</em>). A red diamond marks the automated exit for that position, generated after the specified hold days or when the stop-loss / take-profit thresholds were reached.
-        </Paragraph>
-        <Paragraph>
-          <strong>中文：</strong> 蓝色曲线表示筛选后股票池的平均价格。绿色三角形代表指标同时满足后的买入信号；红色菱形表示根据设定的持仓天数或止损/止盈阈值自动平仓的卖出信号。
+          A blue line shows the average price of the securities in the filtered universe. A green triangle marks a day where the enabled indicators all agreed to open a position (a <em>buy signal</em>). A red diamond marks the automated exit for that position, generated after the specified hold days or when the stop-loss / take-profit thresholds were reached.
         </Paragraph>
         <Paragraph>
           Buy and sell markers always appear in pairs. If you hide either layer with the toggles above, the chart keeps its time axis so you can focus on the remaining information.
