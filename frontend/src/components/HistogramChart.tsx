@@ -46,6 +46,11 @@ const HistogramChart = ({ data, loading, onReady, height = 400 }: Props) => {
     yAxis: {
       type: "value",
       name: "Frequency",
+      nameLocation: "middle" as const,
+      nameGap: 48,
+      nameTextStyle: {
+        fontWeight: 600,
+      },
     },
     series: [
       {
@@ -59,10 +64,10 @@ const HistogramChart = ({ data, loading, onReady, height = 400 }: Props) => {
       },
     ],
     grid: {
-      left: 70,
-      right: 28,
-      bottom: 130,
-      top: 24,
+      left: 60,
+      right: 24,
+      bottom: 96,
+      top: 48,
       containLabel: true,
     },
   };
