@@ -3,6 +3,7 @@ import ReactECharts from "echarts-for-react";
 import type { ECharts } from "echarts";
 import { Spin, Empty } from "antd";
 import { TimeSeries } from "../types";
+import { formatCurrency, formatDateYYMMDD } from "../utils/format";
 
 interface Props {
   data?: TimeSeries | null;
@@ -21,7 +22,10 @@ const EquityChart = ({ data, loading, onReady }: Props) => {
   }
 
   const option = {
-    tooltip: { trigger: "axis" },
+    tooltip: {
+      trigger: "axis",
+      valueFormatter: (value: number) => formatCurrency(value, 0),
+    },
     toolbox: { feature: { saveAsImage: {} } },
     dataZoom: [
       {
@@ -42,8 +46,29 @@ const EquityChart = ({ data, loading, onReady }: Props) => {
         moveHandleSize: 10,
       },
     ],
-    xAxis: { type: "category", data: data.dates },
-    yAxis: { type: "value", scale: true },
+    xAxis: {
+      type: "category",
+      data: data.dates,
+      axisLabel: {
+        formatter: (value: string) => formatDateYYMMDD(value),
+        hideOverlap: true,
+      },
+      splitLine: { show: true, lineStyle: { color: "#e2e8f0" } },
+    },
+    yAxis: {
+      type: "value",
+      scale: true,
+      axisLabel: {
+        formatter: (value: number) => formatCurrency(value, 0),
+      },
+      splitLine: { show: true, lineStyle: { color: "#e2e8f0" } },
+    },
+    grid: {
+      top: 40,
+      left: 72,
+      right: 28,
+      bottom: 64,
+    },
     series: [
       {
         type: "line",

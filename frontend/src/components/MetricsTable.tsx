@@ -1,5 +1,6 @@
 import { Empty } from "antd";
 import { Metrics } from "../types";
+import { formatCurrency, formatNumber, formatPercent } from "../utils/format";
 
 interface Props {
   metrics: Metrics;
@@ -15,22 +16,23 @@ const percentKeys = new Set([
 
 const MetricsTable = ({ metrics }: Props) => {
   const entries = Object.entries(metrics ?? {});
-  if (!entries.length) {
+  const displayEntries = entries.filter(([key]) => key !== "ending_equity");
+  if (!displayEntries.length) {
     return <Empty description="No metrics" />;
   }
   return (
     <div className="metrics-grid">
-      {entries.map(([key, value]) => {
+      {displayEntries.map(([key, value]) => {
         let display: string | number = value;
         if (typeof value === "number") {
-          if (key === "ending_equity") {
-            display = value.toFixed(2);
-          } else if (key === "sharpe") {
+          if (key === "sharpe") {
             display = value.toFixed(2);
           } else if (percentKeys.has(key)) {
-            display = `${(value * 100).toFixed(2)}%`;
+            display = formatPercent(value, 2);
+          } else if (key.endsWith("_usd")) {
+            display = formatCurrency(value, 0);
           } else {
-            display = value.toFixed(4);
+            display = formatNumber(value, 4);
           }
         }
         return (
