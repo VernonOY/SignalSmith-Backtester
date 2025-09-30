@@ -278,6 +278,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
       hold_days: values.hold_days,
       stop_loss_pct: stopLoss,
       take_profit_pct: takeProfit,
+      hist_bins: values.hist_bins,
     };
 
     await onSubmit(payload);
@@ -592,6 +593,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
           k: 2,
           max_horizon: 10,
           hist_horizon: 1,
+          hist_bins: 20,
           filters: {},
         }}
         style={{ padding: "0 16px", height: "100%", overflowY: "auto" }}
@@ -1012,6 +1014,13 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
             name="hist_horizon"
           >
             <InputNumber min={1} max={10} style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item
+            label="Histogram Bins"
+            name="hist_bins"
+            extra="Number of buckets when summarising forward returns."
+          >
+            <InputNumber min={5} max={60} style={{ width: "100%" }} />
           </Form.Item>
         </Card>
 

@@ -111,6 +111,7 @@ class BacktestParams(BaseModel):
     hold_days: Optional[int] = Field(default=None, ge=1)
     stop_loss_pct: Optional[float] = Field(default=None, ge=0.0)
     take_profit_pct: Optional[float] = Field(default=None, ge=0.0)
+    hist_bins: Optional[int] = Field(default=20, ge=5, le=100)
 
 
 class TimeSeries(BaseModel):
@@ -147,6 +148,7 @@ class HistogramPayload(BaseModel):
     buckets: List[HistogramBucket]
     stats: Dict[str, float] = Field(default_factory=dict)
     sample_size: int = 0
+    bin_count: int = 0
 
 
 class BacktestResponse(BaseModel):
@@ -160,6 +162,10 @@ class BacktestResponse(BaseModel):
     indicator_statistics: Dict[str, Dict[str, float]] = Field(default_factory=dict)
     universe_size: int
     trades_count: int
+    initial_capital: float
+    ending_equity: float
+    total_return: float
+    total_fees: float
 
 
 def _load_metadata() -> Optional[pd.DataFrame]:
@@ -342,11 +348,15 @@ def _build_config(indicators: Dict[str, Any]) -> Dict[str, Any]:
     return cfg
 
 
-def _build_equity(returns_df: pd.DataFrame, initial_capital: float = 1.0) -> pd.Series:
-    if returns_df.empty:
+def _build_equity(
+    returns_df: pd.DataFrame,
+    initial_capital: float = 1.0,
+    column: str = "net",
+) -> pd.Series:
+    if returns_df.empty or column not in returns_df.columns:
         return pd.Series(dtype=float)
     returns = (
-        returns_df.groupby("date")["ret"].mean()
+        returns_df.groupby("date")[column].mean()
         .sort_index()
     )
     if returns.empty:
@@ -373,13 +383,13 @@ def _build_signals_and_trades(
     take_profit_pct: Optional[float],
 ) -> Tuple[List[Signal], List[Trade], pd.DataFrame]:
     if picks.empty:
-        return [], [], pd.DataFrame(columns=["date", "ret"])
+        return [], [], pd.DataFrame(columns=["date", "net", "gross"])
 
     fee_rate = (fee_bps or 0.0) / 10_000.0
     hold_days = max(1, hold_days)
     ret_col = f"fwd_ret_{hold_days}d"
     if ret_col not in picks.columns:
-        return [], [], pd.DataFrame(columns=["date", "ret"])
+        return [], [], pd.DataFrame(columns=["date", "net", "gross"])
 
     signals: List[Signal] = []
     trades: List[Trade] = []
@@ -440,7 +450,8 @@ def _build_signals_and_trades(
         realised_returns.append(
             {
                 "date": exit_date.normalize(),
-                "ret": float(net_simple),
+                "net": float(net_simple),
+                "gross": float(gross_simple),
             }
         )
 
@@ -518,6 +529,7 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
     config = _build_config(indicators)
     max_horizon = payload.indicators.get("max_horizon", 10)
     hist_horizon = payload.indicators.get("hist_horizon", 1)
+    hist_bins = payload.hist_bins or 20
     hold_days = payload.hold_days or payload.indicators.get("hold_days") or 1
     if hold_days > max_horizon:
         hold_days = max_horizon
@@ -525,6 +537,8 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
         hist_horizon = max_horizon
     if hist_horizon < 1:
         hist_horizon = 1
+    if hist_bins < 5:
+        hist_bins = 5
 
     result = backtest_system.run_backtest_for_all(
         tables["adj"],
@@ -554,13 +568,19 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
     signals.sort(key=lambda s: (s.date, 0 if s.type == "buy" else 1))
     trades.sort(key=lambda t: (t.enter_date, t.symbol or ""))
 
-    equity = _build_equity(realised_returns, initial_capital=float(payload.capital or 1.0))
+    initial_capital = float(payload.capital or 1.0)
+    equity = _build_equity(realised_returns, initial_capital=initial_capital, column="net")
+    gross_equity = _build_equity(realised_returns, initial_capital=initial_capital, column="gross")
     drawdown = _compute_drawdown(equity)
 
     equity_ts = TimeSeries(dates=[d.strftime("%Y-%m-%d") for d in equity.index], values=equity.round(6).tolist())
     drawdown_ts = TimeSeries(dates=[d.strftime("%Y-%m-%d") for d in drawdown.index], values=drawdown.round(6).tolist())
 
     metrics = _compute_metrics(equity, drawdown)
+    ending_equity = float(equity.iloc[-1]) if not equity.empty else initial_capital
+    gross_ending = float(gross_equity.iloc[-1]) if not gross_equity.empty else ending_equity
+    total_return = float(ending_equity / initial_capital - 1.0) if initial_capital else 0.0
+    total_fees = float(max(0.0, gross_ending - ending_equity))
     stats_df = result.get("statistics", pd.DataFrame())
     hist_df = result.get("hist_data", pd.DataFrame())
 
@@ -578,7 +598,7 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
     sample_clean = sample.dropna()
     if not sample_clean.empty:
         simple_sample = np.expm1(sample_clean)
-        counts, bin_edges = np.histogram(simple_sample, bins=20)
+        counts, bin_edges = np.histogram(simple_sample, bins=hist_bins)
         buckets = [
             HistogramBucket(
                 bin_start=float(bin_edges[i]),
@@ -600,6 +620,7 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
             buckets=buckets,
             stats=stats_for_hist,
             sample_size=int(simple_series.shape[0]),
+            bin_count=int(hist_bins),
         )
 
     indicator_stats: Dict[str, Dict[str, float]] = {}
@@ -628,4 +649,8 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
         indicator_statistics=indicator_stats,
         universe_size=len(tickers),
         trades_count=len(trades),
+        initial_capital=initial_capital,
+        ending_equity=ending_equity,
+        total_return=total_return,
+        total_fees=total_fees,
     )
