@@ -3,6 +3,7 @@ import ReactECharts from "echarts-for-react";
 import type { ECharts } from "echarts";
 import { Spin, Empty } from "antd";
 import { TimeSeries } from "../types";
+import { formatDateYYMMDD, formatPercent } from "../utils/format";
 
 interface Props {
   data?: TimeSeries | null;
@@ -22,7 +23,7 @@ const DrawdownChart = ({ data, loading, onReady }: Props) => {
   const option = {
     tooltip: {
       trigger: "axis",
-      valueFormatter: (v: number) => `${(v * 100).toFixed(2)}%`,
+      valueFormatter: (v: number) => formatPercent(v, 2),
     },
     dataZoom: [
       {
@@ -43,10 +44,21 @@ const DrawdownChart = ({ data, loading, onReady }: Props) => {
         moveHandleSize: 10,
       },
     ],
-    xAxis: { type: "category", data: data.dates },
+    xAxis: {
+      type: "category",
+      data: data.dates,
+      axisLabel: {
+        formatter: (value: string) => formatDateYYMMDD(value),
+        hideOverlap: true,
+      },
+      splitLine: { show: true, lineStyle: { color: "#ffe4e6" } },
+    },
     yAxis: {
       type: "value",
-      axisLabel: { formatter: (value: number) => `${(value * 100).toFixed(0)}%` },
+      axisLabel: {
+        formatter: (value: number) => formatPercent(value, 0),
+      },
+      splitLine: { show: true, lineStyle: { color: "#ffe4e6" } },
     },
     series: [
       {
@@ -57,6 +69,12 @@ const DrawdownChart = ({ data, loading, onReady }: Props) => {
         data: data.values,
       },
     ],
+    grid: {
+      top: 40,
+      left: 72,
+      right: 28,
+      bottom: 64,
+    },
   };
 
   const handleReady = (instance: ECharts) => {
