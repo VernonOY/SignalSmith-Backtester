@@ -16,6 +16,7 @@ import {
 import dayjs, { Dayjs } from "dayjs";
 import { api } from "../api/client";
 import { BacktestRequest, Filters, RSIRule, UniverseMeta } from "../types";
+import { downloadCSV } from "../utils/download";
 
 const { RangePicker } = DatePicker;
 const { Paragraph, Text } = Typography;
@@ -98,14 +99,22 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
   }, []);
 
   useEffect(() => {
-    const preset = localStorage.getItem(DEFAULT_PRESET_KEY);
-    if (preset) {
-      try {
-        const parsed = JSON.parse(preset);
-        form.setFieldsValue(parsed);
-      } catch (error) {
-        console.warn("Invalid preset in storage", error);
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const preset = window.localStorage.getItem(DEFAULT_PRESET_KEY);
+      if (preset) {
+        try {
+          const parsed = JSON.parse(preset);
+          form.setFieldsValue(parsed);
+        } catch (error) {
+          console.warn("Invalid preset in storage", error);
+        }
       }
+    } catch (error) {
+      console.warn("Unable to access localStorage", error);
     }
   }, [form]);
 
@@ -133,9 +142,120 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
   };
 
   const handleSavePreset = () => {
-    const values = form.getFieldsValue();
-    localStorage.setItem(DEFAULT_PRESET_KEY, JSON.stringify(values));
-    message.success("Preset saved locally");
+    try {
+      const values = form.getFieldsValue();
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(DEFAULT_PRESET_KEY, JSON.stringify(values));
+        message.success("Preset saved locally");
+      }
+    } catch (error) {
+      console.warn("Failed to save preset", error);
+      message.warning("Unable to save preset in this browser");
+    }
+  };
+
+  const handleDownloadParameters = () => {
+    const values = form.getFieldsValue(true);
+
+    const strategyLabelMap: Record<string, string> = {
+      mean_reversion: "Mean Reversion",
+      momentum: "Momentum",
+      multifactor: "Multifactor",
+    };
+
+    const policyLabelMap: Record<string, string> = {
+      any: "Any",
+      all: "All",
+      atleast_k: "At least k",
+    };
+
+    const macdRuleLabels: Record<string, string> = {
+      signal: "Signal Crossover",
+      positive: "MACD > 0",
+    };
+
+    const obvRuleLabels: Record<string, string> = {
+      rise: "OBV crosses above its moving average",
+      positive: "OBV turns positive",
+    };
+
+    const stochRuleLabels: Record<string, string> = {
+      signal: "Signal crossover",
+      oversold: "Oversold",
+      overbought: "Overbought",
+    };
+
+    const rsiModeLabels: Record<string, string> = {
+      oversold: "Oversold (<= threshold)",
+      overbought: "Overbought (>= threshold)",
+    };
+
+    const yesNo = (value: boolean | undefined) => (value ? "Yes" : "No");
+    const percentValue = (value?: number | null) =>
+      value !== undefined && value !== null ? `${value}%` : "—";
+    const numericValue = (value?: number | null) =>
+      value !== undefined && value !== null ? `${value}` : "—";
+    const listValue = (value?: string[] | null) =>
+      value && value.length ? value.join(", ") : "—";
+
+    const startDate = values.date?.[0] ? values.date[0].format("YYYY-MM-DD") : "—";
+    const endDate = values.date?.[1] ? values.date[1].format("YYYY-MM-DD") : "—";
+
+    const rows: Array<{ section: string; label: string; value: string }> = [
+      { section: "Strategy", label: "Strategy", value: strategyLabelMap[values.strategy] ?? values.strategy ?? "—" },
+      { section: "Strategy", label: "Start date", value: startDate },
+      { section: "Strategy", label: "End date", value: endDate },
+      { section: "Execution", label: "Initial capital", value: values.capital !== undefined && values.capital !== null ? `$${values.capital.toLocaleString()}` : "—" },
+      { section: "Execution", label: "Fee (bps)", value: numericValue(values.fee_bps) },
+      { section: "Execution", label: "Hold days", value: numericValue(values.hold_days) },
+      { section: "Execution", label: "Stop loss", value: percentValue(values.stop_loss_pct) },
+      { section: "Execution", label: "Take profit", value: percentValue(values.take_profit_pct) },
+      { section: "Indicators", label: "Enable RSI", value: yesNo(values.enable_rsi) },
+      { section: "Indicators", label: "RSI lookback", value: numericValue(values.rsi_n) },
+      {
+        section: "Indicators",
+        label: "RSI mode",
+        value: values.rsi_rule?.mode ? rsiModeLabels[values.rsi_rule.mode] ?? values.rsi_rule.mode : "—",
+      },
+      { section: "Indicators", label: "RSI threshold", value: numericValue(values.rsi_rule?.threshold) },
+      { section: "Indicators", label: "Enable MACD", value: yesNo(values.use_macd) },
+      { section: "Indicators", label: "MACD fast", value: numericValue(values.macd_fast) },
+      { section: "Indicators", label: "MACD slow", value: numericValue(values.macd_slow) },
+      { section: "Indicators", label: "MACD signal", value: numericValue(values.macd_signal) },
+      { section: "Indicators", label: "MACD rule", value: macdRuleLabels[values.macd_rule] ?? values.macd_rule ?? "—" },
+      { section: "Indicators", label: "Enable OBV", value: yesNo(values.use_obv) },
+      { section: "Indicators", label: "OBV rule", value: obvRuleLabels[values.obv_rule] ?? values.obv_rule ?? "—" },
+      { section: "Indicators", label: "Enable EMA", value: yesNo(values.use_ema) },
+      { section: "Indicators", label: "EMA short", value: numericValue(values.ema_short) },
+      { section: "Indicators", label: "EMA long", value: numericValue(values.ema_long) },
+      { section: "Indicators", label: "Enable ADX", value: yesNo(values.use_adx) },
+      { section: "Indicators", label: "ADX lookback", value: numericValue(values.adx_n) },
+      { section: "Indicators", label: "ADX min", value: numericValue(values.adx_min) },
+      { section: "Indicators", label: "Enable Aroon", value: yesNo(values.use_aroon) },
+      { section: "Indicators", label: "Aroon lookback", value: numericValue(values.aroon_n) },
+      { section: "Indicators", label: "Aroon up", value: numericValue(values.aroon_up) },
+      { section: "Indicators", label: "Aroon down", value: numericValue(values.aroon_down) },
+      { section: "Indicators", label: "Enable Stochastic", value: yesNo(values.use_stoch) },
+      { section: "Indicators", label: "%K", value: numericValue(values.stoch_k) },
+      { section: "Indicators", label: "%D", value: numericValue(values.stoch_d) },
+      { section: "Indicators", label: "Stochastic threshold", value: numericValue(values.stoch_threshold) },
+      { section: "Indicators", label: "Stochastic rule", value: stochRuleLabels[values.stoch_rule] ?? values.stoch_rule ?? "—" },
+      { section: "Universe filters", label: "Sectors", value: listValue(values.filters?.sectors) },
+      { section: "Universe filters", label: "Market cap min", value: values.filters?.mcap_min !== undefined && values.filters?.mcap_min !== null ? `$${values.filters.mcap_min.toLocaleString()}` : "—" },
+      { section: "Universe filters", label: "Market cap max", value: values.filters?.mcap_max !== undefined && values.filters?.mcap_max !== null ? `$${values.filters.mcap_max.toLocaleString()}` : "—" },
+      { section: "Universe filters", label: "Exclude tickers", value: listValue(values.filters?.exclude_tickers) },
+      { section: "Signal rules", label: "Combination policy", value: policyLabelMap[values.policy] ?? values.policy ?? "—" },
+      { section: "Signal rules", label: "k", value: numericValue(values.k) },
+      { section: "Signal rules", label: "Max horizon", value: numericValue(values.max_horizon) },
+      { section: "Signal rules", label: "Histogram horizon", value: numericValue(values.hist_horizon) },
+      { section: "Signal rules", label: "Histogram bins", value: numericValue(values.hist_bins) },
+    ];
+
+    downloadCSV(
+      "backtest_parameters.csv",
+      ["Section", "Parameter", "Value"],
+      rows.map((row) => [row.section, row.label, row.value])
+    );
   };
 
   const handleStrategyChange = (value: string) => {
@@ -278,6 +398,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
       hold_days: values.hold_days,
       stop_loss_pct: stopLoss,
       take_profit_pct: takeProfit,
+      hist_bins: values.hist_bins,
     };
 
     await onSubmit(payload);
@@ -592,6 +713,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
           k: 2,
           max_horizon: 10,
           hist_horizon: 1,
+          hist_bins: 20,
           filters: {},
         }}
         style={{ padding: "0 16px", height: "100%", overflowY: "auto" }}
@@ -667,9 +789,9 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
         </Card>
 
         <Card title="Indicators" size="small" bordered={false} style={{ marginBottom: 16 }}>
-          <Space direction="vertical" size={24} style={{ width: "100%" }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <div className="indicator-grid">
+            <div className="indicator-tile">
+              <div className="indicator-tile__header">
                 <Text strong>Relative Strength Index (RSI)</Text>
                 <Button type="link" size="small" onClick={() => openInfo("rsi")}>
                   Describe
@@ -711,8 +833,8 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
               </Form.Item>
             </div>
 
-            <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div className="indicator-tile">
+              <div className="indicator-tile__header">
                 <Text strong>Moving Average Convergence Divergence (MACD)</Text>
                 <Button type="link" size="small" onClick={() => openInfo("macd")}>
                   Describe
@@ -763,8 +885,8 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
               </Form.Item>
             </div>
 
-            <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div className="indicator-tile">
+              <div className="indicator-tile__header">
                 <Text strong>On-Balance Volume (OBV)</Text>
                 <Button type="link" size="small" onClick={() => openInfo("obv")}>
                   Describe
@@ -792,8 +914,8 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
               </Form.Item>
             </div>
 
-            <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div className="indicator-tile">
+              <div className="indicator-tile__header">
                 <Text strong>Exponential Moving Average Cross (EMA)</Text>
                 <Button type="link" size="small" onClick={() => openInfo("ema")}>
                   Describe
@@ -825,8 +947,8 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
               </Space>
             </div>
 
-            <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div className="indicator-tile">
+              <div className="indicator-tile__header">
                 <Text strong>Average Directional Index (ADX)</Text>
                 <Button type="link" size="small" onClick={() => openInfo("adx")}>
                   Describe
@@ -858,8 +980,8 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
               </Space>
             </div>
 
-            <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div className="indicator-tile">
+              <div className="indicator-tile__header">
                 <Text strong>Aroon Oscillator</Text>
                 <Button type="link" size="small" onClick={() => openInfo("aroon")}>
                   Describe
@@ -898,8 +1020,8 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
               </Space>
             </div>
 
-            <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div className="indicator-tile">
+              <div className="indicator-tile__header">
                 <Text strong>Stochastic Oscillator</Text>
                 <Button type="link" size="small" onClick={() => openInfo("stoch")}>
                   Describe
@@ -950,7 +1072,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                 />
               </Form.Item>
             </div>
-          </Space>
+          </div>
         </Card>
 
         <Card title="Universe Filters" size="small" bordered={false} style={{ marginBottom: 16 }}>
@@ -1013,17 +1135,27 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
           >
             <InputNumber min={1} max={10} style={{ width: "100%" }} />
           </Form.Item>
+          <Form.Item
+            label="Histogram Bins"
+            name="hist_bins"
+            extra="Number of buckets when summarising forward returns."
+          >
+            <InputNumber min={5} max={60} style={{ width: "100%" }} />
+          </Form.Item>
         </Card>
 
-        <Space style={{ width: "100%", justifyContent: "space-between", marginBottom: 24 }}>
-          <Space>
+        <div className="sidebar-actions">
+          <div className="sidebar-actions__group">
             <Button type="primary" htmlType="submit" loading={loading}>
               Run Backtest
             </Button>
             <Button onClick={handleReset}>Reset</Button>
-          </Space>
-          <Button onClick={handleSavePreset}>Save Preset</Button>
-        </Space>
+          </div>
+          <div className="sidebar-actions__group">
+            <Button onClick={handleDownloadParameters}>Download Parameters</Button>
+            <Button onClick={handleSavePreset}>Save Preset</Button>
+          </div>
+        </div>
       </Form>
 
     </>
