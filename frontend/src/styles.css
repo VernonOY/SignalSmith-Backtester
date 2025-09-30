@@ -261,6 +261,7 @@ body {
   flex-direction: column;
   gap: 12px;
 }
+
 .indicator-tile__header {
   display: flex;
   align-items: center;
@@ -335,7 +336,6 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-}
 }
 
 @media (max-width: 900px) {
