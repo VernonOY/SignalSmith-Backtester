@@ -25,6 +25,7 @@ export interface BacktestRequest {
   hold_days?: number;
   stop_loss_pct?: number;
   take_profit_pct?: number;
+  hist_bins?: number;
 }
 
 export interface TimeSeries {
@@ -65,6 +66,7 @@ export interface HistogramPayload {
   buckets: HistogramBucket[];
   stats: Record<string, number>;
   sample_size: number;
+  bin_count: number;
 }
 
 export interface BacktestResponse {
@@ -78,6 +80,10 @@ export interface BacktestResponse {
   indicator_statistics?: Record<string, Record<string, number>>;
   universe_size: number;
   trades_count: number;
+  initial_capital: number;
+  ending_equity: number;
+  total_return: number;
+  total_fees: number;
 }
 
 export interface UniverseMeta {

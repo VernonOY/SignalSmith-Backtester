@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import { ConfigProvider, theme, message, Typography, Card, Button, Space, Switch, Modal } from "antd";
-import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import SidebarForm from "./components/SidebarForm";
 import { BacktestRequest, BacktestResponse } from "./types";
 import { api } from "./api/client";
@@ -13,12 +12,14 @@ import type { ECharts } from "echarts";
 import HistogramChart from "./components/HistogramChart";
 import IndicatorStatsTable from "./components/IndicatorStatsTable";
 import { downloadCSV, downloadJSON, downloadImage } from "./utils/download";
+import { formatCurrency, formatNumber, formatPercent } from "./utils/format";
 
 const { Title, Text, Paragraph } = Typography;
 
 const App = () => {
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<BacktestResponse | null>(null);
+  const [lastRunConfig, setLastRunConfig] = useState<BacktestRequest | null>(null);
   const [signalsInfoVisible, setSignalsInfoVisible] = useState(false);
   const [showPriceLine, setShowPriceLine] = useState(true);
   const [showBuySignals, setShowBuySignals] = useState(true);
@@ -30,6 +31,7 @@ const App = () => {
       setLoading(true);
       const { data } = await api.post<BacktestResponse>("/run_backtest", payload);
       setResponse(data);
+      setLastRunConfig(payload);
       message.success("Backtest complete");
     } catch (error: any) {
       const detail = error?.response?.data?.detail || error.message;
@@ -124,6 +126,79 @@ const App = () => {
     downloadCSV("indicator_statistics.csv", ["horizon", "metric", "value"], rows);
   };
 
+  const histogramBins = response?.histogram?.bin_count ?? lastRunConfig?.hist_bins ?? null;
+  const summaryItems = response
+    ? [
+        { label: "Universe size", value: formatNumber(response.universe_size, 0) },
+        { label: "Trades generated", value: formatNumber(response.trades_count, 0) },
+        { label: "Initial capital", value: formatCurrency(response.initial_capital, 0) },
+        { label: "Ending equity", value: formatCurrency(response.ending_equity, 0) },
+        { label: "Total return", value: formatPercent(response.total_return, 2) },
+        { label: "Total fees", value: formatCurrency(response.total_fees, 0) },
+        ...(response.histogram
+          ? [{ label: "Histogram horizon", value: `${response.histogram.horizon}d` }]
+          : []),
+        ...(histogramBins !== null
+          ? [{ label: "Histogram bins", value: formatNumber(histogramBins, 0) }]
+          : []),
+      ]
+    : [];
+
+  const capitalDisplay = formatCurrency(
+    lastRunConfig?.capital ?? response?.initial_capital ?? 0,
+    0,
+  );
+  const holdDaysDisplay =
+    lastRunConfig?.hold_days !== undefined && lastRunConfig?.hold_days !== null
+      ? formatNumber(lastRunConfig.hold_days, 0)
+      : "—";
+  const feeDisplay =
+    lastRunConfig?.fee_bps !== undefined && lastRunConfig?.fee_bps !== null
+      ? `${formatNumber(lastRunConfig.fee_bps, 2)} bps`
+      : "—";
+  const stopLossDisplay =
+    lastRunConfig?.stop_loss_pct !== undefined && lastRunConfig?.stop_loss_pct !== null
+      ? formatPercent(lastRunConfig.stop_loss_pct, 1)
+      : "—";
+  const takeProfitDisplay =
+    lastRunConfig?.take_profit_pct !== undefined && lastRunConfig?.take_profit_pct !== null
+      ? formatPercent(lastRunConfig.take_profit_pct, 1)
+      : "—";
+  const fallbackHistHorizon = lastRunConfig?.indicators?.hist_horizon as number | undefined;
+  const histHorizonDisplay = response?.histogram
+    ? `${response.histogram.horizon}d`
+    : fallbackHistHorizon !== undefined && fallbackHistHorizon !== null
+      ? `${fallbackHistHorizon}d`
+      : "—";
+  const binsDisplay = histogramBins !== null ? formatNumber(histogramBins, 0) : "—";
+
+  const runSettingItems = lastRunConfig
+    ? [
+        { label: "Start date", value: lastRunConfig.start },
+        { label: "End date", value: lastRunConfig.end },
+        { label: "Initial capital", value: capitalDisplay },
+        { label: "Hold days", value: holdDaysDisplay },
+        { label: "Fee (bps)", value: feeDisplay },
+        { label: "Stop loss", value: stopLossDisplay },
+        { label: "Take profit", value: takeProfitDisplay },
+        { label: "Histogram horizon", value: histHorizonDisplay },
+        { label: "Histogram bins", value: binsDisplay },
+      ]
+    : [];
+
+  const histogramInfoItems = response?.histogram
+    ? [
+        {
+          label: "Window",
+          value: lastRunConfig ? `${lastRunConfig.start} → ${lastRunConfig.end}` : "—",
+        },
+        { label: "Horizon", value: `${response.histogram.horizon}d` },
+        { label: "Hold days", value: holdDaysDisplay },
+        { label: "Fee", value: feeDisplay },
+        { label: "Bins", value: binsDisplay },
+      ]
+    : [];
+
   return (
     <ConfigProvider
       theme={{
@@ -134,51 +209,57 @@ const App = () => {
       }}
     >
       <div className="app-shell">
-        <PanelGroup direction="horizontal">
-          <Panel defaultSize={24} minSize={15} maxSize={35} className="panel panel--sidebar">
-            <div className="sidebar-panel">
-              <SidebarForm loading={loading} onSubmit={handleSubmit} />
-            </div>
-          </Panel>
-          <PanelResizeHandle className="resize-handle" />
-          <Panel defaultSize={76} minSize={40} className="panel panel--content">
-            <div className="results-panel">
-              {!response && (
-                <Card className="result-card intro-card">
-                  <Title level={3}>SignalSmith Backtester</Title>
-                  <Text type="secondary">
-                    Configure parameters on the left and run the backtest to see equity, drawdown and trade analytics.
-                  </Text>
-                </Card>
-              )}
+        <aside className="sidebar-panel">
+          <SidebarForm loading={loading} onSubmit={handleSubmit} />
+        </aside>
+        <main className="results-panel">
+          {!response && (
+            <Card className="result-card intro-card">
+              <Title level={3}>SignalSmith Backtester</Title>
+              <Text type="secondary">
+                Configure parameters on the left and run the backtest to see equity, drawdown and trade analytics.
+              </Text>
+            </Card>
+          )}
 
-              {response && (
-                <div className="results-container">
-                  <Card className="result-card">
+          {response && (
+            <div className="results-container">
+                  <Card className="result-card overview-card">
                     <div className="card-header">
-                      <Title level={3}>Aggregated Results</Title>
-                      <Space>
+                      <Title level={3}>Backtest Overview</Title>
+                      <Space size={8} wrap>
                         <Button size="small" onClick={handleDownloadSummary}>
                           Download JSON
                         </Button>
+                        <Button size="small" onClick={handleDownloadMetrics}>
+                          Metrics CSV
+                        </Button>
                       </Space>
                     </div>
-                    <div className="summary-stats">
-                      <div>
-                        <span>Universe size</span>
-                        <strong>{response.universe_size}</strong>
+                    <div className="overview-grid">
+                      <div className="overview-summary">
+                        {summaryItems.map((item) => (
+                          <div key={item.label} className="summary-item">
+                            <span>{item.label}</span>
+                            <strong>{item.value}</strong>
+                          </div>
+                        ))}
                       </div>
-                      <div>
-                        <span>Trades generated</span>
-                        <strong>{response.trades_count}</strong>
-                      </div>
-                      {response.histogram && (
-                        <div>
-                          <span>Histogram horizon</span>
-                          <strong>{`${response.histogram.horizon}d`}</strong>
+                      {runSettingItems.length > 0 && (
+                        <div className="overview-settings">
+                          <h4>Run settings</h4>
+                          <dl className="settings-list">
+                            {runSettingItems.map((item) => (
+                              <div key={item.label} className="settings-list__item">
+                                <dt>{item.label}</dt>
+                                <dd>{item.value}</dd>
+                              </div>
+                            ))}
+                          </dl>
                         </div>
                       )}
                     </div>
+                    <MetricsTable metrics={response.metrics} />
                   </Card>
 
                   {response.histogram && (
@@ -194,6 +275,16 @@ const App = () => {
                           </Button>
                         </Space>
                       </div>
+                      {histogramInfoItems.length > 0 && (
+                        <div className="histogram-info">
+                          {histogramInfoItems.map((item) => (
+                            <div key={item.label} className="info-pill">
+                              <span className="info-pill__label">{item.label}</span>
+                              <span className="info-pill__value">{item.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       <HistogramChart
                         data={response.histogram}
                         loading={loading}
@@ -202,6 +293,18 @@ const App = () => {
                           histogramChartRef.current = instance;
                         }}
                       />
+                    </Card>
+                  )}
+
+                  {response.indicator_statistics && Object.keys(response.indicator_statistics).length > 0 && (
+                    <Card className="result-card">
+                      <div className="card-header">
+                        <Title level={4}>Indicator Statistics</Title>
+                        <Button size="small" onClick={handleDownloadIndicatorStats}>
+                          Download CSV
+                        </Button>
+                      </div>
+                      <IndicatorStatsTable stats={response.indicator_statistics} />
                     </Card>
                   )}
 
@@ -225,16 +328,6 @@ const App = () => {
                       <DrawdownChart data={response.drawdown_curve} loading={loading} />
                     </Card>
                   </div>
-
-                  <Card className="result-card">
-                    <div className="card-header">
-                      <Title level={4}>Performance Metrics</Title>
-                      <Button size="small" onClick={handleDownloadMetrics}>
-                        Download CSV
-                      </Button>
-                    </div>
-                    <MetricsTable metrics={response.metrics} />
-                  </Card>
 
                   <Card className="result-card">
                     <div className="card-header">
@@ -269,18 +362,6 @@ const App = () => {
                     />
                   </Card>
 
-                  {response.indicator_statistics && Object.keys(response.indicator_statistics).length > 0 && (
-                    <Card className="result-card">
-                      <div className="card-header">
-                        <Title level={4}>Indicator Statistics</Title>
-                        <Button size="small" onClick={handleDownloadIndicatorStats}>
-                          Download CSV
-                        </Button>
-                      </div>
-                      <IndicatorStatsTable stats={response.indicator_statistics} />
-                    </Card>
-                  )}
-
                   <Card className="result-card">
                     <div className="card-header">
                       <Title level={4}>Trades</Title>
@@ -294,11 +375,9 @@ const App = () => {
                     </div>
                     <TradesTable trades={response.trades ?? []} />
                   </Card>
-                </div>
-              )}
             </div>
-          </Panel>
-        </PanelGroup>
+          )}
+        </main>
       </div>
       <Modal
         open={signalsInfoVisible}

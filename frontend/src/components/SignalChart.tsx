@@ -1,8 +1,9 @@
-import React, { useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import ReactECharts from "echarts-for-react";
 import type { ECharts } from "echarts";
 import { Empty } from "antd";
 import { Signal, TimeSeries } from "../types";
+import { formatDateYYMMDD } from "../utils/format";
 
 interface Props {
   priceSeries?: TimeSeries | null;
@@ -24,6 +25,14 @@ const SignalChart = ({ priceSeries, signals, showPrice = true, showBuys = true, 
   const sellData = sells.map((s) => [s.date, s.price, s.symbol]);
 
   const series: any[] = [];
+  const totalPoints = priceSeries.dates.length;
+  const window = Math.min(14, totalPoints);
+  const defaultStart = useMemo(() => {
+    if (totalPoints <= window) {
+      return 0;
+    }
+    return ((totalPoints - window) / totalPoints) * 100;
+  }, [totalPoints, window]);
   if (showPrice) {
     series.push({
       type: "line",
@@ -85,6 +94,8 @@ const SignalChart = ({ priceSeries, signals, showPrice = true, showBuys = true, 
         zoomOnMouseWheel: false,
         moveOnMouseWheel: true,
         moveOnMouseMove: true,
+        start: defaultStart,
+        end: 100,
       },
       {
         type: "slider",
@@ -94,9 +105,18 @@ const SignalChart = ({ priceSeries, signals, showPrice = true, showBuys = true, 
         handleSize: 14,
         handleStyle: { color: "#4c6ef5" },
         moveHandleSize: 10,
+        start: defaultStart,
+        end: 100,
       },
     ],
-    xAxis: { type: "category", data: priceSeries.dates },
+    xAxis: {
+      type: "category",
+      data: priceSeries.dates,
+      axisLabel: {
+        formatter: (value: string) => formatDateYYMMDD(value),
+        hideOverlap: true,
+      },
+    },
     yAxis: { type: "value", scale: true },
     series,
   };
