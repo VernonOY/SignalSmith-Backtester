@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import { ConfigProvider, theme, message, Typography, Card, Button, Space, Switch, Modal } from "antd";
-import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import SidebarForm from "./components/SidebarForm";
 import { BacktestRequest, BacktestResponse } from "./types";
 import { api } from "./api/client";
@@ -210,26 +209,21 @@ const App = () => {
       }}
     >
       <div className="app-shell">
-        <PanelGroup direction="horizontal">
-          <Panel defaultSize={24} minSize={15} maxSize={35} className="panel panel--sidebar">
-            <div className="sidebar-panel">
-              <SidebarForm loading={loading} onSubmit={handleSubmit} />
-            </div>
-          </Panel>
-          <PanelResizeHandle className="resize-handle" />
-          <Panel defaultSize={76} minSize={40} className="panel panel--content">
-            <div className="results-panel">
-              {!response && (
-                <Card className="result-card intro-card">
-                  <Title level={3}>SignalSmith Backtester</Title>
-                  <Text type="secondary">
-                    Configure parameters on the left and run the backtest to see equity, drawdown and trade analytics.
-                  </Text>
-                </Card>
-              )}
+        <aside className="sidebar-panel">
+          <SidebarForm loading={loading} onSubmit={handleSubmit} />
+        </aside>
+        <main className="results-panel">
+          {!response && (
+            <Card className="result-card intro-card">
+              <Title level={3}>SignalSmith Backtester</Title>
+              <Text type="secondary">
+                Configure parameters on the left and run the backtest to see equity, drawdown and trade analytics.
+              </Text>
+            </Card>
+          )}
 
-              {response && (
-                <div className="results-container">
+          {response && (
+            <div className="results-container">
                   <Card className="result-card overview-card">
                     <div className="card-header">
                       <Title level={3}>Backtest Overview</Title>
@@ -381,11 +375,9 @@ const App = () => {
                     </div>
                     <TradesTable trades={response.trades ?? []} />
                   </Card>
-                </div>
-              )}
             </div>
-          </Panel>
-        </PanelGroup>
+          )}
+        </main>
       </div>
       <Modal
         open={signalsInfoVisible}
