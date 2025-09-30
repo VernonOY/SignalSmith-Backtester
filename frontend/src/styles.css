@@ -261,7 +261,6 @@ body {
   flex-direction: column;
   gap: 12px;
 }
-
 .indicator-tile__header {
   display: flex;
   align-items: center;
@@ -297,6 +296,46 @@ body {
   .results-panel {
     min-height: auto;
   }
+}
+
+.indicator-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.indicator-tile {
+  border: 1px solid #dbe1ff;
+  border-radius: 10px;
+  background: #f8faff;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.indicator-tile__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.sidebar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.sidebar-actions__group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
 }
 
 @media (max-width: 900px) {
