@@ -201,6 +201,32 @@ body {
   margin-bottom: 16px;
 }
 
+.indicator-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.indicator-grid__item {
+  background: #f9faff;
+  border: 1px solid #e2e7ff;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.indicator-grid__item .ant-form-item {
+  margin-bottom: 0;
+}
+
+.indicator-grid__item .ant-form-item + .ant-form-item,
+.indicator-grid__item .ant-form-item + .ant-space,
+.indicator-grid__item .ant-space + .ant-form-item {
+  margin-top: 12px;
+}
+
 .info-pill {
   display: inline-flex;
   align-items: center;

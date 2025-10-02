@@ -16,6 +16,7 @@ import {
 import dayjs, { Dayjs } from "dayjs";
 import { api } from "../api/client";
 import { BacktestRequest, Filters, RSIRule, UniverseMeta } from "../types";
+import { downloadCSV } from "../utils/download";
 
 const { RangePicker } = DatePicker;
 const { Paragraph, Text } = Typography;
@@ -136,6 +137,82 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
     const values = form.getFieldsValue();
     localStorage.setItem(DEFAULT_PRESET_KEY, JSON.stringify(values));
     message.success("Preset saved locally");
+  };
+
+  const handleDownloadSelections = () => {
+    const values = form.getFieldsValue(true);
+    const rows: Array<Array<string | number>> = [];
+    const [start, end] = (values.date ?? []) as [Dayjs | undefined, Dayjs | undefined];
+    const filtersValues = (values.filters ?? {}) as Filters & {
+      exclude_tickers?: string[];
+    };
+
+    const addRow = (section: string, label: string, value: unknown) => {
+      const normalized = (() => {
+        if (value === undefined || value === null || value === "") return "—";
+        if (Array.isArray(value)) return value.length ? value.join(", ") : "—";
+        return String(value);
+      })();
+      rows.push([section, label, normalized]);
+    };
+
+    const formatDate = (value?: Dayjs) => (value ? value.format("YYYY-MM-DD") : "—");
+    const formatBool = (value?: boolean) => (value ? "Enabled" : "Disabled");
+
+    addRow("Strategy", "Strategy", values.strategy);
+    addRow("Strategy", "Start date", formatDate(start));
+    addRow("Strategy", "End date", formatDate(end));
+    addRow("Strategy", "Initial capital", values.capital);
+    addRow("Strategy", "Fee (bps)", values.fee_bps);
+    addRow("Strategy", "Hold days", values.hold_days);
+    addRow("Strategy", "Stop loss (%)", values.stop_loss_pct);
+    addRow("Strategy", "Take profit (%)", values.take_profit_pct);
+
+    addRow("Universe Filters", "Sectors", filtersValues.sectors ?? []);
+    addRow("Universe Filters", "Market cap min", filtersValues.mcap_min);
+    addRow("Universe Filters", "Market cap max", filtersValues.mcap_max);
+    addRow("Universe Filters", "Exclude tickers", filtersValues.exclude_tickers ?? []);
+
+    addRow("RSI", "Enabled", formatBool(values.enable_rsi));
+    addRow("RSI", "Lookback", values.rsi_n);
+    addRow("RSI", "Mode", values.rsi_rule?.mode);
+    addRow("RSI", "Threshold", values.rsi_rule?.threshold);
+
+    addRow("MACD", "Enabled", formatBool(values.use_macd));
+    addRow("MACD", "Fast", values.macd_fast);
+    addRow("MACD", "Slow", values.macd_slow);
+    addRow("MACD", "Signal", values.macd_signal);
+    addRow("MACD", "Rule", values.macd_rule);
+
+    addRow("OBV", "Enabled", formatBool(values.use_obv));
+    addRow("OBV", "Rule", values.obv_rule);
+
+    addRow("EMA", "Enabled", formatBool(values.use_ema));
+    addRow("EMA", "Short", values.ema_short);
+    addRow("EMA", "Long", values.ema_long);
+
+    addRow("ADX", "Enabled", formatBool(values.use_adx));
+    addRow("ADX", "Lookback", values.adx_n);
+    addRow("ADX", "Min ADX", values.adx_min);
+
+    addRow("Aroon", "Enabled", formatBool(values.use_aroon));
+    addRow("Aroon", "Lookback", values.aroon_n);
+    addRow("Aroon", "Aroon up", values.aroon_up);
+    addRow("Aroon", "Aroon down", values.aroon_down);
+
+    addRow("Stochastic", "Enabled", formatBool(values.use_stoch));
+    addRow("Stochastic", "%K", values.stoch_k);
+    addRow("Stochastic", "%D", values.stoch_d);
+    addRow("Stochastic", "Threshold", values.stoch_threshold);
+    addRow("Stochastic", "Rule", values.stoch_rule);
+
+    addRow("Signal Rules", "Policy", values.policy);
+    addRow("Signal Rules", "k", values.policy === "atleast_k" ? values.k : "—");
+    addRow("Signal Rules", "Max horizon", values.max_horizon);
+    addRow("Signal Rules", "Histogram horizon", values.hist_horizon);
+    addRow("Signal Rules", "Histogram bins", values.hist_bins);
+
+    downloadCSV("parameter_selection.csv", ["Section", "Parameter", "Value"], rows);
   };
 
   const handleStrategyChange = (value: string) => {
@@ -669,8 +746,8 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
         </Card>
 
         <Card title="Indicators" size="small" bordered={false} style={{ marginBottom: 16 }}>
-          <Space direction="vertical" size={24} style={{ width: "100%" }}>
-            <div>
+          <div className="indicator-grid">
+            <div className="indicator-grid__item">
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <Text strong>Relative Strength Index (RSI)</Text>
                 <Button type="link" size="small" onClick={() => openInfo("rsi")}>
@@ -713,7 +790,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
               </Form.Item>
             </div>
 
-            <div>
+            <div className="indicator-grid__item">
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <Text strong>Moving Average Convergence Divergence (MACD)</Text>
                 <Button type="link" size="small" onClick={() => openInfo("macd")}>
@@ -765,7 +842,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
               </Form.Item>
             </div>
 
-            <div>
+            <div className="indicator-grid__item">
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <Text strong>On-Balance Volume (OBV)</Text>
                 <Button type="link" size="small" onClick={() => openInfo("obv")}>
@@ -794,7 +871,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
               </Form.Item>
             </div>
 
-            <div>
+            <div className="indicator-grid__item">
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <Text strong>Exponential Moving Average Cross (EMA)</Text>
                 <Button type="link" size="small" onClick={() => openInfo("ema")}>
@@ -827,7 +904,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
               </Space>
             </div>
 
-            <div>
+            <div className="indicator-grid__item">
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <Text strong>Average Directional Index (ADX)</Text>
                 <Button type="link" size="small" onClick={() => openInfo("adx")}>
@@ -860,7 +937,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
               </Space>
             </div>
 
-            <div>
+            <div className="indicator-grid__item">
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <Text strong>Aroon Oscillator</Text>
                 <Button type="link" size="small" onClick={() => openInfo("aroon")}>
@@ -900,7 +977,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
               </Space>
             </div>
 
-            <div>
+            <div className="indicator-grid__item">
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <Text strong>Stochastic Oscillator</Text>
                 <Button type="link" size="small" onClick={() => openInfo("stoch")}>
@@ -952,7 +1029,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                 />
               </Form.Item>
             </div>
-          </Space>
+          </div>
         </Card>
 
         <Card title="Universe Filters" size="small" bordered={false} style={{ marginBottom: 16 }}>
@@ -1024,14 +1101,19 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
           </Form.Item>
         </Card>
 
-        <Space style={{ width: "100%", justifyContent: "space-between", marginBottom: 24 }}>
+        <Space
+          style={{ width: "100%", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}
+        >
           <Space>
             <Button type="primary" htmlType="submit" loading={loading}>
               Run Backtest
             </Button>
             <Button onClick={handleReset}>Reset</Button>
           </Space>
-          <Button onClick={handleSavePreset}>Save Preset</Button>
+          <Space>
+            <Button onClick={handleDownloadSelections}>Download Selection</Button>
+            <Button onClick={handleSavePreset}>Save Preset</Button>
+          </Space>
         </Space>
       </Form>
 
