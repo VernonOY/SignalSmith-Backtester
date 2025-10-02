@@ -25,6 +25,7 @@ const App = () => {
   const [showPriceLine, setShowPriceLine] = useState(true);
   const [showBuySignals, setShowBuySignals] = useState(true);
   const [showSellSignals, setShowSellSignals] = useState(true);
+  const [overviewExpanded, setOverviewExpanded] = useState(false);
   const histogramChartRef = useRef<ECharts | null>(null);
 
   const handleSubmit = async (payload: BacktestRequest) => {
@@ -211,13 +212,13 @@ const App = () => {
     >
       <div className="app-shell">
         <PanelGroup direction="horizontal">
-          <Panel defaultSize={24} minSize={15} maxSize={35} className="panel panel--sidebar">
+          <Panel defaultSize={22} minSize={15} maxSize={25} className="panel panel--sidebar">
             <div className="sidebar-panel">
               <SidebarForm loading={loading} onSubmit={handleSubmit} />
             </div>
           </Panel>
           <PanelResizeHandle className="resize-handle" />
-          <Panel defaultSize={76} minSize={40} className="panel panel--content">
+          <Panel defaultSize={78} minSize={40} className="panel panel--content">
             <div className="results-panel">
               {!response && (
                 <Card className="result-card intro-card">
@@ -230,20 +231,29 @@ const App = () => {
 
               {response && (
                 <div className="results-container">
-                  <Card className="result-card overview-card">
-                    <div className="card-header">
-                      <Title level={3}>Backtest Overview</Title>
-                      <Space size={8} wrap>
-                        <Button size="small" onClick={handleDownloadSummary}>
-                          Download JSON
-                        </Button>
-                        <Button size="small" onClick={handleDownloadMetrics}>
-                          Metrics CSV
-                        </Button>
-                      </Space>
-                    </div>
-                    <div className="overview-grid">
-                      <div className="overview-summary">
+                  <div className="results-top-grid">
+                    <Card
+                      className={`result-card overview-card${overviewExpanded ? " overview-card--expanded" : ""}`}
+                    >
+                      <div className="card-header card-header--compact">
+                        <Title level={4}>Backtest Overview</Title>
+                        <Space size={8} wrap align="center">
+                          <Button size="small" onClick={handleDownloadSummary}>
+                            Download JSON
+                          </Button>
+                          <Button size="small" onClick={handleDownloadMetrics}>
+                            Metrics CSV
+                          </Button>
+                          <Button
+                            size="small"
+                            type="text"
+                            onClick={() => setOverviewExpanded((prev) => !prev)}
+                          >
+                            {overviewExpanded ? "Hide details" : "Show details"}
+                          </Button>
+                        </Space>
+                      </div>
+                      <div className="overview-summary overview-summary--compact">
                         {summaryItems.map((item) => (
                           <div key={item.label} className="summary-item">
                             <span>{item.label}</span>
@@ -251,56 +261,60 @@ const App = () => {
                           </div>
                         ))}
                       </div>
-                      {runSettingItems.length > 0 && (
-                        <div className="overview-settings">
-                          <h4>Run settings</h4>
-                          <dl className="settings-list">
-                            {runSettingItems.map((item) => (
-                              <div key={item.label} className="settings-list__item">
-                                <dt>{item.label}</dt>
-                                <dd>{item.value}</dd>
+                      {overviewExpanded && (
+                        <div className="overview-details">
+                          {runSettingItems.length > 0 && (
+                            <div className="overview-settings">
+                              <h4>Run settings</h4>
+                              <dl className="settings-list">
+                                {runSettingItems.map((item) => (
+                                  <div key={item.label} className="settings-list__item">
+                                    <dt>{item.label}</dt>
+                                    <dd>{item.value}</dd>
+                                  </div>
+                                ))}
+                              </dl>
+                            </div>
+                          )}
+                          <MetricsTable metrics={response.metrics} />
+                        </div>
+                      )}
+                    </Card>
+
+                    {response.histogram && (
+                      <Card className="result-card histogram-card">
+                        <div className="card-header">
+                          <Title level={4}>Return Distribution</Title>
+                          <Space size={8}>
+                            <Button size="small" onClick={handleDownloadHistogram}>
+                              Download CSV
+                            </Button>
+                            <Button size="small" onClick={handleDownloadHistogramImage}>
+                              Download PNG
+                            </Button>
+                          </Space>
+                        </div>
+                        {histogramInfoItems.length > 0 && (
+                          <div className="histogram-info">
+                            {histogramInfoItems.map((item) => (
+                              <div key={item.label} className="info-pill">
+                                <span className="info-pill__label">{item.label}</span>
+                                <span className="info-pill__value">{item.value}</span>
                               </div>
                             ))}
-                          </dl>
-                        </div>
-                      )}
-                    </div>
-                    <MetricsTable metrics={response.metrics} />
-                  </Card>
-
-                  {response.histogram && (
-                    <Card className="result-card">
-                      <div className="card-header">
-                        <Title level={4}>Return Distribution</Title>
-                        <Space size={8}>
-                          <Button size="small" onClick={handleDownloadHistogram}>
-                            Download CSV
-                          </Button>
-                          <Button size="small" onClick={handleDownloadHistogramImage}>
-                            Download PNG
-                          </Button>
-                        </Space>
-                      </div>
-                      {histogramInfoItems.length > 0 && (
-                        <div className="histogram-info">
-                          {histogramInfoItems.map((item) => (
-                            <div key={item.label} className="info-pill">
-                              <span className="info-pill__label">{item.label}</span>
-                              <span className="info-pill__value">{item.value}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      <HistogramChart
-                        data={response.histogram}
-                        loading={loading}
-                        height={420}
-                        onReady={(instance) => {
-                          histogramChartRef.current = instance;
-                        }}
-                      />
-                    </Card>
-                  )}
+                          </div>
+                        )}
+                        <HistogramChart
+                          data={response.histogram}
+                          loading={loading}
+                          height={360}
+                          onReady={(instance) => {
+                            histogramChartRef.current = instance;
+                          }}
+                        />
+                      </Card>
+                    )}
+                  </div>
 
                   {response.indicator_statistics && Object.keys(response.indicator_statistics).length > 0 && (
                     <Card className="result-card">
