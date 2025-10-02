@@ -638,6 +638,8 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
       <Form
         form={form}
         layout="vertical"
+        size="small"
+        className="sidebar-form"
         onFinish={submit}
         initialValues={{
           strategy: "mean_reversion",
@@ -673,9 +675,8 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
           hist_bins: 20,
           filters: {},
         }}
-        style={{ padding: "0 16px", height: "100%", overflowY: "auto" }}
       >
-        <Card title="Strategy" size="small" bordered={false} style={{ marginBottom: 16 }}>
+        <Card title="Strategy" size="small" bordered={false} className="sidebar-card">
           <Space style={{ marginBottom: 12 }}>
             <Button type="link" size="small" onClick={() => openInfo("strategy")}>
               Describe Strategy
@@ -745,7 +746,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
           </Space>
         </Card>
 
-        <Card title="Indicators" size="small" bordered={false} style={{ marginBottom: 16 }}>
+        <Card title="Indicators" size="small" bordered={false} className="sidebar-card sidebar-card--indicators">
           <div className="indicator-grid">
             <div className="indicator-grid__item">
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
@@ -1032,8 +1033,8 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
           </div>
         </Card>
 
-        <Card title="Universe Filters" size="small" bordered={false} style={{ marginBottom: 16 }}>
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+        <Card title="Universe Filters" size="small" bordered={false} className="sidebar-card">
+          <div className="sidebar-card__actions">
             <Button type="link" size="small" onClick={() => openInfo("universe")}>
               Describe
             </Button>
@@ -1056,8 +1057,8 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
           </Form.Item>
         </Card>
 
-        <Card title="Signal Rules" size="small" bordered={false} style={{ marginBottom: 16 }}>
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+        <Card title="Signal Rules" size="small" bordered={false} className="sidebar-card">
+          <div className="sidebar-card__actions">
             <Button type="link" size="small" onClick={() => openInfo("signals")}>
               Describe
             </Button>
