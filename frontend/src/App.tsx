@@ -25,7 +25,11 @@ const App = () => {
   const [showPriceLine, setShowPriceLine] = useState(true);
   const [showBuySignals, setShowBuySignals] = useState(true);
   const [showSellSignals, setShowSellSignals] = useState(true);
+  const [overviewExpanded, setOverviewExpanded] = useState(false);
   const histogramChartRef = useRef<ECharts | null>(null);
+  const equityChartRef = useRef<ECharts | null>(null);
+  const drawdownChartRef = useRef<ECharts | null>(null);
+  const signalChartRef = useRef<ECharts | null>(null);
 
   const handleSubmit = async (payload: BacktestRequest) => {
     try {
@@ -127,6 +131,38 @@ const App = () => {
     downloadCSV("indicator_statistics.csv", ["horizon", "metric", "value"], rows);
   };
 
+  const handleDownloadReport = () => {
+    if (!response || !lastRunConfig) {
+      message.warning("Run a backtest to generate the report");
+      return;
+    }
+
+    const captureChart = (chart: ECharts | null) => {
+      if (!chart) return null;
+      try {
+        return chart.getDataURL({ type: "png", pixelRatio: 2, backgroundColor: "#ffffff" });
+      } catch (error) {
+        console.error("Failed to capture chart", error);
+        return null;
+      }
+    };
+
+    const report = {
+      generated_at: new Date().toISOString(),
+      parameters: lastRunConfig,
+      results: response,
+      charts: {
+        equity_curve: captureChart(equityChartRef.current),
+        drawdown_curve: captureChart(drawdownChartRef.current),
+        histogram: captureChart(histogramChartRef.current),
+        signals: captureChart(signalChartRef.current),
+      },
+    };
+
+    downloadJSON("backtest_report.json", report);
+    message.success("Report downloaded");
+  };
+
   const histogramBins = response?.histogram?.bin_count ?? lastRunConfig?.hist_bins ?? null;
   const summaryItems = response
     ? [
@@ -211,13 +247,13 @@ const App = () => {
     >
       <div className="app-shell">
         <PanelGroup direction="horizontal">
-          <Panel defaultSize={24} minSize={15} maxSize={35} className="panel panel--sidebar">
+          <Panel defaultSize={22} minSize={15} maxSize={25} className="panel panel--sidebar">
             <div className="sidebar-panel">
               <SidebarForm loading={loading} onSubmit={handleSubmit} />
             </div>
           </Panel>
           <PanelResizeHandle className="resize-handle" />
-          <Panel defaultSize={76} minSize={40} className="panel panel--content">
+          <Panel defaultSize={78} minSize={40} className="panel panel--content">
             <div className="results-panel">
               {!response && (
                 <Card className="result-card intro-card">
@@ -230,20 +266,32 @@ const App = () => {
 
               {response && (
                 <div className="results-container">
-                  <Card className="result-card overview-card">
-                    <div className="card-header">
-                      <Title level={3}>Backtest Overview</Title>
-                      <Space size={8} wrap>
-                        <Button size="small" onClick={handleDownloadSummary}>
-                          Download JSON
-                        </Button>
-                        <Button size="small" onClick={handleDownloadMetrics}>
-                          Metrics CSV
-                        </Button>
-                      </Space>
-                    </div>
-                    <div className="overview-grid">
-                      <div className="overview-summary">
+                  <div className="results-top-grid">
+                    <Card
+                      className={`result-card overview-card${overviewExpanded ? " overview-card--expanded" : ""}`}
+                    >
+                      <div className="card-header card-header--compact">
+                        <Title level={4}>Backtest Overview</Title>
+                        <Space size={8} wrap align="center">
+                          <Button size="small" type="primary" onClick={handleDownloadReport}>
+                            Download Report
+                          </Button>
+                          <Button size="small" onClick={handleDownloadSummary}>
+                            Download JSON
+                          </Button>
+                          <Button size="small" onClick={handleDownloadMetrics}>
+                            Metrics CSV
+                          </Button>
+                          <Button
+                            size="small"
+                            type="text"
+                            onClick={() => setOverviewExpanded((prev) => !prev)}
+                          >
+                            {overviewExpanded ? "Hide details" : "Show details"}
+                          </Button>
+                        </Space>
+                      </div>
+                      <div className="overview-summary overview-summary--compact">
                         {summaryItems.map((item) => (
                           <div key={item.label} className="summary-item">
                             <span>{item.label}</span>
@@ -251,56 +299,60 @@ const App = () => {
                           </div>
                         ))}
                       </div>
-                      {runSettingItems.length > 0 && (
-                        <div className="overview-settings">
-                          <h4>Run settings</h4>
-                          <dl className="settings-list">
-                            {runSettingItems.map((item) => (
-                              <div key={item.label} className="settings-list__item">
-                                <dt>{item.label}</dt>
-                                <dd>{item.value}</dd>
+                      {overviewExpanded && (
+                        <div className="overview-details">
+                          {runSettingItems.length > 0 && (
+                            <div className="overview-settings">
+                              <h4>Run settings</h4>
+                              <dl className="settings-list">
+                                {runSettingItems.map((item) => (
+                                  <div key={item.label} className="settings-list__item">
+                                    <dt>{item.label}</dt>
+                                    <dd>{item.value}</dd>
+                                  </div>
+                                ))}
+                              </dl>
+                            </div>
+                          )}
+                          <MetricsTable metrics={response.metrics} />
+                        </div>
+                      )}
+                    </Card>
+
+                    {response.histogram && (
+                      <Card className="result-card histogram-card">
+                        <div className="card-header">
+                          <Title level={4}>Return Distribution</Title>
+                          <Space size={8}>
+                            <Button size="small" onClick={handleDownloadHistogram}>
+                              Download CSV
+                            </Button>
+                            <Button size="small" onClick={handleDownloadHistogramImage}>
+                              Download PNG
+                            </Button>
+                          </Space>
+                        </div>
+                        {histogramInfoItems.length > 0 && (
+                          <div className="histogram-info">
+                            {histogramInfoItems.map((item) => (
+                              <div key={item.label} className="info-pill">
+                                <span className="info-pill__label">{item.label}</span>
+                                <span className="info-pill__value">{item.value}</span>
                               </div>
                             ))}
-                          </dl>
-                        </div>
-                      )}
-                    </div>
-                    <MetricsTable metrics={response.metrics} />
-                  </Card>
-
-                  {response.histogram && (
-                    <Card className="result-card">
-                      <div className="card-header">
-                        <Title level={4}>Return Distribution</Title>
-                        <Space size={8}>
-                          <Button size="small" onClick={handleDownloadHistogram}>
-                            Download CSV
-                          </Button>
-                          <Button size="small" onClick={handleDownloadHistogramImage}>
-                            Download PNG
-                          </Button>
-                        </Space>
-                      </div>
-                      {histogramInfoItems.length > 0 && (
-                        <div className="histogram-info">
-                          {histogramInfoItems.map((item) => (
-                            <div key={item.label} className="info-pill">
-                              <span className="info-pill__label">{item.label}</span>
-                              <span className="info-pill__value">{item.value}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      <HistogramChart
-                        data={response.histogram}
-                        loading={loading}
-                        height={420}
-                        onReady={(instance) => {
-                          histogramChartRef.current = instance;
-                        }}
-                      />
-                    </Card>
-                  )}
+                          </div>
+                        )}
+                        <HistogramChart
+                          data={response.histogram}
+                          loading={loading}
+                          height={360}
+                          onReady={(instance) => {
+                            histogramChartRef.current = instance;
+                          }}
+                        />
+                      </Card>
+                    )}
+                  </div>
 
                   {response.indicator_statistics && Object.keys(response.indicator_statistics).length > 0 && (
                     <Card className="result-card">
@@ -322,7 +374,13 @@ const App = () => {
                           Download CSV
                         </Button>
                       </div>
-                      <EquityChart data={response.equity_curve} loading={loading} />
+                      <EquityChart
+                        data={response.equity_curve}
+                        loading={loading}
+                        onReady={(instance) => {
+                          equityChartRef.current = instance;
+                        }}
+                      />
                     </Card>
                     <Card className="result-card">
                       <div className="card-header">
@@ -331,7 +389,13 @@ const App = () => {
                           Download CSV
                         </Button>
                       </div>
-                      <DrawdownChart data={response.drawdown_curve} loading={loading} />
+                      <DrawdownChart
+                        data={response.drawdown_curve}
+                        loading={loading}
+                        onReady={(instance) => {
+                          drawdownChartRef.current = instance;
+                        }}
+                      />
                     </Card>
                   </div>
 
@@ -365,6 +429,9 @@ const App = () => {
                       showPrice={showPriceLine}
                       showBuys={showBuySignals}
                       showSells={showSellSignals}
+                      onReady={(instance) => {
+                        signalChartRef.current = instance;
+                      }}
                     />
                   </Card>
 
