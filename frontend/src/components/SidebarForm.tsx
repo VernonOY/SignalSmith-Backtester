@@ -542,12 +542,12 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
   const infoTitles: Record<InfoModalKey, string> = {
     strategy: "Strategy Settings",
     execution: "Execution Settings",
-    rsi: "RSI",
-    macd: "MACD",
-    obv: "On-Balance Volume",
-    ema: "EMA Cross",
-    adx: "Average Directional Index",
-    aroon: "Aroon",
+    rsi: "Relative Strength Index (RSI)",
+    macd: "Moving Average Convergence Divergence (MACD)",
+    obv: "On-Balance Volume (OBV)",
+    ema: "Exponential Moving Average Cross (EMA)",
+    adx: "Average Directional Index (ADX)",
+    aroon: "Aroon Oscillator",
     stoch: "Stochastic Oscillator",
     signals: "Signal Rules",
     universe: "Universe Filters",
@@ -664,7 +664,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
           <div className="indicator-grid">
             <div className="indicator-grid__item">
               <div className="indicator-header">
-                <Text strong>Relative Strength Index (RSI)</Text>
+                <Text strong>RSI</Text>
                 <Button type="text" size="small" onClick={() => openInfo("rsi")}>
                   Describe
                 </Button>
@@ -698,7 +698,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
 
             <div className="indicator-grid__item">
               <div className="indicator-header">
-                <Text strong>Moving Average Convergence Divergence (MACD)</Text>
+                <Text strong>MACD</Text>
                 <Button type="text" size="small" onClick={() => openInfo("macd")}>
                   Describe
                 </Button>
@@ -735,7 +735,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
 
             <div className="indicator-grid__item">
               <div className="indicator-header">
-                <Text strong>On-Balance Volume (OBV)</Text>
+                <Text strong>OBV</Text>
                 <Button type="text" size="small" onClick={() => openInfo("obv")}>
                   Describe
                 </Button>
@@ -763,7 +763,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
 
             <div className="indicator-grid__item">
               <div className="indicator-header">
-                <Text strong>Exponential Moving Average Cross (EMA)</Text>
+                <Text strong>EMA</Text>
                 <Button type="text" size="small" onClick={() => openInfo("ema")}>
                   Describe
                 </Button>
@@ -788,7 +788,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
 
             <div className="indicator-grid__item">
               <div className="indicator-header">
-                <Text strong>Average Directional Index (ADX)</Text>
+                <Text strong>ADX</Text>
                 <Button type="text" size="small" onClick={() => openInfo("adx")}>
                   Describe
                 </Button>
@@ -813,7 +813,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
 
             <div className="indicator-grid__item">
               <div className="indicator-header">
-                <Text strong>Aroon Oscillator</Text>
+                <Text strong>Aroon</Text>
                 <Button type="text" size="small" onClick={() => openInfo("aroon")}>
                   Describe
                 </Button>
@@ -841,7 +841,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
 
             <div className="indicator-grid__item">
               <div className="indicator-header">
-                <Text strong>Stochastic Oscillator</Text>
+                <Text strong>Stoch</Text>
                 <Button type="text" size="small" onClick={() => openInfo("stoch")}>
                   Describe
                 </Button>
