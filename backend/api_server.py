@@ -21,7 +21,6 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, validator
-from pandas.tseries import offsets
 
 # Ensure we can import the existing backtesting engine and locate data assets
 BACKEND_ROOT = pathlib.Path(__file__).resolve().parent
@@ -31,6 +30,16 @@ for path in (PROJECT_ROOT, BACKEND_ROOT):
         sys.path.append(str(path))
 
 import backtest_system  # type: ignore
+from backend.engine import (
+    FeeModel,
+    TradeBuilderConfig,
+    build_equity_curve,
+    build_trades_from_picks,
+    compute_drawdown,
+    compute_performance_metrics,
+    warn_if_returns_constant,
+)
+from backend.reports.serializer import serialise_trades
 
 DATA_DIR = PROJECT_ROOT / "data"
 MIN_BACKTEST_DATE = pd.Timestamp("2020-01-01")
@@ -135,6 +144,13 @@ class Trade(BaseModel):
     pnl: float
     ret: float
     symbol: Optional[str] = None
+    gross_pnl: float
+    fees: float
+    side: Literal["long", "short"] = "long"
+    quantity: float
+    notional: float
+    buy_fee: float
+    sell_fee: float
 
 
 class HistogramBucket(BaseModel):
@@ -348,219 +364,10 @@ def _build_config(indicators: Dict[str, Any]) -> Dict[str, Any]:
     return cfg
 
 
-def _build_equity(
-    trades_df: pd.DataFrame,
-    initial_capital: float = 1.0,
-    column: str = "net_pnl",
-) -> pd.Series:
-    if trades_df.empty or column not in trades_df.columns:
-        return pd.Series(dtype=float)
-
-    df = trades_df.copy()
-    date_col = "exit_date"
-    if date_col not in df.columns:
-        return pd.Series(dtype=float)
-
-    if not np.issubdtype(df[date_col].dtype, np.datetime64):
-        df[date_col] = pd.to_datetime(df[date_col])
-
-    pnl = df.groupby(date_col)[column].sum().sort_index()
-    if pnl.empty:
-        return pd.Series(dtype=float)
-
-    equity = initial_capital + pnl.cumsum()
-    equity.name = "equity"
-    return equity
 
 
-def _compute_drawdown(equity: pd.Series) -> pd.Series:
-    if equity.empty:
-        return pd.Series(dtype=float)
-    running_max = equity.cummax()
-    dd = equity / running_max - 1.0
-    dd.name = "drawdown"
-    return dd
 
 
-def _compute_max_active_positions(trades_df: pd.DataFrame) -> int:
-    if trades_df.empty:
-        return 0
-    events: List[Tuple[pd.Timestamp, int, int]] = []
-    for entry, exit in zip(trades_df["enter_date"], trades_df["exit_date"]):
-        events.append((entry, 0, 1))
-        events.append((exit, 1, -1))
-    events.sort(key=lambda item: (item[0], item[1]))
-    active = 0
-    max_active = 0
-    for _, _, delta in events:
-        active += delta
-        if active > max_active:
-            max_active = active
-    return max_active
-
-
-def _build_signals_and_trades(
-    picks: pd.DataFrame,
-    hold_days: int,
-    fee_bps: float,
-    stop_loss_pct: Optional[float],
-    take_profit_pct: Optional[float],
-    initial_capital: float,
-) -> Tuple[List[Signal], List[Trade], pd.DataFrame]:
-    empty_columns = [
-        "enter_date",
-        "exit_date",
-        "enter_price",
-        "exit_price",
-        "gross_return",
-        "net_return",
-        "gross_pnl",
-        "net_pnl",
-        "buy_fee",
-        "sell_fee",
-    ]
-    if picks.empty:
-        return [], [], pd.DataFrame(columns=empty_columns)
-
-    hold_days = max(1, hold_days)
-    ret_col = f"fwd_ret_{hold_days}d"
-    if ret_col not in picks.columns:
-        return [], [], pd.DataFrame(columns=empty_columns)
-
-    stop_loss = abs(stop_loss_pct) if stop_loss_pct is not None else None
-    take_profit = take_profit_pct if take_profit_pct is not None else None
-
-    trade_records: List[Dict[str, Any]] = []
-    for _, row in picks.iterrows():
-        enter_date = row["date"]
-        enter_price = float(row["adj_close"])
-        raw_ret = row.get(ret_col)
-        if pd.isna(raw_ret):
-            continue
-        gross_ret = float(raw_ret)
-        gross_simple = float(np.exp(gross_ret) - 1.0)
-        if stop_loss is not None:
-            gross_simple = max(gross_simple, -stop_loss)
-        if take_profit is not None:
-            gross_simple = min(gross_simple, take_profit)
-
-        exit_price = enter_price * (1 + gross_simple)
-        exit_date = enter_date + offsets.BDay(hold_days)
-
-        if exit_price <= 0:
-            continue
-
-        trade_records.append(
-            {
-                "enter_date": enter_date.normalize(),
-                "exit_date": exit_date.normalize(),
-                "symbol": row.get("symbol"),
-                "enter_price": enter_price,
-                "exit_price": float(exit_price),
-                "gross_return": float(gross_simple),
-            }
-        )
-
-    trades_df = pd.DataFrame(trade_records)
-    if trades_df.empty:
-        return [], [], pd.DataFrame(columns=empty_columns)
-
-    if not np.issubdtype(trades_df["enter_date"].dtype, np.datetime64):
-        trades_df["enter_date"] = pd.to_datetime(trades_df["enter_date"])
-    if not np.issubdtype(trades_df["exit_date"].dtype, np.datetime64):
-        trades_df["exit_date"] = pd.to_datetime(trades_df["exit_date"])
-
-    fee_rate = (fee_bps or 0.0) / 10_000.0
-    initial_capital = max(1.0, float(initial_capital))
-    max_active = max(1, _compute_max_active_positions(trades_df))
-    capital_per_trade = initial_capital / max_active
-
-    # Allow fractional shares to keep allocation exact.
-    buy_denominator = trades_df["enter_price"] * (1.0 + fee_rate)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        shares = np.where(buy_denominator > 0, capital_per_trade / buy_denominator, 0.0)
-
-    trades_df = trades_df.assign(
-        shares=shares,
-    )
-
-    trades_df = trades_df[trades_df["shares"] > 0].copy()
-    if trades_df.empty:
-        return [], [], pd.DataFrame(columns=empty_columns)
-
-    trades_df["buy_fee"] = trades_df["shares"] * trades_df["enter_price"] * fee_rate
-    trades_df["sell_fee"] = trades_df["shares"] * trades_df["exit_price"] * fee_rate
-    trades_df["gross_pnl"] = trades_df["shares"] * (
-        trades_df["exit_price"] - trades_df["enter_price"]
-    )
-    trades_df["net_pnl"] = trades_df["gross_pnl"] - (
-        trades_df["buy_fee"] + trades_df["sell_fee"]
-    )
-
-    trades_df["capital_allocated"] = capital_per_trade
-    trades_df["net_return"] = np.where(
-        capital_per_trade != 0,
-        trades_df["net_pnl"] / capital_per_trade,
-        0.0,
-    )
-    signals: List[Signal] = []
-    trades: List[Trade] = []
-    for record in trades_df.itertuples():
-        enter_str = record.enter_date.strftime("%Y-%m-%d")
-        exit_str = record.exit_date.strftime("%Y-%m-%d")
-        signals.append(
-            Signal(
-                date=enter_str,
-                price=float(record.enter_price),
-                symbol=record.symbol,
-                type="buy",
-                size=float(record.shares),
-            )
-        )
-        signals.append(
-            Signal(
-                date=exit_str,
-                price=float(record.exit_price),
-                symbol=record.symbol,
-                type="sell",
-                size=float(-record.shares),
-            )
-        )
-
-        trades.append(
-            Trade(
-                enter_date=enter_str,
-                enter_price=float(record.enter_price),
-                exit_date=exit_str,
-                exit_price=float(record.exit_price),
-                pnl=float(record.net_pnl),
-                ret=float(record.net_return),
-                symbol=record.symbol,
-            )
-        )
-
-    return signals, trades, trades_df
-
-
-def _compute_metrics(equity: pd.Series, drawdown: pd.Series) -> Dict[str, float]:
-    metrics: Dict[str, float] = {}
-    if equity.empty:
-        return metrics
-    returns = equity.pct_change().dropna()
-    if not returns.empty:
-        avg_daily = returns.mean()
-        vol_daily = returns.std()
-        annual_factor = np.sqrt(252)
-        metrics["avg_daily_return"] = float(avg_daily)
-        metrics["volatility_daily"] = float(vol_daily)
-        metrics["annualized_return"] = float(((1 + avg_daily) ** 252) - 1)
-        metrics["annualized_vol"] = float(vol_daily * annual_factor)
-        if vol_daily > 0:
-            metrics["sharpe"] = float(avg_daily / vol_daily * annual_factor)
-    if not drawdown.empty:
-        metrics["max_drawdown"] = float(drawdown.min())
-    metrics["ending_equity"] = float(equity.iloc[-1])
-    return metrics
 
 
 @app.get("/healthz")
@@ -642,34 +449,60 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
             picks["date"] = pd.to_datetime(picks["date"])
         picks = picks[(picks["date"] >= start_ts) & (picks["date"] <= end_ts)]
     initial_capital = float(payload.capital or 1.0)
-    signals, trades, realised_trades = _build_signals_and_trades(
-        picks,
+    fee_model = FeeModel(payload.fee_bps or 0.0)
+    trade_config = TradeBuilderConfig(
         hold_days=hold_days,
-        fee_bps=payload.fee_bps or 0.0,
+        fee_model=fee_model,
+        initial_capital=initial_capital,
         stop_loss_pct=payload.stop_loss_pct or payload.indicators.get("stop_loss_pct"),
         take_profit_pct=payload.take_profit_pct or payload.indicators.get("take_profit_pct"),
-        initial_capital=initial_capital,
+        compound=True,
     )
-    signals.sort(key=lambda s: (s.date, 0 if s.type == "buy" else 1))
+    execution_result = build_trades_from_picks(picks, trade_config)
+    realised_trades = execution_result.trades
+    warn_if_returns_constant(realised_trades)
+
+    ledger = execution_result.ledger
+    signals: List[Signal] = []
+    if not ledger.empty:
+        ledger = ledger.sort_values("ts")
+        for record in ledger.itertuples():
+            ts = pd.to_datetime(record.ts)
+            date_str = ts.strftime("%Y-%m-%d")
+            side = "buy" if record.event == "buy" else "sell"
+            size = float(record.quantity if side == "buy" else -record.quantity)
+            signals.append(
+                Signal(
+                    date=date_str,
+                    price=float(record.price),
+                    symbol=record.symbol,
+                    type=side,
+                    size=size,
+                )
+            )
+
+    trades_payload = serialise_trades(realised_trades)
+    trades = [Trade(**item) for item in trades_payload]
     trades.sort(key=lambda t: (t.enter_date, t.symbol or ""))
 
-    equity = _build_equity(realised_trades, initial_capital=initial_capital, column="net_pnl")
-    gross_equity = _build_equity(realised_trades, initial_capital=initial_capital, column="gross_pnl")
-    drawdown = _compute_drawdown(equity)
+    equity = build_equity_curve(realised_trades, initial_capital=initial_capital, column="net_pnl")
+    drawdown = compute_drawdown(equity)
 
-    equity_ts = TimeSeries(dates=[d.strftime("%Y-%m-%d") for d in equity.index], values=equity.round(6).tolist())
-    drawdown_ts = TimeSeries(dates=[d.strftime("%Y-%m-%d") for d in drawdown.index], values=drawdown.round(6).tolist())
-
-    metrics = _compute_metrics(equity, drawdown)
-    ending_equity = float(equity.iloc[-1]) if not equity.empty else initial_capital
-    gross_ending = float(gross_equity.iloc[-1]) if not gross_equity.empty else ending_equity
-    total_return = float(ending_equity / initial_capital - 1.0) if initial_capital else 0.0
-    total_fees = float(
-        max(
-            0.0,
-            realised_trades[["buy_fee", "sell_fee"]].sum().sum() if not realised_trades.empty else 0.0,
-        )
+    equity_ts = (
+        TimeSeries(dates=[d.strftime("%Y-%m-%d") for d in equity.index], values=equity.round(6).tolist())
+        if not equity.empty
+        else TimeSeries(dates=[], values=[])
     )
+    drawdown_ts = (
+        TimeSeries(dates=[d.strftime("%Y-%m-%d") for d in drawdown.index], values=drawdown.round(6).tolist())
+        if not drawdown.empty
+        else TimeSeries(dates=[], values=[])
+    )
+
+    metrics = compute_performance_metrics(equity, drawdown)
+    ending_equity = metrics.get("ending_equity", initial_capital)
+    total_return = float(ending_equity / initial_capital - 1.0) if initial_capital else 0.0
+    total_fees = float(realised_trades["fees"].sum()) if not realised_trades.empty else 0.0
     stats_df = result.get("statistics", pd.DataFrame())
     hist_df = result.get("hist_data", pd.DataFrame())
 
