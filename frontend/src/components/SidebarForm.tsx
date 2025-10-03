@@ -7,7 +7,6 @@ import {
   InputNumber,
   Modal,
   Select,
-  Slider,
   Space,
   Switch,
   Typography,
@@ -17,6 +16,7 @@ import dayjs, { Dayjs } from "dayjs";
 import { api } from "../api/client";
 import { BacktestRequest, Filters, RSIRule, UniverseMeta } from "../types";
 import { downloadCSV } from "../utils/download";
+import { buildSelectionRows } from "../utils/report";
 
 const { RangePicker } = DatePicker;
 const { Paragraph, Text } = Typography;
@@ -31,7 +31,7 @@ type InfoModalKey = IndicatorKey | "strategy" | "execution" | "universe";
 
 interface SidebarFormProps {
   loading: boolean;
-  onSubmit: (payload: BacktestRequest) => Promise<void> | void;
+  onSubmit: (payload: BacktestRequest, rawValues: any) => Promise<void> | void;
 }
 
 const getEarliestAllowed = () => {
@@ -141,77 +141,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
 
   const handleDownloadSelections = () => {
     const values = form.getFieldsValue(true);
-    const rows: Array<Array<string | number>> = [];
-    const [start, end] = (values.date ?? []) as [Dayjs | undefined, Dayjs | undefined];
-    const filtersValues = (values.filters ?? {}) as Filters & {
-      exclude_tickers?: string[];
-    };
-
-    const addRow = (section: string, label: string, value: unknown) => {
-      const normalized = (() => {
-        if (value === undefined || value === null || value === "") return "—";
-        if (Array.isArray(value)) return value.length ? value.join(", ") : "—";
-        return String(value);
-      })();
-      rows.push([section, label, normalized]);
-    };
-
-    const formatDate = (value?: Dayjs) => (value ? value.format("YYYY-MM-DD") : "—");
-    const formatBool = (value?: boolean) => (value ? "Enabled" : "Disabled");
-
-    addRow("Strategy", "Strategy", values.strategy);
-    addRow("Strategy", "Start date", formatDate(start));
-    addRow("Strategy", "End date", formatDate(end));
-    addRow("Strategy", "Initial capital", values.capital);
-    addRow("Strategy", "Fee (bps)", values.fee_bps);
-    addRow("Strategy", "Hold days", values.hold_days);
-    addRow("Strategy", "Stop loss (%)", values.stop_loss_pct);
-    addRow("Strategy", "Take profit (%)", values.take_profit_pct);
-
-    addRow("Universe Filters", "Sectors", filtersValues.sectors ?? []);
-    addRow("Universe Filters", "Market cap min", filtersValues.mcap_min);
-    addRow("Universe Filters", "Market cap max", filtersValues.mcap_max);
-    addRow("Universe Filters", "Exclude tickers", filtersValues.exclude_tickers ?? []);
-
-    addRow("RSI", "Enabled", formatBool(values.enable_rsi));
-    addRow("RSI", "Lookback", values.rsi_n);
-    addRow("RSI", "Mode", values.rsi_rule?.mode);
-    addRow("RSI", "Threshold", values.rsi_rule?.threshold);
-
-    addRow("MACD", "Enabled", formatBool(values.use_macd));
-    addRow("MACD", "Fast", values.macd_fast);
-    addRow("MACD", "Slow", values.macd_slow);
-    addRow("MACD", "Signal", values.macd_signal);
-    addRow("MACD", "Rule", values.macd_rule);
-
-    addRow("OBV", "Enabled", formatBool(values.use_obv));
-    addRow("OBV", "Rule", values.obv_rule);
-
-    addRow("EMA", "Enabled", formatBool(values.use_ema));
-    addRow("EMA", "Short", values.ema_short);
-    addRow("EMA", "Long", values.ema_long);
-
-    addRow("ADX", "Enabled", formatBool(values.use_adx));
-    addRow("ADX", "Lookback", values.adx_n);
-    addRow("ADX", "Min ADX", values.adx_min);
-
-    addRow("Aroon", "Enabled", formatBool(values.use_aroon));
-    addRow("Aroon", "Lookback", values.aroon_n);
-    addRow("Aroon", "Aroon up", values.aroon_up);
-    addRow("Aroon", "Aroon down", values.aroon_down);
-
-    addRow("Stochastic", "Enabled", formatBool(values.use_stoch));
-    addRow("Stochastic", "%K", values.stoch_k);
-    addRow("Stochastic", "%D", values.stoch_d);
-    addRow("Stochastic", "Threshold", values.stoch_threshold);
-    addRow("Stochastic", "Rule", values.stoch_rule);
-
-    addRow("Signal Rules", "Policy", values.policy);
-    addRow("Signal Rules", "k", values.policy === "atleast_k" ? values.k : "—");
-    addRow("Signal Rules", "Max horizon", values.max_horizon);
-    addRow("Signal Rules", "Histogram horizon", values.hist_horizon);
-    addRow("Signal Rules", "Histogram bins", values.hist_bins);
-
+    const rows = buildSelectionRows(values);
     downloadCSV("parameter_selection.csv", ["Section", "Parameter", "Value"], rows);
   };
 
@@ -358,7 +288,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
       hist_bins: values.hist_bins,
     };
 
-    await onSubmit(payload);
+    await onSubmit(payload, values);
   };
 
   const renderInfoContent = (key: InfoModalKey | null): ReactNode => {
@@ -677,28 +607,34 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
         }}
       >
         <Card title="Strategy" size="small" bordered={false} className="sidebar-card">
-          <Space style={{ marginBottom: 12 }}>
-            <Button type="link" size="small" onClick={() => openInfo("strategy")}>
-              Describe Strategy
+          <Space style={{ marginBottom: 8 }} size={8}>
+            <Button type="text" size="small" onClick={() => openInfo("strategy")}>
+              Strategy Info
             </Button>
-            <Button type="link" size="small" onClick={() => openInfo("execution")}>
-              Describe Execution
+            <Button type="text" size="small" onClick={() => openInfo("execution")}>
+              Execution Info
             </Button>
           </Space>
-          <Form.Item
-            name="strategy"
-            label="Strategy"
-            rules={[{ required: true }]}
-          >
-            <Select
-              onChange={handleStrategyChange}
-              options={[
-                { label: "Mean Reversion", value: "mean_reversion" },
-                { label: "Momentum", value: "momentum" },
-                { label: "Multifactor", value: "multifactor" },
-              ]}
-            />
-          </Form.Item>
+          <div className="form-row">
+            <Form.Item
+              name="strategy"
+              label="Strategy"
+              rules={[{ required: true }]}
+              className="form-row__item"
+            >
+              <Select
+                onChange={handleStrategyChange}
+                options={[
+                  { label: "Mean Reversion", value: "mean_reversion" },
+                  { label: "Momentum", value: "momentum" },
+                  { label: "Multifactor", value: "multifactor" },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item label="Initial Capital" name="capital" className="form-row__item">
+              <InputNumber min={0} style={{ width: "100%" }} prefix="$" />
+            </Form.Item>
+          </div>
           <Form.Item
             name="date"
             label="Backtest Range"
@@ -706,329 +642,334 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
           >
             <RangePicker allowClear={false} style={{ width: "100%" }} disabledDate={disabledDate} />
           </Form.Item>
-          <Form.Item
-            label="Initial Capital"
-            name="capital"
-          >
-            <InputNumber min={0} style={{ width: "100%" }} prefix="$" />
-          </Form.Item>
-          <Space size={12} style={{ width: "100%" }}>
-            <Form.Item
-              label="Fee (bps)"
-              name="fee_bps"
-              style={{ flex: 1 }}
-            >
+          <div className="form-row">
+            <Form.Item label="Fee (bps)" name="fee_bps" className="form-row__item">
               <InputNumber min={0} max={100} style={{ width: "100%" }} />
             </Form.Item>
-            <Form.Item
-              label="Hold Days"
-              name="hold_days"
-              style={{ flex: 1 }}
-            >
+            <Form.Item label="Hold Days" name="hold_days" className="form-row__item">
               <InputNumber min={1} max={10} style={{ width: "100%" }} />
             </Form.Item>
-          </Space>
-          <Space size={12} style={{ width: "100%" }}>
-            <Form.Item
-              label="Stop Loss (%)"
-              name="stop_loss_pct"
-              style={{ flex: 1 }}
-            >
+          </div>
+          <div className="form-row">
+            <Form.Item label="Stop Loss (%)" name="stop_loss_pct" className="form-row__item">
               <InputNumber min={0} max={100} style={{ width: "100%" }} placeholder="Optional" />
             </Form.Item>
-            <Form.Item
-              label="Take Profit (%)"
-              name="take_profit_pct"
-              style={{ flex: 1 }}
-            >
+            <Form.Item label="Take Profit (%)" name="take_profit_pct" className="form-row__item">
               <InputNumber min={0} max={200} style={{ width: "100%" }} placeholder="Optional" />
             </Form.Item>
-          </Space>
+          </div>
         </Card>
 
         <Card title="Indicators" size="small" bordered={false} className="sidebar-card sidebar-card--indicators">
           <div className="indicator-grid">
             <div className="indicator-grid__item">
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div className="indicator-header">
                 <Text strong>Relative Strength Index (RSI)</Text>
-                <Button type="link" size="small" onClick={() => openInfo("rsi")}>
+                <Button type="text" size="small" onClick={() => openInfo("rsi")}>
                   Describe
                 </Button>
               </div>
-              <Form.Item
-                label="Enable RSI"
-                name="enable_rsi"
-                valuePropName="checked"
-                style={{ marginBottom: 12 }}
-              >
-                <Switch />
-              </Form.Item>
-              <Form.Item
-                label="RSI Lookback"
-                name="rsi_n"
-                style={{ marginBottom: 12 }}
-              >
-                <InputNumber min={2} max={100} style={{ width: "100%" }} disabled={!enableRsi} />
-              </Form.Item>
-              <Form.Item
-                label="RSI Mode"
-                name={["rsi_rule", "mode"]}
-                style={{ marginBottom: 12 }}
-              >
-                <Select
-                  options={[
-                    { label: "Oversold (<= threshold)", value: "oversold" },
-                    { label: "Overbought (>= threshold)", value: "overbought" },
-                  ]}
-                  disabled={!enableRsi}
-                />
-              </Form.Item>
-              <Form.Item
-                label="RSI Threshold (0-100)"
-                name={["rsi_rule", "threshold"]}
-              >
-                <Slider min={0} max={100} step={1} disabled={!enableRsi} />
-              </Form.Item>
+              <div className="indicator-inline indicator-inline--align">
+                <div className="indicator-toggle">
+                  <span>Enabled</span>
+                  <Form.Item name="enable_rsi" valuePropName="checked" noStyle>
+                    <Switch size="small" />
+                  </Form.Item>
+                </div>
+                <Form.Item
+                  label="Mode"
+                  name={["rsi_rule", "mode"]}
+                  className="indicator-inline__item"
+                  style={{ marginBottom: 0 }}
+                >
+                  <Select
+                    options={[
+                      { label: "Oversold (<= threshold)", value: "oversold" },
+                      { label: "Overbought (>= threshold)", value: "overbought" },
+                    ]}
+                    disabled={!enableRsi}
+                  />
+                </Form.Item>
+              </div>
+              <div className="indicator-inline">
+                <Form.Item
+                  label="RSI Lookback"
+                  name="rsi_n"
+                  className="indicator-inline__item"
+                  style={{ marginBottom: 0 }}
+                >
+                  <InputNumber min={2} max={100} style={{ width: "100%" }} disabled={!enableRsi} />
+                </Form.Item>
+                <Form.Item
+                  label="RSI Threshold"
+                  name={["rsi_rule", "threshold"]}
+                  className="indicator-inline__item"
+                  style={{ marginBottom: 0 }}
+                >
+                  <InputNumber min={0} max={100} style={{ width: "100%" }} disabled={!enableRsi} />
+                </Form.Item>
+              </div>
             </div>
 
             <div className="indicator-grid__item">
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div className="indicator-header">
                 <Text strong>Moving Average Convergence Divergence (MACD)</Text>
-                <Button type="link" size="small" onClick={() => openInfo("macd")}>
+                <Button type="text" size="small" onClick={() => openInfo("macd")}>
                   Describe
                 </Button>
               </div>
-              <Form.Item
-                label="Enable MACD"
-                name="use_macd"
-                valuePropName="checked"
-                style={{ marginBottom: 12 }}
-              >
-                <Switch />
-              </Form.Item>
-              <Space style={{ width: "100%", marginBottom: 12 }} size={12}>
+              <div className="indicator-inline indicator-inline--align">
+                <div className="indicator-toggle">
+                  <span>Enabled</span>
+                  <Form.Item name="use_macd" valuePropName="checked" noStyle>
+                    <Switch size="small" />
+                  </Form.Item>
+                </div>
+                <Form.Item
+                  label="Rule"
+                  name="macd_rule"
+                  className="indicator-inline__item"
+                  style={{ marginBottom: 0 }}
+                >
+                  <Select
+                    options={[
+                      { label: "Signal Crossover", value: "signal" },
+                      { label: "MACD > 0", value: "positive" },
+                    ]}
+                    disabled={!useMacd}
+                  />
+                </Form.Item>
+              </div>
+              <div className="indicator-inline">
                 <Form.Item
                   label="Fast"
                   name="macd_fast"
-                  style={{ flex: 1, marginBottom: 0 }}
+                  className="indicator-inline__item"
+                  style={{ marginBottom: 0 }}
                 >
                   <InputNumber min={1} max={20} style={{ width: "100%" }} disabled={!useMacd} />
                 </Form.Item>
                 <Form.Item
                   label="Slow"
                   name="macd_slow"
-                  style={{ flex: 1, marginBottom: 0 }}
+                  className="indicator-inline__item"
+                  style={{ marginBottom: 0 }}
                 >
                   <InputNumber min={1} max={40} style={{ width: "100%" }} disabled={!useMacd} />
                 </Form.Item>
                 <Form.Item
                   label="Signal"
                   name="macd_signal"
-                  style={{ flex: 1, marginBottom: 0 }}
+                  className="indicator-inline__item"
+                  style={{ marginBottom: 0 }}
                 >
                   <InputNumber min={1} max={20} style={{ width: "100%" }} disabled={!useMacd} />
                 </Form.Item>
-              </Space>
-              <Form.Item
-                label="MACD Rule"
-                name="macd_rule"
-              >
-                <Select
-                  options={[
-                    { label: "Signal Crossover", value: "signal" },
-                    { label: "MACD > 0", value: "positive" },
-                  ]}
-                  disabled={!useMacd}
-                />
-              </Form.Item>
+              </div>
             </div>
 
             <div className="indicator-grid__item">
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div className="indicator-header">
                 <Text strong>On-Balance Volume (OBV)</Text>
-                <Button type="link" size="small" onClick={() => openInfo("obv")}>
+                <Button type="text" size="small" onClick={() => openInfo("obv")}>
                   Describe
                 </Button>
               </div>
-              <Form.Item
-                label="Enable OBV"
-                name="use_obv"
-                valuePropName="checked"
-                style={{ marginBottom: 12 }}
-              >
-                <Switch />
-              </Form.Item>
-              <Form.Item
-                label="OBV Rule"
-                name="obv_rule"
-              >
-                <Select
-                  options={[
-                    { label: "OBV crosses above its moving average", value: "rise" },
-                    { label: "OBV turns positive", value: "positive" },
-                  ]}
-                  disabled={!useObv}
-                />
-              </Form.Item>
+              <div className="indicator-inline indicator-inline--align">
+                <div className="indicator-toggle">
+                  <span>Enabled</span>
+                  <Form.Item name="use_obv" valuePropName="checked" noStyle>
+                    <Switch size="small" />
+                  </Form.Item>
+                </div>
+                <Form.Item
+                  label="Rule"
+                  name="obv_rule"
+                  className="indicator-inline__item"
+                  style={{ marginBottom: 0 }}
+                >
+                  <Select
+                    options={[
+                      { label: "OBV crosses above its moving average", value: "rise" },
+                      { label: "OBV turns positive", value: "positive" },
+                    ]}
+                    disabled={!useObv}
+                  />
+                </Form.Item>
+              </div>
             </div>
 
             <div className="indicator-grid__item">
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div className="indicator-header indicator-header--with-toggle">
                 <Text strong>Exponential Moving Average Cross (EMA)</Text>
-                <Button type="link" size="small" onClick={() => openInfo("ema")}>
-                  Describe
-                </Button>
+                <Space size={6} align="center">
+                  <div className="indicator-toggle">
+                    <span>Enabled</span>
+                    <Form.Item name="use_ema" valuePropName="checked" noStyle>
+                      <Switch size="small" />
+                    </Form.Item>
+                  </div>
+                  <Button type="text" size="small" onClick={() => openInfo("ema")}>
+                    Describe
+                  </Button>
+                </Space>
               </div>
-              <Form.Item
-                label="Enable EMA Cross"
-                name="use_ema"
-                valuePropName="checked"
-                style={{ marginBottom: 12 }}
-              >
-                <Switch />
-              </Form.Item>
-              <Space style={{ width: "100%" }} size={12}>
+              <div className="indicator-inline">
                 <Form.Item
                   label="Short"
                   name="ema_short"
-                  style={{ flex: 1, marginBottom: 0 }}
+                  className="indicator-inline__item"
+                  style={{ marginBottom: 0 }}
                 >
                   <InputNumber min={2} max={50} style={{ width: "100%" }} disabled={!useEma} />
                 </Form.Item>
                 <Form.Item
                   label="Long"
                   name="ema_long"
-                  style={{ flex: 1, marginBottom: 0 }}
+                  className="indicator-inline__item"
+                  style={{ marginBottom: 0 }}
                 >
                   <InputNumber min={5} max={200} style={{ width: "100%" }} disabled={!useEma} />
                 </Form.Item>
-              </Space>
+              </div>
             </div>
 
             <div className="indicator-grid__item">
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div className="indicator-header indicator-header--with-toggle">
                 <Text strong>Average Directional Index (ADX)</Text>
-                <Button type="link" size="small" onClick={() => openInfo("adx")}>
-                  Describe
-                </Button>
+                <Space size={6} align="center">
+                  <div className="indicator-toggle">
+                    <span>Enabled</span>
+                    <Form.Item name="use_adx" valuePropName="checked" noStyle>
+                      <Switch size="small" />
+                    </Form.Item>
+                  </div>
+                  <Button type="text" size="small" onClick={() => openInfo("adx")}>
+                    Describe
+                  </Button>
+                </Space>
               </div>
-              <Form.Item
-                label="Enable ADX"
-                name="use_adx"
-                valuePropName="checked"
-                style={{ marginBottom: 12 }}
-              >
-                <Switch />
-              </Form.Item>
-              <Space style={{ width: "100%" }} size={12}>
+              <div className="indicator-inline">
                 <Form.Item
                   label="Lookback"
                   name="adx_n"
-                  style={{ flex: 1, marginBottom: 0 }}
+                  className="indicator-inline__item"
+                  style={{ marginBottom: 0 }}
                 >
                   <InputNumber min={5} max={50} style={{ width: "100%" }} disabled={!useAdx} />
                 </Form.Item>
                 <Form.Item
                   label="Min ADX"
                   name="adx_min"
-                  style={{ flex: 1, marginBottom: 0 }}
+                  className="indicator-inline__item"
+                  style={{ marginBottom: 0 }}
                 >
                   <InputNumber min={5} max={60} style={{ width: "100%" }} disabled={!useAdx} />
                 </Form.Item>
-              </Space>
+              </div>
             </div>
 
             <div className="indicator-grid__item">
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div className="indicator-header indicator-header--with-toggle">
                 <Text strong>Aroon Oscillator</Text>
-                <Button type="link" size="small" onClick={() => openInfo("aroon")}>
-                  Describe
-                </Button>
+                <Space size={6} align="center">
+                  <div className="indicator-toggle">
+                    <span>Enabled</span>
+                    <Form.Item name="use_aroon" valuePropName="checked" noStyle>
+                      <Switch size="small" />
+                    </Form.Item>
+                  </div>
+                  <Button type="text" size="small" onClick={() => openInfo("aroon")}>
+                    Describe
+                  </Button>
+                </Space>
               </div>
-              <Form.Item
-                label="Enable Aroon"
-                name="use_aroon"
-                valuePropName="checked"
-                style={{ marginBottom: 12 }}
-              >
-                <Switch />
-              </Form.Item>
-              <Space style={{ width: "100%" }} size={12}>
+              <div className="indicator-inline">
                 <Form.Item
                   label="Lookback"
                   name="aroon_n"
-                  style={{ flex: 1, marginBottom: 0 }}
+                  className="indicator-inline__item"
+                  style={{ marginBottom: 0 }}
                 >
                   <InputNumber min={5} max={50} style={{ width: "100%" }} disabled={!useAroon} />
                 </Form.Item>
                 <Form.Item
                   label="Aroon Up"
                   name="aroon_up"
-                  style={{ flex: 1, marginBottom: 0 }}
+                  className="indicator-inline__item"
+                  style={{ marginBottom: 0 }}
                 >
                   <InputNumber min={0} max={100} style={{ width: "100%" }} disabled={!useAroon} />
                 </Form.Item>
                 <Form.Item
                   label="Aroon Down"
                   name="aroon_down"
-                  style={{ flex: 1, marginBottom: 0 }}
+                  className="indicator-inline__item"
+                  style={{ marginBottom: 0 }}
                 >
                   <InputNumber min={0} max={100} style={{ width: "100%" }} disabled={!useAroon} />
                 </Form.Item>
-              </Space>
+              </div>
             </div>
 
             <div className="indicator-grid__item">
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div className="indicator-header indicator-header--with-toggle">
                 <Text strong>Stochastic Oscillator</Text>
-                <Button type="link" size="small" onClick={() => openInfo("stoch")}>
-                  Describe
-                </Button>
+                <Space size={6} align="center">
+                  <div className="indicator-toggle">
+                    <span>Enabled</span>
+                    <Form.Item name="use_stoch" valuePropName="checked" noStyle>
+                      <Switch size="small" />
+                    </Form.Item>
+                  </div>
+                  <Button type="text" size="small" onClick={() => openInfo("stoch")}>
+                    Describe
+                  </Button>
+                </Space>
               </div>
-              <Form.Item
-                label="Enable Stochastic"
-                name="use_stoch"
-                valuePropName="checked"
-                style={{ marginBottom: 12 }}
-              >
-                <Switch />
-              </Form.Item>
-              <Space style={{ width: "100%", marginBottom: 12 }} size={12}>
+              <div className="indicator-inline indicator-inline--align">
+                <Form.Item
+                  label="Rule"
+                  name="stoch_rule"
+                  className="indicator-inline__item"
+                  style={{ marginBottom: 0 }}
+                >
+                  <Select
+                    options={[
+                      { label: "Signal crossover", value: "signal" },
+                      { label: "Oversold", value: "oversold" },
+                      { label: "Overbought", value: "overbought" },
+                    ]}
+                    disabled={!useStoch}
+                  />
+                </Form.Item>
+              </div>
+              <div className="indicator-inline">
                 <Form.Item
                   label="%K"
                   name="stoch_k"
-                  style={{ flex: 1, marginBottom: 0 }}
+                  className="indicator-inline__item"
+                  style={{ marginBottom: 0 }}
                 >
                   <InputNumber min={5} max={50} style={{ width: "100%" }} disabled={!useStoch} />
                 </Form.Item>
                 <Form.Item
                   label="%D"
                   name="stoch_d"
-                  style={{ flex: 1, marginBottom: 0 }}
+                  className="indicator-inline__item"
+                  style={{ marginBottom: 0 }}
                 >
                   <InputNumber min={1} max={20} style={{ width: "100%" }} disabled={!useStoch} />
                 </Form.Item>
                 <Form.Item
                   label="Threshold"
                   name="stoch_threshold"
-                  style={{ flex: 1, marginBottom: 0 }}
+                  className="indicator-inline__item"
+                  style={{ marginBottom: 0 }}
                 >
                   <InputNumber min={1} max={50} style={{ width: "100%" }} disabled={!useStoch} />
                 </Form.Item>
-              </Space>
-              <Form.Item
-                label="Rule"
-                name="stoch_rule"
-              >
-                <Select
-                  options={[
-                    { label: "Signal crossover", value: "signal" },
-                    { label: "Oversold", value: "oversold" },
-                    { label: "Overbought", value: "overbought" },
-                  ]}
-                  disabled={!useStoch}
-                />
-              </Form.Item>
+              </div>
             </div>
           </div>
         </Card>
