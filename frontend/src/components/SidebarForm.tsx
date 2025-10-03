@@ -542,12 +542,12 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
   const infoTitles: Record<InfoModalKey, string> = {
     strategy: "Strategy Settings",
     execution: "Execution Settings",
-    rsi: "RSI",
-    macd: "MACD",
-    obv: "On-Balance Volume",
-    ema: "EMA Cross",
-    adx: "Average Directional Index",
-    aroon: "Aroon",
+    rsi: "Relative Strength Index (RSI)",
+    macd: "Moving Average Convergence Divergence (MACD)",
+    obv: "On-Balance Volume (OBV)",
+    ema: "Exponential Moving Average Cross (EMA)",
+    adx: "Average Directional Index (ADX)",
+    aroon: "Aroon Oscillator",
     stoch: "Stochastic Oscillator",
     signals: "Signal Rules",
     universe: "Universe Filters",
@@ -615,12 +615,12 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
               Execution Info
             </Button>
           </Space>
-          <div className="form-row">
+          <div className="form-grid form-grid--two">
             <Form.Item
               name="strategy"
               label="Strategy"
               rules={[{ required: true }]}
-              className="form-row__item"
+              className="form-grid__item"
             >
               <Select
                 onChange={handleStrategyChange}
@@ -631,7 +631,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                 ]}
               />
             </Form.Item>
-            <Form.Item label="Initial Capital" name="capital" className="form-row__item">
+            <Form.Item label="Initial Capital" name="capital" className="form-grid__item">
               <InputNumber min={0} style={{ width: "100%" }} prefix="$" />
             </Form.Item>
           </div>
@@ -642,19 +642,17 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
           >
             <RangePicker allowClear={false} style={{ width: "100%" }} disabledDate={disabledDate} />
           </Form.Item>
-          <div className="form-row">
-            <Form.Item label="Fee (bps)" name="fee_bps" className="form-row__item">
+          <div className="form-grid form-grid--four">
+            <Form.Item label="Fee (bps)" name="fee_bps" className="form-grid__item">
               <InputNumber min={0} max={100} style={{ width: "100%" }} />
             </Form.Item>
-            <Form.Item label="Hold Days" name="hold_days" className="form-row__item">
+            <Form.Item label="Hold Days" name="hold_days" className="form-grid__item">
               <InputNumber min={1} max={10} style={{ width: "100%" }} />
             </Form.Item>
-          </div>
-          <div className="form-row">
-            <Form.Item label="Stop Loss (%)" name="stop_loss_pct" className="form-row__item">
+            <Form.Item label="Stop Loss (%)" name="stop_loss_pct" className="form-grid__item">
               <InputNumber min={0} max={100} style={{ width: "100%" }} placeholder="Optional" />
             </Form.Item>
-            <Form.Item label="Take Profit (%)" name="take_profit_pct" className="form-row__item">
+            <Form.Item label="Take Profit (%)" name="take_profit_pct" className="form-grid__item">
               <InputNumber min={0} max={200} style={{ width: "100%" }} placeholder="Optional" />
             </Form.Item>
           </div>
@@ -663,19 +661,21 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
         <Card title="Indicators" size="small" bordered={false} className="sidebar-card sidebar-card--indicators">
           <div className="indicator-grid">
             <div className="indicator-grid__item">
-              <div className="indicator-header">
-                <Text strong>Relative Strength Index (RSI)</Text>
-                <Button type="text" size="small" onClick={() => openInfo("rsi")}>
-                  Describe
-                </Button>
+              <div className="indicator-header indicator-header--with-toggle">
+                <Text strong>RSI</Text>
+                <Space size={6} align="center">
+                  <div className="indicator-toggle">
+                    <span>Enabled</span>
+                    <Form.Item name="enable_rsi" valuePropName="checked" noStyle>
+                      <Switch size="small" />
+                    </Form.Item>
+                  </div>
+                  <Button type="text" size="small" onClick={() => openInfo("rsi")}>
+                    Describe
+                  </Button>
+                </Space>
               </div>
-              <div className="indicator-inline indicator-inline--align">
-                <div className="indicator-toggle">
-                  <span>Enabled</span>
-                  <Form.Item name="enable_rsi" valuePropName="checked" noStyle>
-                    <Switch size="small" />
-                  </Form.Item>
-                </div>
+              <div className="indicator-inline">
                 <Form.Item
                   label="Mode"
                   name={["rsi_rule", "mode"]}
@@ -690,41 +690,53 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                     disabled={!enableRsi}
                   />
                 </Form.Item>
-              </div>
-              <div className="indicator-inline">
                 <Form.Item
-                  label="RSI Lookback"
+                  label="Lookback"
                   name="rsi_n"
                   className="indicator-inline__item"
                   style={{ marginBottom: 0 }}
                 >
-                  <InputNumber min={2} max={100} style={{ width: "100%" }} disabled={!enableRsi} />
+                  <InputNumber
+                    min={2}
+                    max={100}
+                    style={{ width: "100%" }}
+                    disabled={!enableRsi}
+                    controls={false}
+                  />
                 </Form.Item>
                 <Form.Item
-                  label="RSI Threshold"
+                  label="Threshold"
                   name={["rsi_rule", "threshold"]}
                   className="indicator-inline__item"
                   style={{ marginBottom: 0 }}
                 >
-                  <InputNumber min={0} max={100} style={{ width: "100%" }} disabled={!enableRsi} />
+                  <InputNumber
+                    min={0}
+                    max={100}
+                    style={{ width: "100%" }}
+                    disabled={!enableRsi}
+                    controls={false}
+                  />
                 </Form.Item>
               </div>
             </div>
 
             <div className="indicator-grid__item">
-              <div className="indicator-header">
-                <Text strong>Moving Average Convergence Divergence (MACD)</Text>
-                <Button type="text" size="small" onClick={() => openInfo("macd")}>
-                  Describe
-                </Button>
+              <div className="indicator-header indicator-header--with-toggle">
+                <Text strong>MACD</Text>
+                <Space size={6} align="center">
+                  <div className="indicator-toggle">
+                    <span>Enabled</span>
+                    <Form.Item name="use_macd" valuePropName="checked" noStyle>
+                      <Switch size="small" />
+                    </Form.Item>
+                  </div>
+                  <Button type="text" size="small" onClick={() => openInfo("macd")}>
+                    Describe
+                  </Button>
+                </Space>
               </div>
-              <div className="indicator-inline indicator-inline--align">
-                <div className="indicator-toggle">
-                  <span>Enabled</span>
-                  <Form.Item name="use_macd" valuePropName="checked" noStyle>
-                    <Switch size="small" />
-                  </Form.Item>
-                </div>
+              <div className="indicator-inline">
                 <Form.Item
                   label="Rule"
                   name="macd_rule"
@@ -739,8 +751,6 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                     disabled={!useMacd}
                   />
                 </Form.Item>
-              </div>
-              <div className="indicator-inline">
                 <Form.Item
                   label="Fast"
                   name="macd_fast"
@@ -769,19 +779,21 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
             </div>
 
             <div className="indicator-grid__item">
-              <div className="indicator-header">
-                <Text strong>On-Balance Volume (OBV)</Text>
-                <Button type="text" size="small" onClick={() => openInfo("obv")}>
-                  Describe
-                </Button>
+              <div className="indicator-header indicator-header--with-toggle">
+                <Text strong>OBV</Text>
+                <Space size={6} align="center">
+                  <div className="indicator-toggle">
+                    <span>Enabled</span>
+                    <Form.Item name="use_obv" valuePropName="checked" noStyle>
+                      <Switch size="small" />
+                    </Form.Item>
+                  </div>
+                  <Button type="text" size="small" onClick={() => openInfo("obv")}>
+                    Describe
+                  </Button>
+                </Space>
               </div>
-              <div className="indicator-inline indicator-inline--align">
-                <div className="indicator-toggle">
-                  <span>Enabled</span>
-                  <Form.Item name="use_obv" valuePropName="checked" noStyle>
-                    <Switch size="small" />
-                  </Form.Item>
-                </div>
+              <div className="indicator-inline">
                 <Form.Item
                   label="Rule"
                   name="obv_rule"
@@ -801,7 +813,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
 
             <div className="indicator-grid__item">
               <div className="indicator-header indicator-header--with-toggle">
-                <Text strong>Exponential Moving Average Cross (EMA)</Text>
+                <Text strong>EMA</Text>
                 <Space size={6} align="center">
                   <div className="indicator-toggle">
                     <span>Enabled</span>
@@ -836,7 +848,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
 
             <div className="indicator-grid__item">
               <div className="indicator-header indicator-header--with-toggle">
-                <Text strong>Average Directional Index (ADX)</Text>
+                <Text strong>ADX</Text>
                 <Space size={6} align="center">
                   <div className="indicator-toggle">
                     <span>Enabled</span>
@@ -871,7 +883,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
 
             <div className="indicator-grid__item">
               <div className="indicator-header indicator-header--with-toggle">
-                <Text strong>Aroon Oscillator</Text>
+                <Text strong>Aroon</Text>
                 <Space size={6} align="center">
                   <div className="indicator-toggle">
                     <span>Enabled</span>
@@ -914,7 +926,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
 
             <div className="indicator-grid__item">
               <div className="indicator-header indicator-header--with-toggle">
-                <Text strong>Stochastic Oscillator</Text>
+                <Text strong>Stoch</Text>
                 <Space size={6} align="center">
                   <div className="indicator-toggle">
                     <span>Enabled</span>
