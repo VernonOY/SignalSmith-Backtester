@@ -49,6 +49,13 @@ export interface Trade {
   pnl: number;
   ret: number;
   symbol?: string;
+  gross_pnl: number;
+  fees: number;
+  side: "long" | "short";
+  quantity: number;
+  notional: number;
+  buy_fee: number;
+  sell_fee: number;
 }
 
 export interface Metrics {
