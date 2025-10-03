@@ -1,4 +1,8 @@
-export const createCSVContent = (columns: string[], rows: Array<Array<string | number>>) => {
+export const downloadCSV = (
+  filename: string,
+  columns: string[],
+  rows: Array<Array<string | number>>
+) => {
   const header = columns.join(",");
   const body = rows
     .map((row) =>
@@ -11,15 +15,7 @@ export const createCSVContent = (columns: string[], rows: Array<Array<string | n
         .join(",")
     )
     .join("\n");
-  return rows.length ? `${header}\n${body}` : `${header}\n`;
-};
-
-export const downloadCSV = (
-  filename: string,
-  columns: string[],
-  rows: Array<Array<string | number>>
-) => {
-  const csv = createCSVContent(columns, rows);
+  const csv = `${header}\n${body}`;
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

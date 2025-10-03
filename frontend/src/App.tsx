@@ -12,9 +12,8 @@ import TradesTable from "./components/TradesTable";
 import type { ECharts } from "echarts";
 import HistogramChart from "./components/HistogramChart";
 import IndicatorStatsTable from "./components/IndicatorStatsTable";
-import { downloadCSV, downloadJSON, downloadImage, createCSVContent } from "./utils/download";
+import { downloadCSV, downloadJSON, downloadImage } from "./utils/download";
 import { formatCurrency, formatNumber, formatPercent } from "./utils/format";
-import { buildSelectionRows } from "./utils/report";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -22,28 +21,19 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<BacktestResponse | null>(null);
   const [lastRunConfig, setLastRunConfig] = useState<BacktestRequest | null>(null);
-  const [lastFormValues, setLastFormValues] = useState<Record<string, any> | null>(null);
   const [signalsInfoVisible, setSignalsInfoVisible] = useState(false);
   const [showPriceLine, setShowPriceLine] = useState(true);
   const [showBuySignals, setShowBuySignals] = useState(true);
   const [showSellSignals, setShowSellSignals] = useState(true);
   const [overviewExpanded, setOverviewExpanded] = useState(false);
-  const equityChartRef = useRef<ECharts | null>(null);
-  const drawdownChartRef = useRef<ECharts | null>(null);
-  const signalChartRef = useRef<ECharts | null>(null);
   const histogramChartRef = useRef<ECharts | null>(null);
 
-  const handleSubmit = async (payload: BacktestRequest, rawValues: any) => {
+  const handleSubmit = async (payload: BacktestRequest) => {
     try {
       setLoading(true);
-      equityChartRef.current = null;
-      drawdownChartRef.current = null;
-      signalChartRef.current = null;
-      histogramChartRef.current = null;
       const { data } = await api.post<BacktestResponse>("/run_backtest", payload);
       setResponse(data);
       setLastRunConfig(payload);
-      setLastFormValues(rawValues);
       message.success("Backtest complete");
     } catch (error: any) {
       const detail = error?.response?.data?.detail || error.message;
@@ -136,204 +126,6 @@ const App = () => {
       });
     });
     downloadCSV("indicator_statistics.csv", ["horizon", "metric", "value"], rows);
-  };
-
-  const handleDownloadReport = () => {
-    if (!response) {
-      message.warning("Run the backtest before downloading the report");
-      return;
-    }
-
-    const escapeHtml = (value: string) =>
-      value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-    const captureChart = (chart: ECharts | null) => {
-      if (!chart) return null;
-      try {
-        return chart.getDataURL({ type: "png", backgroundColor: "#ffffff" });
-      } catch (error) {
-        console.error("Failed to capture chart", error);
-        return null;
-      }
-    };
-
-    const selectionRows = lastFormValues ? buildSelectionRows(lastFormValues) : [];
-    const metricsRows = Object.entries(response.metrics);
-    const equityCurve = response.equity_curve;
-    const drawdownCurve = response.drawdown_curve;
-    const signalRows = (response.signals ?? []).map((s) => [
-      s.date,
-      s.type,
-      s.price ?? "",
-      s.size ?? "",
-      s.symbol ?? "",
-    ]);
-    const tradeRows = (response.trades ?? []).map((t) => [
-      t.symbol ?? "",
-      t.enter_date,
-      t.enter_price,
-      t.exit_date,
-      t.exit_price,
-      t.pnl,
-      t.ret,
-    ]);
-    const histogramRows = response.histogram
-      ? response.histogram.buckets.map((bucket) => [
-          bucket.bin_start,
-          bucket.bin_end,
-          bucket.count,
-        ])
-      : [];
-    const indicatorRows: Array<Array<string | number>> = [];
-    if (response.indicator_statistics) {
-      Object.entries(response.indicator_statistics).forEach(([horizon, metrics]) => {
-        Object.entries(metrics).forEach(([metric, value]) => {
-          indicatorRows.push([horizon, metric, value]);
-        });
-      });
-    }
-
-    const sectionTable = (rows: Array<Array<string | number>>, headers: string[]) => {
-      if (!rows.length) return "<p>No data available.</p>";
-      const headerCells = headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("");
-      const bodyRows = rows
-        .map(
-          (row) =>
-            `<tr>${row
-              .map((cell) => `<td>${escapeHtml(String(cell ?? ""))}</td>`)
-              .join("")}</tr>`
-        )
-        .join("");
-      return `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
-    };
-
-    const csvSection = (title: string, csv?: string | null) => {
-      if (!csv) return "";
-      return `
-        <details open>
-          <summary>${escapeHtml(title)}</summary>
-          <pre>${escapeHtml(csv)}</pre>
-        </details>
-      `;
-    };
-
-    const equityCsv = equityCurve?.dates.length
-      ? createCSVContent(
-          ["date", "value"],
-          equityCurve.dates.map((d, i) => [d, equityCurve.values[i]])
-        )
-      : null;
-    const drawdownCsv = drawdownCurve?.dates.length
-      ? createCSVContent(
-          ["date", "value"],
-          drawdownCurve.dates.map((d, i) => [d, drawdownCurve.values[i]])
-        )
-      : null;
-    const signalsCsv = createCSVContent(["date", "type", "price", "size", "symbol"], signalRows);
-    const tradesCsv = createCSVContent(
-      ["symbol", "enter_date", "enter_price", "exit_date", "exit_price", "pnl", "ret"],
-      tradeRows
-    );
-    const histogramCsv = histogramRows.length
-      ? createCSVContent(["bin_start", "bin_end", "count"], histogramRows)
-      : null;
-    const indicatorCsv = indicatorRows.length
-      ? createCSVContent(["horizon", "metric", "value"], indicatorRows)
-      : null;
-
-    const requestJson = lastRunConfig ? JSON.stringify(lastRunConfig, null, 2) : null;
-    const responseJson = JSON.stringify(response, null, 2);
-
-    const equityImage = captureChart(equityChartRef.current);
-    const drawdownImage = captureChart(drawdownChartRef.current);
-    const signalImage = captureChart(signalChartRef.current);
-    const histogramImage = captureChart(histogramChartRef.current);
-
-    const timestamp = new Date().toISOString();
-
-    const html = `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>Backtest Report</title>
-    <style>
-      body { font-family: Arial, sans-serif; margin: 24px; color: #0f172a; }
-      h1 { margin-bottom: 4px; }
-      h2 { margin-top: 32px; }
-      table { border-collapse: collapse; width: 100%; margin-top: 12px; }
-      th, td { border: 1px solid #cbd5f5; padding: 8px; text-align: left; font-size: 13px; }
-      th { background: #eef2ff; }
-      pre { background: #f8fafc; padding: 12px; border-radius: 8px; overflow-x: auto; }
-      details { margin-top: 12px; }
-      img { max-width: 100%; height: auto; border: 1px solid #dbeafe; border-radius: 8px; margin-top: 12px; }
-      .charts { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-    </style>
-  </head>
-  <body>
-    <h1>Backtest Report</h1>
-    <p>Generated at ${escapeHtml(timestamp)}</p>
-
-    <section>
-      <h2>Parameter Summary</h2>
-      ${selectionRows.length
-        ? sectionTable(selectionRows, ["Section", "Parameter", "Value"])
-        : "<p>No parameter selections recorded.</p>"}
-    </section>
-
-    <section>
-      <h2>Metrics</h2>
-      ${metricsRows.length
-        ? sectionTable(
-            metricsRows.map(([label, value]) => [label, value]),
-            ["Metric", "Value"]
-          )
-        : "<p>No metrics available.</p>"}
-    </section>
-
-    <section>
-      <h2>Charts</h2>
-      <div class="charts">
-        ${equityImage ? `<figure><img src="${equityImage}" alt="Equity Curve" /><figcaption>Equity Curve</figcaption></figure>` : ""}
-        ${drawdownImage ? `<figure><img src="${drawdownImage}" alt="Drawdown" /><figcaption>Drawdown</figcaption></figure>` : ""}
-        ${signalImage ? `<figure><img src="${signalImage}" alt="Signals" /><figcaption>Signals & Price</figcaption></figure>` : ""}
-        ${histogramImage ? `<figure><img src="${histogramImage}" alt="Histogram" /><figcaption>Return Distribution</figcaption></figure>` : ""}
-      </div>
-    </section>
-
-    <section>
-      <h2>Data Snapshots</h2>
-      ${csvSection("Equity Curve (CSV)", equityCsv)}
-      ${csvSection("Drawdown (CSV)", drawdownCsv)}
-      ${csvSection("Signals (CSV)", signalsCsv)}
-      ${csvSection("Trades (CSV)", tradesCsv)}
-      ${csvSection("Histogram (CSV)", histogramCsv)}
-      ${csvSection("Indicator Statistics (CSV)", indicatorCsv)}
-    </section>
-
-    <section>
-      <h2>Raw Payloads</h2>
-      ${requestJson
-        ? `<details open><summary>Request Parameters</summary><pre>${escapeHtml(requestJson)}</pre></details>`
-        : ""}
-      <details open>
-        <summary>Backtest Response</summary>
-        <pre>${escapeHtml(responseJson)}</pre>
-      </details>
-    </section>
-  </body>
-</html>`;
-
-    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    const filename = `backtest-report-${new Date().toISOString().replace(/[:.]/g, "-")}.html`;
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    message.success("Report downloaded");
   };
 
   const histogramBins = response?.histogram?.bin_count ?? lastRunConfig?.hist_bins ?? null;
@@ -446,9 +238,6 @@ const App = () => {
                       <div className="card-header card-header--compact">
                         <Title level={4}>Backtest Overview</Title>
                         <Space size={8} wrap align="center">
-                          <Button size="small" type="primary" onClick={handleDownloadReport}>
-                            Download Report
-                          </Button>
                           <Button size="small" onClick={handleDownloadSummary}>
                             Download JSON
                           </Button>
@@ -547,13 +336,7 @@ const App = () => {
                           Download CSV
                         </Button>
                       </div>
-                      <EquityChart
-                        data={response.equity_curve}
-                        loading={loading}
-                        onReady={(instance) => {
-                          equityChartRef.current = instance;
-                        }}
-                      />
+                      <EquityChart data={response.equity_curve} loading={loading} />
                     </Card>
                     <Card className="result-card">
                       <div className="card-header">
@@ -562,13 +345,7 @@ const App = () => {
                           Download CSV
                         </Button>
                       </div>
-                      <DrawdownChart
-                        data={response.drawdown_curve}
-                        loading={loading}
-                        onReady={(instance) => {
-                          drawdownChartRef.current = instance;
-                        }}
-                      />
+                      <DrawdownChart data={response.drawdown_curve} loading={loading} />
                     </Card>
                   </div>
 
@@ -602,9 +379,6 @@ const App = () => {
                       showPrice={showPriceLine}
                       showBuys={showBuySignals}
                       showSells={showSellSignals}
-                      onReady={(instance) => {
-                        signalChartRef.current = instance;
-                      }}
                     />
                   </Card>
 
