@@ -349,19 +349,26 @@ def _build_config(indicators: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _build_equity(
-    returns_df: pd.DataFrame,
+    trades_df: pd.DataFrame,
     initial_capital: float = 1.0,
-    column: str = "net",
+    column: str = "net_pnl",
 ) -> pd.Series:
-    if returns_df.empty or column not in returns_df.columns:
+    if trades_df.empty or column not in trades_df.columns:
         return pd.Series(dtype=float)
-    returns = (
-        returns_df.groupby("date")[column].mean()
-        .sort_index()
-    )
-    if returns.empty:
+
+    df = trades_df.copy()
+    date_col = "exit_date"
+    if date_col not in df.columns:
         return pd.Series(dtype=float)
-    equity = initial_capital * (1.0 + returns).cumprod()
+
+    if not np.issubdtype(df[date_col].dtype, np.datetime64):
+        df[date_col] = pd.to_datetime(df[date_col])
+
+    pnl = df.groupby(date_col)[column].sum().sort_index()
+    if pnl.empty:
+        return pd.Series(dtype=float)
+
+    equity = initial_capital + pnl.cumsum()
     equity.name = "equity"
     return equity
 
@@ -375,29 +382,55 @@ def _compute_drawdown(equity: pd.Series) -> pd.Series:
     return dd
 
 
+def _compute_max_active_positions(trades_df: pd.DataFrame) -> int:
+    if trades_df.empty:
+        return 0
+    events: List[Tuple[pd.Timestamp, int, int]] = []
+    for entry, exit in zip(trades_df["enter_date"], trades_df["exit_date"]):
+        events.append((entry, 0, 1))
+        events.append((exit, 1, -1))
+    events.sort(key=lambda item: (item[0], item[1]))
+    active = 0
+    max_active = 0
+    for _, _, delta in events:
+        active += delta
+        if active > max_active:
+            max_active = active
+    return max_active
+
+
 def _build_signals_and_trades(
     picks: pd.DataFrame,
     hold_days: int,
     fee_bps: float,
     stop_loss_pct: Optional[float],
     take_profit_pct: Optional[float],
+    initial_capital: float,
 ) -> Tuple[List[Signal], List[Trade], pd.DataFrame]:
+    empty_columns = [
+        "enter_date",
+        "exit_date",
+        "enter_price",
+        "exit_price",
+        "gross_return",
+        "net_return",
+        "gross_pnl",
+        "net_pnl",
+        "buy_fee",
+        "sell_fee",
+    ]
     if picks.empty:
-        return [], [], pd.DataFrame(columns=["date", "net", "gross"])
+        return [], [], pd.DataFrame(columns=empty_columns)
 
-    fee_rate = (fee_bps or 0.0) / 10_000.0
     hold_days = max(1, hold_days)
     ret_col = f"fwd_ret_{hold_days}d"
     if ret_col not in picks.columns:
-        return [], [], pd.DataFrame(columns=["date", "net", "gross"])
-
-    signals: List[Signal] = []
-    trades: List[Trade] = []
-    realised_returns: List[Dict[str, Any]] = []
+        return [], [], pd.DataFrame(columns=empty_columns)
 
     stop_loss = abs(stop_loss_pct) if stop_loss_pct is not None else None
     take_profit = take_profit_pct if take_profit_pct is not None else None
 
+    trade_records: List[Dict[str, Any]] = []
     for _, row in picks.iterrows():
         enter_date = row["date"]
         enter_price = float(row["adj_close"])
@@ -411,52 +444,102 @@ def _build_signals_and_trades(
         if take_profit is not None:
             gross_simple = min(gross_simple, take_profit)
 
-        net_simple = gross_simple - 2 * fee_rate
-        exit_price = enter_price * (1 + net_simple)
+        exit_price = enter_price * (1 + gross_simple)
         exit_date = enter_date + offsets.BDay(hold_days)
 
         if exit_price <= 0:
             continue
 
+        trade_records.append(
+            {
+                "enter_date": enter_date.normalize(),
+                "exit_date": exit_date.normalize(),
+                "symbol": row.get("symbol"),
+                "enter_price": enter_price,
+                "exit_price": float(exit_price),
+                "gross_return": float(gross_simple),
+            }
+        )
+
+    trades_df = pd.DataFrame(trade_records)
+    if trades_df.empty:
+        return [], [], pd.DataFrame(columns=empty_columns)
+
+    if not np.issubdtype(trades_df["enter_date"].dtype, np.datetime64):
+        trades_df["enter_date"] = pd.to_datetime(trades_df["enter_date"])
+    if not np.issubdtype(trades_df["exit_date"].dtype, np.datetime64):
+        trades_df["exit_date"] = pd.to_datetime(trades_df["exit_date"])
+
+    fee_rate = (fee_bps or 0.0) / 10_000.0
+    initial_capital = max(1.0, float(initial_capital))
+    max_active = max(1, _compute_max_active_positions(trades_df))
+    capital_per_trade = initial_capital / max_active
+
+    # Allow fractional shares to keep allocation exact.
+    buy_denominator = trades_df["enter_price"] * (1.0 + fee_rate)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        shares = np.where(buy_denominator > 0, capital_per_trade / buy_denominator, 0.0)
+
+    trades_df = trades_df.assign(
+        shares=shares,
+    )
+
+    trades_df = trades_df[trades_df["shares"] > 0].copy()
+    if trades_df.empty:
+        return [], [], pd.DataFrame(columns=empty_columns)
+
+    trades_df["buy_fee"] = trades_df["shares"] * trades_df["enter_price"] * fee_rate
+    trades_df["sell_fee"] = trades_df["shares"] * trades_df["exit_price"] * fee_rate
+    trades_df["gross_pnl"] = trades_df["shares"] * (
+        trades_df["exit_price"] - trades_df["enter_price"]
+    )
+    trades_df["net_pnl"] = trades_df["gross_pnl"] - (
+        trades_df["buy_fee"] + trades_df["sell_fee"]
+    )
+
+    trades_df["capital_allocated"] = capital_per_trade
+    trades_df["net_return"] = np.where(
+        capital_per_trade != 0,
+        trades_df["net_pnl"] / capital_per_trade,
+        0.0,
+    )
+    signals: List[Signal] = []
+    trades: List[Trade] = []
+    for record in trades_df.itertuples():
+        enter_str = record.enter_date.strftime("%Y-%m-%d")
+        exit_str = record.exit_date.strftime("%Y-%m-%d")
         signals.append(
             Signal(
-                date=str(enter_date.date()),
-                price=enter_price,
-                symbol=row.get("symbol"),
+                date=enter_str,
+                price=float(record.enter_price),
+                symbol=record.symbol,
                 type="buy",
+                size=float(record.shares),
             )
         )
         signals.append(
             Signal(
-                date=str(exit_date.date()),
-                price=float(exit_price),
-                symbol=row.get("symbol"),
+                date=exit_str,
+                price=float(record.exit_price),
+                symbol=record.symbol,
                 type="sell",
+                size=float(-record.shares),
             )
         )
 
         trades.append(
             Trade(
-                enter_date=str(enter_date.date()),
-                enter_price=enter_price,
-                exit_date=str(exit_date.date()),
-                exit_price=float(exit_price),
-                pnl=float(exit_price - enter_price),
-                ret=float(net_simple),
-                symbol=row.get("symbol"),
+                enter_date=enter_str,
+                enter_price=float(record.enter_price),
+                exit_date=exit_str,
+                exit_price=float(record.exit_price),
+                pnl=float(record.net_pnl),
+                ret=float(record.net_return),
+                symbol=record.symbol,
             )
         )
 
-        realised_returns.append(
-            {
-                "date": exit_date.normalize(),
-                "net": float(net_simple),
-                "gross": float(gross_simple),
-            }
-        )
-
-    returns_df = pd.DataFrame(realised_returns)
-    return signals, trades, returns_df
+    return signals, trades, trades_df
 
 
 def _compute_metrics(equity: pd.Series, drawdown: pd.Series) -> Dict[str, float]:
@@ -558,19 +641,20 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
         if not np.issubdtype(picks["date"].dtype, np.datetime64):
             picks["date"] = pd.to_datetime(picks["date"])
         picks = picks[(picks["date"] >= start_ts) & (picks["date"] <= end_ts)]
-    signals, trades, realised_returns = _build_signals_and_trades(
+    initial_capital = float(payload.capital or 1.0)
+    signals, trades, realised_trades = _build_signals_and_trades(
         picks,
         hold_days=hold_days,
         fee_bps=payload.fee_bps or 0.0,
         stop_loss_pct=payload.stop_loss_pct or payload.indicators.get("stop_loss_pct"),
         take_profit_pct=payload.take_profit_pct or payload.indicators.get("take_profit_pct"),
+        initial_capital=initial_capital,
     )
     signals.sort(key=lambda s: (s.date, 0 if s.type == "buy" else 1))
     trades.sort(key=lambda t: (t.enter_date, t.symbol or ""))
 
-    initial_capital = float(payload.capital or 1.0)
-    equity = _build_equity(realised_returns, initial_capital=initial_capital, column="net")
-    gross_equity = _build_equity(realised_returns, initial_capital=initial_capital, column="gross")
+    equity = _build_equity(realised_trades, initial_capital=initial_capital, column="net_pnl")
+    gross_equity = _build_equity(realised_trades, initial_capital=initial_capital, column="gross_pnl")
     drawdown = _compute_drawdown(equity)
 
     equity_ts = TimeSeries(dates=[d.strftime("%Y-%m-%d") for d in equity.index], values=equity.round(6).tolist())
@@ -580,7 +664,12 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
     ending_equity = float(equity.iloc[-1]) if not equity.empty else initial_capital
     gross_ending = float(gross_equity.iloc[-1]) if not gross_equity.empty else ending_equity
     total_return = float(ending_equity / initial_capital - 1.0) if initial_capital else 0.0
-    total_fees = float(max(0.0, gross_ending - ending_equity))
+    total_fees = float(
+        max(
+            0.0,
+            realised_trades[["buy_fee", "sell_fee"]].sum().sum() if not realised_trades.empty else 0.0,
+        )
+    )
     stats_df = result.get("statistics", pd.DataFrame())
     hist_df = result.get("hist_data", pd.DataFrame())
 
