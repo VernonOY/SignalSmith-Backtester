@@ -32,17 +32,39 @@ body {
   width: 100%;
   height: 100%;
   overflow-y: auto;
-  padding: 12px;
+  padding: 8px;
   box-sizing: border-box;
 }
 
 .sidebar-form {
   height: 100%;
   overflow-y: auto;
-  padding: 4px 8px 16px;
+  padding: 4px 6px 14px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+}
+
+.sidebar-form .form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.sidebar-form .form-row:last-child {
+  margin-bottom: 0;
+}
+
+.sidebar-form .form-row__item {
+  flex: 1 1 150px;
+  margin-bottom: 0;
+}
+
+.sidebar-form .form-row__item .ant-input-number,
+.sidebar-form .form-row__item .ant-select,
+.sidebar-form .form-row__item .ant-picker {
+  width: 100%;
 }
 
 .sidebar-form .ant-card {
@@ -61,11 +83,11 @@ body {
 }
 
 .sidebar-form .ant-card-body {
-  padding: 12px;
+  padding: 10px;
 }
 
 .sidebar-form .ant-form-item {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .sidebar-form .ant-form-item-label > label {
@@ -279,28 +301,64 @@ body {
 
 .indicator-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 520px) {
+  .indicator-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .indicator-grid__item {
   background: #f9faff;
   border: 1px solid #e2e7ff;
   border-radius: 12px;
-  padding: 12px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 
-.indicator-grid__item .ant-form-item {
+.indicator-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.indicator-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.indicator-row--tight {
+  gap: 6px;
+}
+
+.indicator-row:last-child {
   margin-bottom: 0;
 }
 
-.indicator-grid__item .ant-form-item + .ant-form-item,
-.indicator-grid__item .ant-form-item + .ant-space,
-.indicator-grid__item .ant-space + .ant-form-item {
-  margin-top: 12px;
+.indicator-row__item {
+  margin-bottom: 0 !important;
+}
+
+.indicator-row__item--toggle .ant-form-item-control-input {
+  min-height: 0;
+}
+
+.indicator-row__item--toggle .ant-form-item-control-input-content {
+  display: flex;
+  align-items: center;
+}
+
+.indicator-row__item .ant-form-item-label > label {
+  font-size: 11px;
 }
 
 .info-pill {
