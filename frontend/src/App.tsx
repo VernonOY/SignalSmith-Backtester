@@ -265,8 +265,10 @@ const App = () => {
       th { background: #eef2ff; }
       pre { background: #f8fafc; padding: 12px; border-radius: 8px; overflow-x: auto; }
       details { margin-top: 12px; }
-      img { max-width: 100%; height: auto; border: 1px solid #dbeafe; border-radius: 8px; margin-top: 12px; }
-      .charts { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+      .charts { display: flex; flex-direction: column; gap: 32px; align-items: center; }
+      .charts figure { margin: 0; width: 100%; max-width: 760px; }
+      .charts img { width: 100%; height: auto; border: 1px solid #dbeafe; border-radius: 12px; box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08); }
+      .charts figcaption { margin-top: 12px; text-align: center; font-weight: 600; color: #334155; }
     </style>
   </head>
   <body>
