@@ -542,12 +542,12 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
   const infoTitles: Record<InfoModalKey, string> = {
     strategy: "Strategy Settings",
     execution: "Execution Settings",
-    rsi: "RSI",
-    macd: "MACD",
-    obv: "On-Balance Volume",
-    ema: "EMA Cross",
-    adx: "Average Directional Index",
-    aroon: "Aroon",
+    rsi: "Relative Strength Index (RSI)",
+    macd: "Moving Average Convergence Divergence (MACD)",
+    obv: "On-Balance Volume (OBV)",
+    ema: "Exponential Moving Average Cross (EMA)",
+    adx: "Average Directional Index (ADX)",
+    aroon: "Aroon Oscillator",
     stoch: "Stochastic Oscillator",
     signals: "Signal Rules",
     universe: "Universe Filters",
@@ -615,12 +615,12 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
               Execution Info
             </Button>
           </Space>
-          <div className="form-row">
+          <div className="form-grid form-grid--two">
             <Form.Item
               name="strategy"
               label="Strategy"
               rules={[{ required: true }]}
-              className="form-row__item"
+              className="form-grid__item"
             >
               <Select
                 onChange={handleStrategyChange}
@@ -631,7 +631,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                 ]}
               />
             </Form.Item>
-            <Form.Item label="Initial Capital" name="capital" className="form-row__item">
+            <Form.Item label="Initial Capital" name="capital" className="form-grid__item">
               <InputNumber min={0} style={{ width: "100%" }} prefix="$" />
             </Form.Item>
           </div>
@@ -642,19 +642,17 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
           >
             <RangePicker allowClear={false} style={{ width: "100%" }} disabledDate={disabledDate} />
           </Form.Item>
-          <div className="form-row">
-            <Form.Item label="Fee (bps)" name="fee_bps" className="form-row__item">
+          <div className="form-grid form-grid--four">
+            <Form.Item label="Fee (bps)" name="fee_bps" className="form-grid__item">
               <InputNumber min={0} max={100} style={{ width: "100%" }} />
             </Form.Item>
-            <Form.Item label="Hold Days" name="hold_days" className="form-row__item">
+            <Form.Item label="Hold Days" name="hold_days" className="form-grid__item">
               <InputNumber min={1} max={10} style={{ width: "100%" }} />
             </Form.Item>
-          </div>
-          <div className="form-row">
-            <Form.Item label="Stop Loss (%)" name="stop_loss_pct" className="form-row__item">
+            <Form.Item label="Stop Loss (%)" name="stop_loss_pct" className="form-grid__item">
               <InputNumber min={0} max={100} style={{ width: "100%" }} placeholder="Optional" />
             </Form.Item>
-            <Form.Item label="Take Profit (%)" name="take_profit_pct" className="form-row__item">
+            <Form.Item label="Take Profit (%)" name="take_profit_pct" className="form-grid__item">
               <InputNumber min={0} max={200} style={{ width: "100%" }} placeholder="Optional" />
             </Form.Item>
           </div>
