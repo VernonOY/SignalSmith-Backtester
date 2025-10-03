@@ -81,10 +81,6 @@ body {
   margin-bottom: 0;
 }
 
-.sidebar-form .form-grid__item .ant-form-item-label > label {
-  white-space: nowrap;
-}
-
 .sidebar-form .form-grid--two {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -358,14 +354,6 @@ body {
   flex-direction: column;
 }
 
-.indicator-grid__item--compact {
-  padding: 8px;
-}
-
-.indicator-grid__item--wide {
-  grid-column: 1 / -1;
-}
-
 .indicator-grid__item .ant-form-item {
   margin-bottom: 0;
 }
@@ -388,10 +376,6 @@ body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-}
-
-.indicator-fields--single {
-  grid-template-columns: 1fr;
 }
 
 .indicator-field {
