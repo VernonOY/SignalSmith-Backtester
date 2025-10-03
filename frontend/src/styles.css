@@ -326,40 +326,40 @@ body {
   margin-bottom: 8px;
 }
 
-.indicator-header--with-toggle {
-  align-items: flex-start;
-}
-
-.indicator-toggle {
+.indicator-header__actions {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
-  color: #475569;
 }
 
-.indicator-inline {
-  display: flex;
-  flex-wrap: wrap;
+.indicator-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  margin-bottom: 12px;
 }
 
-.indicator-inline:last-child {
-  margin-bottom: 0;
-}
-
-.indicator-inline--align {
-  align-items: center;
-}
-
-.indicator-inline__item {
-  flex: 1 1 140px;
+.indicator-field {
   margin-bottom: 0 !important;
 }
 
-.indicator-inline--align .indicator-inline__item {
-  flex: 1 1 180px;
+.indicator-field--full {
+  grid-column: 1 / -1;
+}
+
+.indicator-hint {
+  font-size: 11px;
+  color: #475569;
+  line-height: 1.4;
+}
+
+.indicator-hint strong {
+  color: #1d3fae;
+}
+
+@media (max-width: 640px) {
+  .indicator-fields {
+    grid-template-columns: 1fr;
+  }
 }
 
 .info-pill {
