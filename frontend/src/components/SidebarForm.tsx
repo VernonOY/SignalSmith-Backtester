@@ -676,7 +676,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                 <Form.Item
                   label="Mode"
                   name={["rsi_rule", "mode"]}
-                  className="indicator-field"
+                  className="indicator-field indicator-field--full"
                 >
                   <Select
                     options={[
@@ -770,50 +770,6 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
 
             <div className="indicator-grid__item">
               <div className="indicator-header">
-                <Text strong>EMA</Text>
-                <Space size={6} align="center" className="indicator-header__actions">
-                  <Form.Item name="use_ema" valuePropName="checked" noStyle>
-                    <Switch size="small" aria-label="Toggle EMA" />
-                  </Form.Item>
-                  <Button type="text" size="small" onClick={() => openInfo("ema")}>
-                    Describe
-                  </Button>
-                </Space>
-              </div>
-              <div className="indicator-fields">
-                <Form.Item label="Short" name="ema_short" className="indicator-field">
-                  <InputNumber min={2} max={50} style={{ width: "100%" }} disabled={!useEma} />
-                </Form.Item>
-                <Form.Item label="Long" name="ema_long" className="indicator-field">
-                  <InputNumber min={5} max={200} style={{ width: "100%" }} disabled={!useEma} />
-                </Form.Item>
-              </div>
-            </div>
-
-            <div className="indicator-grid__item">
-              <div className="indicator-header">
-                <Text strong>ADX</Text>
-                <Space size={6} align="center" className="indicator-header__actions">
-                  <Form.Item name="use_adx" valuePropName="checked" noStyle>
-                    <Switch size="small" aria-label="Toggle ADX" />
-                  </Form.Item>
-                  <Button type="text" size="small" onClick={() => openInfo("adx")}>
-                    Describe
-                  </Button>
-                </Space>
-              </div>
-              <div className="indicator-fields">
-                <Form.Item label="Lookback" name="adx_n" className="indicator-field">
-                  <InputNumber min={5} max={50} style={{ width: "100%" }} disabled={!useAdx} />
-                </Form.Item>
-                <Form.Item label="Min ADX" name="adx_min" className="indicator-field">
-                  <InputNumber min={5} max={60} style={{ width: "100%" }} disabled={!useAdx} />
-                </Form.Item>
-              </div>
-            </div>
-
-            <div className="indicator-grid__item">
-              <div className="indicator-header">
                 <Text strong>AROON</Text>
                 <Space size={6} align="center" className="indicator-header__actions">
                   <Form.Item name="use_aroon" valuePropName="checked" noStyle>
@@ -837,7 +793,51 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
               </div>
             </div>
 
-            <div className="indicator-grid__item">
+            <div className="indicator-grid__item indicator-grid__item--compact">
+              <div className="indicator-header">
+                <Text strong>ADX</Text>
+                <Space size={6} align="center" className="indicator-header__actions">
+                  <Form.Item name="use_adx" valuePropName="checked" noStyle>
+                    <Switch size="small" aria-label="Toggle ADX" />
+                  </Form.Item>
+                  <Button type="text" size="small" onClick={() => openInfo("adx")}>
+                    Describe
+                  </Button>
+                </Space>
+              </div>
+              <div className="indicator-fields">
+                <Form.Item label="Lookback" name="adx_n" className="indicator-field">
+                  <InputNumber min={5} max={50} style={{ width: "100%" }} disabled={!useAdx} />
+                </Form.Item>
+                <Form.Item label="Min ADX" name="adx_min" className="indicator-field">
+                  <InputNumber min={5} max={60} style={{ width: "100%" }} disabled={!useAdx} />
+                </Form.Item>
+              </div>
+            </div>
+
+            <div className="indicator-grid__item indicator-grid__item--compact">
+              <div className="indicator-header">
+                <Text strong>EMA</Text>
+                <Space size={6} align="center" className="indicator-header__actions">
+                  <Form.Item name="use_ema" valuePropName="checked" noStyle>
+                    <Switch size="small" aria-label="Toggle EMA" />
+                  </Form.Item>
+                  <Button type="text" size="small" onClick={() => openInfo("ema")}>
+                    Describe
+                  </Button>
+                </Space>
+              </div>
+              <div className="indicator-fields">
+                <Form.Item label="Short" name="ema_short" className="indicator-field">
+                  <InputNumber min={2} max={50} style={{ width: "100%" }} disabled={!useEma} />
+                </Form.Item>
+                <Form.Item label="Long" name="ema_long" className="indicator-field">
+                  <InputNumber min={5} max={200} style={{ width: "100%" }} disabled={!useEma} />
+                </Form.Item>
+              </div>
+            </div>
+
+            <div className="indicator-grid__item indicator-grid__item--wide">
               <div className="indicator-header">
                 <Text strong>STOCH</Text>
                 <Space size={6} align="center" className="indicator-header__actions">
@@ -849,8 +849,8 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                   </Button>
                 </Space>
               </div>
-              <div className="indicator-fields">
-                <Form.Item label="Rule" name="stoch_rule" className="indicator-field">
+              <div className="indicator-fields indicator-fields--single">
+                <Form.Item label="Rule" name="stoch_rule" className="indicator-field indicator-field--full">
                   <Select
                     options={[
                       { label: "Signal crossover", value: "signal" },
