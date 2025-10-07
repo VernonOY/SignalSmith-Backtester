@@ -422,13 +422,13 @@ const App = () => {
     >
       <div className="app-shell">
         <PanelGroup direction="horizontal">
-          <Panel defaultSize={28} minSize={18} maxSize={35} className="panel panel--sidebar">
+          <Panel defaultSize={22} minSize={15} maxSize={25} className="panel panel--sidebar">
             <div className="sidebar-panel">
               <SidebarForm loading={loading} onSubmit={handleSubmit} />
             </div>
           </Panel>
           <PanelResizeHandle className="resize-handle" />
-          <Panel defaultSize={72} minSize={40} className="panel panel--content">
+          <Panel defaultSize={78} minSize={40} className="panel panel--content">
             <div className="results-panel">
               {!response && (
                 <Card className="result-card intro-card">
@@ -476,7 +476,6 @@ const App = () => {
                       </div>
                       {overviewExpanded && (
                         <div className="overview-details">
-                          <MetricsTable metrics={response.metrics} />
                           {runSettingItems.length > 0 && (
                             <div className="overview-settings">
                               <h4>Run settings</h4>
@@ -490,6 +489,7 @@ const App = () => {
                               </dl>
                             </div>
                           )}
+                          <MetricsTable metrics={response.metrics} />
                         </div>
                       )}
                     </Card>
