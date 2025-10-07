@@ -419,7 +419,7 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
     config = _build_config(indicators)
     max_horizon = payload.indicators.get("max_horizon", 10)
     hist_horizon = payload.indicators.get("hist_horizon", 1)
-    hist_bins = payload.hist_bins or 20
+    hist_bins = payload.hist_bins or 5
     hold_days = payload.hold_days or payload.indicators.get("hold_days") or 1
     if hold_days > max_horizon:
         hold_days = max_horizon

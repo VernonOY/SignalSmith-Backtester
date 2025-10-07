@@ -4,6 +4,7 @@ import {
   Card,
   DatePicker,
   Form,
+  Input,
   InputNumber,
   Modal,
   Select,
@@ -15,8 +16,6 @@ import {
 import dayjs, { Dayjs } from "dayjs";
 import { api } from "../api/client";
 import { BacktestRequest, Filters, RSIRule, UniverseMeta } from "../types";
-import { downloadCSV } from "../utils/download";
-import { buildSelectionRows } from "../utils/report";
 
 const { RangePicker } = DatePicker;
 const { Paragraph, Text } = Typography;
@@ -27,7 +26,7 @@ const LOOKBACK_YEARS = 5;
 
 type IndicatorKey = "rsi" | "macd" | "obv" | "ema" | "adx" | "aroon" | "stoch" | "signals";
 
-type InfoModalKey = IndicatorKey | "strategy" | "execution" | "universe";
+type InfoModalKey = IndicatorKey | "execution" | "universe";
 
 interface SidebarFormProps {
   loading: boolean;
@@ -40,43 +39,22 @@ const getEarliestAllowed = () => {
   return candidate.isBefore(MIN_DATE) ? MIN_DATE : candidate;
 };
 
-const strategyPresets: Record<string, Record<string, unknown>> = {
-  mean_reversion: {
-    enable_rsi: true,
-    use_macd: false,
-    use_obv: false,
-    use_ema: true,
-    use_adx: false,
-    use_aroon: false,
-    use_stoch: false,
-    rsi_rule: { mode: "oversold", threshold: 30 },
-  },
-  momentum: {
-    enable_rsi: false,
-    use_macd: true,
-    use_obv: true,
-    use_ema: true,
-    use_adx: true,
-    use_aroon: false,
-    use_stoch: true,
-    stoch_rule: "signal",
-    stoch_threshold: 20,
-  },
-  multifactor: {
-    enable_rsi: true,
-    use_macd: true,
-    use_obv: true,
-    use_ema: true,
-    use_adx: true,
-    use_aroon: true,
-    use_stoch: true,
-  },
+const DEFAULT_STRATEGY_VALUES: Record<string, unknown> = {
+  enable_rsi: true,
+  use_macd: false,
+  use_obv: false,
+  use_ema: true,
+  use_adx: false,
+  use_aroon: false,
+  use_stoch: false,
+  rsi_rule: { mode: "oversold", threshold: 30 },
 };
 
 const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
   const [form] = Form.useForm();
   const [meta, setMeta] = useState<UniverseMeta>({ sectors: [], mcap_buckets: [] });
   const [activeInfo, setActiveInfo] = useState<InfoModalKey | null>(null);
+  const [showUniverseFilters, setShowUniverseFilters] = useState(false);
 
   const openInfo = (key: InfoModalKey) => {
     setActiveInfo(key);
@@ -131,25 +109,13 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
 
   const handleReset = () => {
     form.resetFields();
+    setShowUniverseFilters(false);
   };
 
   const handleSavePreset = () => {
     const values = form.getFieldsValue();
     localStorage.setItem(DEFAULT_PRESET_KEY, JSON.stringify(values));
     message.success("Preset saved locally");
-  };
-
-  const handleDownloadSelections = () => {
-    const values = form.getFieldsValue(true);
-    const rows = buildSelectionRows(values);
-    downloadCSV("parameter_selection.csv", ["Section", "Parameter", "Value"], rows);
-  };
-
-  const handleStrategyChange = (value: string) => {
-    const preset = strategyPresets[value];
-    if (preset) {
-      form.setFieldsValue(preset);
-    }
   };
 
   const maxHorizon = Form.useWatch("max_horizon", form);
@@ -273,8 +239,10 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
         }
       : { use: false };
 
+    const strategyValue = values.strategy ?? "mean_reversion";
+
     const payload: BacktestRequest = {
-      strategy: values.strategy,
+      strategy: strategyValue,
       start: start.format("YYYY-MM-DD"),
       end: end.format("YYYY-MM-DD"),
       indicators: indicatorsPayload,
@@ -294,26 +262,6 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
   const renderInfoContent = (key: InfoModalKey | null): ReactNode => {
     if (!key) return null;
     switch (key) {
-      case "strategy":
-        return (
-          <>
-            <Paragraph>
-              Strategy presets load curated indicator blends inspired by common discretionary playbooks. <Text strong>Mean
-              Reversion</Text> emphasises RSI extremes and EMA crosses to hunt for prices that have stretched too far from trend.
-              <Text strong>Momentum</Text> highlights MACD, OBV, and stochastic agreement to ride persistent directional moves.
-              <Text strong>Multifactor</Text> activates every study so you can tune confirmation rules manually. You can always
-              adjust any field after selecting a preset to tailor the logic to your preferred style.
-            </Paragraph>
-            <Paragraph>
-              <Text strong>Strategy.</Text> Select the preset to determine which indicators are switched on by default.
-            </Paragraph>
-            <Paragraph>
-              <Text strong>Backtest Range.</Text> Pick start and end dates between 2020-01-01 and today. The span may not exceed five
-              calendar years so the test stays within the available history and avoids comparing regimes with materially different
-              liquidity or volatility backdrops.
-            </Paragraph>
-          </>
-        );
       case "execution":
         return (
           <>
@@ -331,6 +279,11 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
               <Text strong>Hold Days.</Text> Caps the lifespan of any open trade. Once this limit is hit, the engine force-closes the
               position at the prevailing price, ensuring that signals which fail to resolve quickly cannot linger and distort
               capital availability for new ideas.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Position sizing.</Text> Trades are sized using fractional shares so every allocation uses the full cash
+              slice it receives. This avoids leftover capital from rounding to whole lots and keeps returns aligned with the
+              percentage signals you configure.
             </Paragraph>
             <Paragraph>
               <Text strong>Stop Loss (%).</Text> Optional protective floor based on percentage drop from entry. Setting this to 5
@@ -509,12 +462,15 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
               <Text strong>Max Horizon (days).</Text> Longest forward-return period evaluated. It caps hold days and histogram horizon to
               keep calculations consistent.
             </Paragraph>
-            <Paragraph>
-              <Text strong>Histogram Horizon (days).</Text> Select which horizon feeds the return distribution chart. It cannot exceed the
-              max horizon.
-            </Paragraph>
-          </>
-        );
+          <Paragraph>
+            <Text strong>Histogram Horizon (days).</Text> Select which horizon feeds the return distribution chart. It cannot exceed the
+            max horizon.
+          </Paragraph>
+          <Paragraph>
+            <Text strong>Histogram Bins.</Text> Controls how many buckets summarise the forward returns in the distribution chart.
+          </Paragraph>
+        </>
+      );
       case "universe":
         return (
           <>
@@ -540,7 +496,6 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
   };
 
   const infoTitles: Record<InfoModalKey, string> = {
-    strategy: "Strategy Settings",
     execution: "Execution Settings",
     rsi: "Relative Strength Index (RSI)",
     macd: "Moving Average Convergence Divergence (MACD)",
@@ -573,7 +528,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
         onFinish={submit}
         initialValues={{
           strategy: "mean_reversion",
-          ...strategyPresets.mean_reversion,
+          ...DEFAULT_STRATEGY_VALUES,
           date: [defaultStart, today],
           capital: 100000,
           fee_bps: 1,
@@ -602,46 +557,41 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
           k: 2,
           max_horizon: 10,
           hist_horizon: 1,
-          hist_bins: 20,
+          hist_bins: 5,
           filters: {},
         }}
       >
-        <Card title="Strategy" size="small" bordered={false} className="sidebar-card">
-          <Space style={{ marginBottom: 8 }} size={8}>
-            <Button type="text" size="small" onClick={() => openInfo("strategy")}>
-              Strategy Info
+        <Card
+          title="Run Settings"
+          size="small"
+          bordered={false}
+          className="sidebar-card"
+          extra={
+            <Button type="link" size="small" onClick={() => openInfo("execution")}>
+              Describe
             </Button>
-            <Button type="text" size="small" onClick={() => openInfo("execution")}>
-              Execution Info
-            </Button>
-          </Space>
-          <div className="form-grid form-grid--two">
+          }
+        >
+          <Form.Item name="strategy" hidden initialValue="mean_reversion">
+            <Input />
+          </Form.Item>
+          <div className="form-grid form-grid--capital-range">
             <Form.Item
-              name="strategy"
-              label="Strategy"
-              rules={[{ required: true }]}
-              className="form-grid__item"
+              label="Initial Capital"
+              name="capital"
+              className="form-grid__item form-grid__item--capital"
             >
-              <Select
-                onChange={handleStrategyChange}
-                options={[
-                  { label: "Mean Reversion", value: "mean_reversion" },
-                  { label: "Momentum", value: "momentum" },
-                  { label: "Multifactor", value: "multifactor" },
-                ]}
-              />
-            </Form.Item>
-            <Form.Item label="Initial Capital" name="capital" className="form-grid__item">
               <InputNumber min={0} style={{ width: "100%" }} prefix="$" />
             </Form.Item>
+            <Form.Item
+              name="date"
+              label="Backtest Range"
+              rules={[{ required: true }]}
+              className="form-grid__item form-grid__item--range"
+            >
+              <RangePicker allowClear={false} style={{ width: "100%" }} disabledDate={disabledDate} />
+            </Form.Item>
           </div>
-          <Form.Item
-            name="date"
-            label="Backtest Range"
-            rules={[{ required: true }]}
-          >
-            <RangePicker allowClear={false} style={{ width: "100%" }} disabledDate={disabledDate} />
-          </Form.Item>
           <div className="form-grid form-grid--four">
             <Form.Item label="Fee (bps)" name="fee_bps" className="form-grid__item">
               <InputNumber min={0} max={100} style={{ width: "100%" }} />
@@ -837,7 +787,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
               </div>
             </div>
 
-            <div className="indicator-grid__item indicator-grid__item--wide">
+            <div className="indicator-grid__item">
               <div className="indicator-header">
                 <Text strong>STOCH</Text>
                 <Space size={6} align="center" className="indicator-header__actions">
@@ -866,7 +816,11 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                 <Form.Item label="%D" name="stoch_d" className="indicator-field">
                   <InputNumber min={1} max={20} style={{ width: "100%" }} disabled={!useStoch} />
                 </Form.Item>
-                <Form.Item label="Threshold" name="stoch_threshold" className="indicator-field">
+                <Form.Item
+                  label="Threshold"
+                  name="stoch_threshold"
+                  className="indicator-field indicator-field--full"
+                >
                   <InputNumber min={1} max={50} style={{ width: "100%" }} disabled={!useStoch} />
                 </Form.Item>
               </div>
@@ -874,73 +828,82 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
           </div>
         </Card>
 
-        <Card title="Universe Filters" size="small" bordered={false} className="sidebar-card">
-          <div className="sidebar-card__actions">
-            <Button type="link" size="small" onClick={() => openInfo("universe")}>
-              Describe
-            </Button>
-          </div>
-          <Form.Item label="Sector" name={["filters", "sectors"]} extra="Pick industries to include.">
-            <Select mode="multiple" allowClear options={sectorOptions} />
-          </Form.Item>
-          <Form.Item label="Market Cap Min ($)" name={["filters", "mcap_min"]} extra="Smallest allowed market capitalization.">
-            <InputNumber min={0} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item label="Market Cap Max ($)" name={["filters", "mcap_max"]} extra="Largest allowed market capitalization.">
-            <InputNumber min={0} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item
-            label="Exclude Tickers"
-            name={["filters", "exclude_tickers"]}
-            extra="Remove specific symbols (comma or space separated)."
-          >
-            <Select mode="tags" tokenSeparators={[",", " "]} placeholder="e.g. TSLA, NVDA" />
-          </Form.Item>
+        <Card
+          title="Universe Filters"
+          size="small"
+          bordered={false}
+          className="sidebar-card"
+          extra={
+            <Space size={4} align="center">
+              <Button type="link" size="small" onClick={() => openInfo("universe")}>
+                Describe
+              </Button>
+              <Button
+                type="link"
+                size="small"
+                onClick={() => setShowUniverseFilters((prev) => !prev)}
+              >
+                {showUniverseFilters ? "Hide" : "Show"}
+              </Button>
+            </Space>
+          }
+        >
+          {showUniverseFilters && (
+            <div className="form-grid form-grid--universe">
+              <Form.Item label="Sector" name={["filters", "sectors"]} className="form-grid__item">
+                <Select mode="multiple" allowClear options={sectorOptions} />
+              </Form.Item>
+              <Form.Item label="Market Cap Min ($)" name={["filters", "mcap_min"]} className="form-grid__item">
+                <InputNumber min={0} style={{ width: "100%" }} />
+              </Form.Item>
+              <Form.Item label="Market Cap Max ($)" name={["filters", "mcap_max"]} className="form-grid__item">
+                <InputNumber min={0} style={{ width: "100%" }} />
+              </Form.Item>
+              <Form.Item label="Exclude Tickers" name={["filters", "exclude_tickers"]} className="form-grid__item">
+                <Select mode="tags" tokenSeparators={[",", " "]} placeholder="e.g. TSLA, NVDA" />
+              </Form.Item>
+            </div>
+          )}
         </Card>
 
-        <Card title="Signal Rules" size="small" bordered={false} className="sidebar-card">
-          <div className="sidebar-card__actions">
+        <Card
+          title="Signal Rules"
+          size="small"
+          bordered={false}
+          className="sidebar-card"
+          extra={
             <Button type="link" size="small" onClick={() => openInfo("signals")}>
               Describe
             </Button>
+          }
+        >
+          <div className="form-grid form-grid--signals">
+            <Form.Item
+              label="Combination Policy"
+              name="policy"
+              className="form-grid__item form-grid__item--span-2"
+            >
+              <Select
+                options={[
+                  { label: "Any", value: "any" },
+                  { label: "All", value: "all" },
+                  { label: "At least k", value: "atleast_k" },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item label="k" name="k" className="form-grid__item">
+              <InputNumber min={1} max={7} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item label="Max Horizon (days)" name="max_horizon" className="form-grid__item">
+              <InputNumber min={1} max={10} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item label="Histogram Horizon (days)" name="hist_horizon" className="form-grid__item">
+              <InputNumber min={1} max={10} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item label="Histogram Bins" name="hist_bins" className="form-grid__item">
+              <InputNumber min={5} max={60} style={{ width: "100%" }} />
+            </Form.Item>
           </div>
-          <Form.Item
-            label="Combination Policy"
-            name="policy"
-          >
-            <Select
-              options={[
-                { label: "Any", value: "any" },
-                { label: "All", value: "all" },
-                { label: "At least k", value: "atleast_k" },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item
-            label="k"
-            name="k"
-          >
-            <InputNumber min={1} max={7} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item
-            label="Max Horizon (days)"
-            name="max_horizon"
-          >
-            <InputNumber min={1} max={10} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item
-            label="Histogram Horizon (days)"
-            name="hist_horizon"
-          >
-            <InputNumber min={1} max={10} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item
-            label="Histogram Bins"
-            name="hist_bins"
-            extra="Number of buckets when summarising forward returns."
-          >
-            <InputNumber min={5} max={60} style={{ width: "100%" }} />
-          </Form.Item>
         </Card>
 
         <Space
@@ -953,7 +916,6 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
             <Button onClick={handleReset}>Reset</Button>
           </Space>
           <Space>
-            <Button onClick={handleDownloadSelections}>Download Selection</Button>
             <Button onClick={handleSavePreset}>Save Preset</Button>
           </Space>
         </Space>
