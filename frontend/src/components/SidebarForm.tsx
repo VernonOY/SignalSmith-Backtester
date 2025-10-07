@@ -4,7 +4,6 @@ import {
   Card,
   DatePicker,
   Form,
-  Input,
   InputNumber,
   Modal,
   Select,
@@ -28,7 +27,7 @@ const LOOKBACK_YEARS = 5;
 
 type IndicatorKey = "rsi" | "macd" | "obv" | "ema" | "adx" | "aroon" | "stoch" | "signals";
 
-type InfoModalKey = IndicatorKey | "execution" | "universe";
+type InfoModalKey = IndicatorKey | "strategy" | "execution" | "universe";
 
 interface SidebarFormProps {
   loading: boolean;
@@ -41,15 +40,37 @@ const getEarliestAllowed = () => {
   return candidate.isBefore(MIN_DATE) ? MIN_DATE : candidate;
 };
 
-const DEFAULT_STRATEGY_VALUES: Record<string, unknown> = {
-  enable_rsi: true,
-  use_macd: false,
-  use_obv: false,
-  use_ema: true,
-  use_adx: false,
-  use_aroon: false,
-  use_stoch: false,
-  rsi_rule: { mode: "oversold", threshold: 30 },
+const strategyPresets: Record<string, Record<string, unknown>> = {
+  mean_reversion: {
+    enable_rsi: true,
+    use_macd: false,
+    use_obv: false,
+    use_ema: true,
+    use_adx: false,
+    use_aroon: false,
+    use_stoch: false,
+    rsi_rule: { mode: "oversold", threshold: 30 },
+  },
+  momentum: {
+    enable_rsi: false,
+    use_macd: true,
+    use_obv: true,
+    use_ema: true,
+    use_adx: true,
+    use_aroon: false,
+    use_stoch: true,
+    stoch_rule: "signal",
+    stoch_threshold: 20,
+  },
+  multifactor: {
+    enable_rsi: true,
+    use_macd: true,
+    use_obv: true,
+    use_ema: true,
+    use_adx: true,
+    use_aroon: true,
+    use_stoch: true,
+  },
 };
 
 const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
@@ -122,6 +143,13 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
     const values = form.getFieldsValue(true);
     const rows = buildSelectionRows(values);
     downloadCSV("parameter_selection.csv", ["Section", "Parameter", "Value"], rows);
+  };
+
+  const handleStrategyChange = (value: string) => {
+    const preset = strategyPresets[value];
+    if (preset) {
+      form.setFieldsValue(preset);
+    }
   };
 
   const maxHorizon = Form.useWatch("max_horizon", form);
@@ -245,10 +273,8 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
         }
       : { use: false };
 
-    const strategyValue = values.strategy ?? "mean_reversion";
-
     const payload: BacktestRequest = {
-      strategy: strategyValue,
+      strategy: values.strategy,
       start: start.format("YYYY-MM-DD"),
       end: end.format("YYYY-MM-DD"),
       indicators: indicatorsPayload,
@@ -268,6 +294,26 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
   const renderInfoContent = (key: InfoModalKey | null): ReactNode => {
     if (!key) return null;
     switch (key) {
+      case "strategy":
+        return (
+          <>
+            <Paragraph>
+              Strategy presets load curated indicator blends inspired by common discretionary playbooks. <Text strong>Mean
+              Reversion</Text> emphasises RSI extremes and EMA crosses to hunt for prices that have stretched too far from trend.
+              <Text strong>Momentum</Text> highlights MACD, OBV, and stochastic agreement to ride persistent directional moves.
+              <Text strong>Multifactor</Text> activates every study so you can tune confirmation rules manually. You can always
+              adjust any field after selecting a preset to tailor the logic to your preferred style.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Strategy.</Text> Select the preset to determine which indicators are switched on by default.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Backtest Range.</Text> Pick start and end dates between 2020-01-01 and today. The span may not exceed five
+              calendar years so the test stays within the available history and avoids comparing regimes with materially different
+              liquidity or volatility backdrops.
+            </Paragraph>
+          </>
+        );
       case "execution":
         return (
           <>
@@ -494,6 +540,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
   };
 
   const infoTitles: Record<InfoModalKey, string> = {
+    strategy: "Strategy Settings",
     execution: "Execution Settings",
     rsi: "Relative Strength Index (RSI)",
     macd: "Moving Average Convergence Divergence (MACD)",
@@ -526,7 +573,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
         onFinish={submit}
         initialValues={{
           strategy: "mean_reversion",
-          ...DEFAULT_STRATEGY_VALUES,
+          ...strategyPresets.mean_reversion,
           date: [defaultStart, today],
           capital: 100000,
           fee_bps: 1,
@@ -555,36 +602,46 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
           k: 2,
           max_horizon: 10,
           hist_horizon: 1,
-          hist_bins: 5,
+          hist_bins: 20,
           filters: {},
         }}
       >
-        <Card title="Run Settings" size="small" bordered={false} className="sidebar-card">
-          <div className="sidebar-card__actions">
+        <Card title="Strategy" size="small" bordered={false} className="sidebar-card">
+          <Space style={{ marginBottom: 8 }} size={8}>
+            <Button type="text" size="small" onClick={() => openInfo("strategy")}>
+              Strategy Info
+            </Button>
             <Button type="text" size="small" onClick={() => openInfo("execution")}>
               Execution Info
             </Button>
-          </div>
-          <Form.Item name="strategy" hidden initialValue="mean_reversion">
-            <Input />
-          </Form.Item>
-          <div className="form-grid form-grid--two form-grid--date-priority">
+          </Space>
+          <div className="form-grid form-grid--two">
             <Form.Item
-              name="date"
-              label="Backtest Range"
+              name="strategy"
+              label="Strategy"
               rules={[{ required: true }]}
-              className="form-grid__item form-grid__item--range"
+              className="form-grid__item"
             >
-              <RangePicker allowClear={false} style={{ width: "100%" }} disabledDate={disabledDate} />
+              <Select
+                onChange={handleStrategyChange}
+                options={[
+                  { label: "Mean Reversion", value: "mean_reversion" },
+                  { label: "Momentum", value: "momentum" },
+                  { label: "Multifactor", value: "multifactor" },
+                ]}
+              />
             </Form.Item>
-            <Form.Item
-              label="Initial Capital"
-              name="capital"
-              className="form-grid__item form-grid__item--capital"
-            >
+            <Form.Item label="Initial Capital" name="capital" className="form-grid__item">
               <InputNumber min={0} style={{ width: "100%" }} prefix="$" />
             </Form.Item>
           </div>
+          <Form.Item
+            name="date"
+            label="Backtest Range"
+            rules={[{ required: true }]}
+          >
+            <RangePicker allowClear={false} style={{ width: "100%" }} disabledDate={disabledDate} />
+          </Form.Item>
           <div className="form-grid form-grid--four">
             <Form.Item label="Fee (bps)" name="fee_bps" className="form-grid__item">
               <InputNumber min={0} max={100} style={{ width: "100%" }} />
