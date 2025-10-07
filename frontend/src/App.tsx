@@ -422,13 +422,13 @@ const App = () => {
     >
       <div className="app-shell">
         <PanelGroup direction="horizontal">
-          <Panel defaultSize={28} minSize={18} maxSize={35} className="panel panel--sidebar">
+          <Panel defaultSize={22} minSize={15} maxSize={25} className="panel panel--sidebar">
             <div className="sidebar-panel">
               <SidebarForm loading={loading} onSubmit={handleSubmit} />
             </div>
           </Panel>
           <PanelResizeHandle className="resize-handle" />
-          <Panel defaultSize={72} minSize={40} className="panel panel--content">
+          <Panel defaultSize={78} minSize={40} className="panel panel--content">
             <div className="results-panel">
               {!response && (
                 <Card className="result-card intro-card">
@@ -441,107 +441,93 @@ const App = () => {
 
               {response && (
                 <div className="results-container">
-                  <PanelGroup direction="horizontal" className="results-top-panels">
-                    <Panel
-                      defaultSize={response.histogram ? 50 : 100}
-                      minSize={35}
-                      className="results-top-panel"
+                  <div className="results-top-grid">
+                    <Card
+                      className={`result-card overview-card${overviewExpanded ? " overview-card--expanded" : ""}`}
                     >
-                      <div className="results-top-panel__content">
-                        <Card
-                          className={`result-card overview-card${overviewExpanded ? " overview-card--expanded" : ""}`}
-                        >
-                          <div className="card-header card-header--compact">
-                            <Title level={4}>Backtest Overview</Title>
-                            <Space size={8} wrap align="center">
-                              <Button size="small" type="primary" onClick={handleDownloadReport}>
-                                Download Report
-                              </Button>
-                              <Button size="small" onClick={handleDownloadSummary}>
-                                Download JSON
-                              </Button>
-                              <Button size="small" onClick={handleDownloadMetrics}>
-                                Metrics CSV
-                              </Button>
-                              <Button
-                                size="small"
-                                type="text"
-                                onClick={() => setOverviewExpanded((prev) => !prev)}
-                              >
-                                {overviewExpanded ? "Hide details" : "Show details"}
-                              </Button>
-                            </Space>
+                      <div className="card-header card-header--compact">
+                        <Title level={4}>Backtest Overview</Title>
+                        <Space size={8} wrap align="center">
+                          <Button size="small" type="primary" onClick={handleDownloadReport}>
+                            Download Report
+                          </Button>
+                          <Button size="small" onClick={handleDownloadSummary}>
+                            Download JSON
+                          </Button>
+                          <Button size="small" onClick={handleDownloadMetrics}>
+                            Metrics CSV
+                          </Button>
+                          <Button
+                            size="small"
+                            type="text"
+                            onClick={() => setOverviewExpanded((prev) => !prev)}
+                          >
+                            {overviewExpanded ? "Hide details" : "Show details"}
+                          </Button>
+                        </Space>
+                      </div>
+                      <div className="overview-summary overview-summary--compact">
+                        {summaryItems.map((item) => (
+                          <div key={item.label} className="summary-item">
+                            <span>{item.label}</span>
+                            <strong>{item.value}</strong>
                           </div>
-                          <div className="overview-summary overview-summary--compact">
-                            {summaryItems.map((item) => (
-                              <div key={item.label} className="summary-item">
-                                <span>{item.label}</span>
-                                <strong>{item.value}</strong>
+                        ))}
+                      </div>
+                      {overviewExpanded && (
+                        <div className="overview-details">
+                          {runSettingItems.length > 0 && (
+                            <div className="overview-settings">
+                              <h4>Run settings</h4>
+                              <dl className="settings-list">
+                                {runSettingItems.map((item) => (
+                                  <div key={item.label} className="settings-list__item">
+                                    <dt>{item.label}</dt>
+                                    <dd>{item.value}</dd>
+                                  </div>
+                                ))}
+                              </dl>
+                            </div>
+                          )}
+                          <MetricsTable metrics={response.metrics} />
+                        </div>
+                      )}
+                    </Card>
+
+                    {response.histogram && (
+                      <Card className="result-card histogram-card">
+                        <div className="card-header">
+                          <Title level={4}>Return Distribution</Title>
+                          <Space size={8}>
+                            <Button size="small" onClick={handleDownloadHistogram}>
+                              Download CSV
+                            </Button>
+                            <Button size="small" onClick={handleDownloadHistogramImage}>
+                              Download PNG
+                            </Button>
+                          </Space>
+                        </div>
+                        {histogramInfoItems.length > 0 && (
+                          <div className="histogram-info">
+                            {histogramInfoItems.map((item) => (
+                              <div key={item.label} className="info-pill">
+                                <span className="info-pill__label">{item.label}</span>
+                                <span className="info-pill__value">{item.value}</span>
                               </div>
                             ))}
                           </div>
-                          {overviewExpanded && (
-                            <div className="overview-details">
-                              <MetricsTable metrics={response.metrics} />
-                              {runSettingItems.length > 0 && (
-                                <div className="overview-settings">
-                                  <h4>Run settings</h4>
-                                  <dl className="settings-list">
-                                    {runSettingItems.map((item) => (
-                                      <div key={item.label} className="settings-list__item">
-                                        <dt>{item.label}</dt>
-                                        <dd>{item.value}</dd>
-                                      </div>
-                                    ))}
-                                  </dl>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </Card>
-                      </div>
-                    </Panel>
-                    {response.histogram && (
-                      <>
-                        <PanelResizeHandle className="resize-handle resize-handle--inner" />
-                        <Panel defaultSize={50} minSize={35} className="results-top-panel">
-                          <div className="results-top-panel__content">
-                            <Card className="result-card histogram-card">
-                              <div className="card-header">
-                                <Title level={4}>Return Distribution</Title>
-                                <Space size={8}>
-                                  <Button size="small" onClick={handleDownloadHistogram}>
-                                    Download CSV
-                                  </Button>
-                                  <Button size="small" onClick={handleDownloadHistogramImage}>
-                                    Download PNG
-                                  </Button>
-                                </Space>
-                              </div>
-                              {histogramInfoItems.length > 0 && (
-                                <div className="histogram-info">
-                                  {histogramInfoItems.map((item) => (
-                                    <div key={item.label} className="info-pill">
-                                      <span className="info-pill__label">{item.label}</span>
-                                      <span className="info-pill__value">{item.value}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                              <HistogramChart
-                                data={response.histogram}
-                                loading={loading}
-                                height={360}
-                                onReady={(instance) => {
-                                  histogramChartRef.current = instance;
-                                }}
-                              />
-                            </Card>
-                          </div>
-                        </Panel>
-                      </>
+                        )}
+                        <HistogramChart
+                          data={response.histogram}
+                          loading={loading}
+                          height={360}
+                          onReady={(instance) => {
+                            histogramChartRef.current = instance;
+                          }}
+                        />
+                      </Card>
                     )}
-                  </PanelGroup>
+                  </div>
 
                   {response.indicator_statistics && Object.keys(response.indicator_statistics).length > 0 && (
                     <Card className="result-card">
