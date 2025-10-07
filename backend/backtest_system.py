@@ -584,80 +584,6 @@ def calculate_statistics(fwd_returns: pd.DataFrame) -> pd.DataFrame:
     return stats
 
 
-def _run_baseline_backtest(
-    adj: pd.DataFrame,
-    tickers: Sequence[str],
-    max_horizon: int,
-    hist_horizon: int,
-) -> Dict[str, pd.DataFrame]:
-    return_cols = [f"fwd_ret_{h}d" for h in range(1, max_horizon + 1)]
-    price_frame = adj[tickers] if tickers else adj.copy()
-    price_frame = price_frame.dropna(how="all")
-    price_frame = price_frame.ffill().dropna(how="all")
-
-    empty_picks = pd.DataFrame(
-        columns=[
-            "date",
-            "symbol",
-            "adj_close",
-            "trigger_count",
-            "triggered_signals",
-            *return_cols,
-        ]
-    )
-    empty_stats = calculate_statistics(pd.DataFrame(columns=return_cols))
-    empty_hist = pd.DataFrame(columns=["date", "symbol", f"fwd_ret_{hist_horizon}d"])
-    universe_df = pd.DataFrame({"symbol": tickers})
-
-    if price_frame.empty or len(price_frame) < 2:
-        return {
-            "picks": empty_picks,
-            "statistics": empty_stats,
-            "hist_data": empty_hist,
-            "universe": universe_df,
-        }
-
-    log_returns = np.log(price_frame).diff()
-    mean_log_ret = log_returns.mean(axis=1, skipna=True).fillna(0.0)
-    if mean_log_ret.empty:
-        return {
-            "picks": empty_picks,
-            "statistics": empty_stats,
-            "hist_data": empty_hist,
-            "universe": universe_df,
-        }
-
-    mean_log_ret.iloc[0] = 0.0
-    cumulative = mean_log_ret.cumsum()
-    index_series = np.exp(cumulative) * 100.0
-    index_series.name = "BASELINE"
-
-    fwd_returns = compute_forward_returns(index_series, max_horizon=max_horizon)
-    picks_df = fwd_returns.copy()
-    picks_df.insert(0, "triggered_signals", "Baseline")
-    picks_df.insert(0, "trigger_count", 0)
-    picks_df.insert(0, "adj_close", index_series.reindex(fwd_returns.index).values)
-    picks_df.insert(0, "symbol", "BASELINE")
-    picks_df.insert(0, "date", fwd_returns.index)
-    picks_df = picks_df.dropna(subset=return_cols, how="all")
-    picks_df.reset_index(drop=True, inplace=True)
-
-    stats_df = calculate_statistics(picks_df[return_cols])
-
-    hist_col = f"fwd_ret_{hist_horizon}d"
-    if hist_col in picks_df.columns:
-        hist_df = picks_df[["date", "symbol", hist_col]].dropna(subset=[hist_col])
-    else:
-        hist_df = empty_hist.copy()
-
-    return {
-        "picks": picks_df,
-        "statistics": stats_df,
-        "hist_data": hist_df,
-        "universe": universe_df,
-    }
-
-
 def run_backtest_for_all(
     adj_wide: pd.DataFrame,
     high_wide: pd.DataFrame,
@@ -676,6 +602,8 @@ def run_backtest_for_all(
     and the filtered ``universe`` of tickers that were evaluated.
     """
     cfg = IndicatorConfig.from_mapping(config)
+    if not cfg.enabled():
+        raise ValueError("At least one indicator must be enabled.")
     if hist_horizon < 1 or hist_horizon > max_horizon:
         raise ValueError("hist_horizon must be between 1 and max_horizon.")
 
@@ -703,9 +631,6 @@ def run_backtest_for_all(
     ]
     if cfg.use_obv and volume is None:
         raise ValueError("Volume data is required when OBV is enabled.")
-
-    if not cfg.enabled():
-        return _run_baseline_backtest(adj, tickers, max_horizon=max_horizon, hist_horizon=hist_horizon)
 
     min_obs = max(
         max_horizon + 1,
