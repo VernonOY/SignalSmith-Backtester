@@ -24,9 +24,11 @@ const DEFAULT_PRESET_KEY = "backtest-sidebar-preset";
 const MIN_DATE = dayjs("2020-01-01");
 const LOOKBACK_YEARS = 5;
 
-type IndicatorKey = "rsi" | "macd" | "obv" | "ema" | "adx" | "aroon" | "stoch" | "signals";
+type IndicatorKey = "rsi" | "macd" | "obv" | "ema" | "adx" | "aroon" | "stoch";
 
-type InfoModalKey = IndicatorKey | "execution" | "universe";
+type InfoModalKey = IndicatorKey | "signals" | "execution" | "universe";
+
+const INDICATOR_KEYS: IndicatorKey[] = ["rsi", "macd", "obv", "aroon", "ema", "adx", "stoch"];
 
 interface SidebarFormProps {
   loading: boolean;
@@ -55,6 +57,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
   const [meta, setMeta] = useState<UniverseMeta>({ sectors: [], mcap_buckets: [] });
   const [activeInfo, setActiveInfo] = useState<InfoModalKey | null>(null);
   const [showUniverseFilters, setShowUniverseFilters] = useState(false);
+  const [showIndicatorDetails, setShowIndicatorDetails] = useState(false);
 
   const openInfo = (key: InfoModalKey) => {
     setActiveInfo(key);
@@ -110,6 +113,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
   const handleReset = () => {
     form.resetFields();
     setShowUniverseFilters(false);
+    setShowIndicatorDetails(false);
   };
 
   const handleSavePreset = () => {
@@ -613,7 +617,24 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
           size="small"
           bordered={false}
           className="sidebar-card sidebar-card--indicators"
+          extra={
+            <Button type="link" size="small" onClick={() => setShowIndicatorDetails((prev) => !prev)}>
+              {showIndicatorDetails ? "Hide" : "Describe"}
+            </Button>
+          }
         >
+          {showIndicatorDetails && (
+            <div className="indicator-describe">
+              {INDICATOR_KEYS.map((key) => (
+                <div key={key} className="indicator-describe__section">
+                  <Paragraph className="indicator-describe__heading">
+                    <Text strong>{infoTitles[key]}</Text>
+                  </Paragraph>
+                  {renderInfoContent(key)}
+                </div>
+              ))}
+            </div>
+          )}
           <div className="indicator-grid">
             <div className="indicator-grid__item">
               <div className="indicator-header">
@@ -622,9 +643,6 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                   <Form.Item name="enable_rsi" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle RSI" />
                   </Form.Item>
-                  <Button type="text" size="small" onClick={() => openInfo("rsi")}>
-                    Describe
-                  </Button>
                 </Space>
               </div>
               <div className="indicator-fields">
@@ -657,9 +675,6 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                   <Form.Item name="use_macd" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle MACD" />
                   </Form.Item>
-                  <Button type="text" size="small" onClick={() => openInfo("macd")}>
-                    Describe
-                  </Button>
                 </Space>
               </div>
               <div className="indicator-fields">
@@ -691,9 +706,6 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                   <Form.Item name="use_obv" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle OBV" />
                   </Form.Item>
-                  <Button type="text" size="small" onClick={() => openInfo("obv")}>
-                    Describe
-                  </Button>
                 </Space>
               </div>
               <div className="indicator-fields">
@@ -730,9 +742,6 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                   <Form.Item name="use_aroon" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle Aroon" />
                   </Form.Item>
-                  <Button type="text" size="small" onClick={() => openInfo("aroon")}>
-                    Describe
-                  </Button>
                 </Space>
               </div>
               <div className="indicator-fields">
@@ -757,9 +766,6 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                       <Form.Item name="use_ema" valuePropName="checked" noStyle>
                         <Switch size="small" aria-label="Toggle EMA" />
                       </Form.Item>
-                      <Button type="text" size="small" onClick={() => openInfo("ema")}>
-                        Describe
-                      </Button>
                     </Space>
                   </div>
                   <div className="indicator-fields indicator-fields--compact">
@@ -779,9 +785,6 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                       <Form.Item name="use_adx" valuePropName="checked" noStyle>
                         <Switch size="small" aria-label="Toggle ADX" />
                       </Form.Item>
-                      <Button type="text" size="small" onClick={() => openInfo("adx")}>
-                        Describe
-                      </Button>
                     </Space>
                   </div>
                   <div className="indicator-fields indicator-fields--compact">
@@ -803,9 +806,6 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                   <Form.Item name="use_stoch" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle Stochastic" />
                   </Form.Item>
-                  <Button type="text" size="small" onClick={() => openInfo("stoch")}>
-                    Describe
-                  </Button>
                 </Space>
               </div>
               <div className="indicator-fields indicator-fields--triple">
