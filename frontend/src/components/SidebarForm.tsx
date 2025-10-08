@@ -639,22 +639,32 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
             <div className="indicator-grid__item">
               <div className="indicator-header">
                 <Text strong>RSI</Text>
-                <Space size={6} align="center" className="indicator-header__actions">
+                <div className="indicator-header__toggle">
                   <Form.Item name="enable_rsi" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle RSI" />
                   </Form.Item>
-                </Space>
+                </div>
               </div>
-              <div className="indicator-fields">
+              <div className="indicator-fields indicator-fields--two">
                 <Form.Item
                   label="Mode"
                   name={["rsi_rule", "mode"]}
-                  className="indicator-field indicator-field--full"
+                  className="indicator-field indicator-field--full indicator-field--compact-select"
+                  extra={
+                    <div className="indicator-hint">
+                      <div>
+                        <strong>Mode A</strong> — Oversold (≤ threshold)
+                      </div>
+                      <div>
+                        <strong>Mode B</strong> — Overbought (≥ threshold)
+                      </div>
+                    </div>
+                  }
                 >
                   <Select
                     options={[
-                      { label: "Oversold (<= threshold)", value: "oversold" },
-                      { label: "Overbought (>= threshold)", value: "overbought" },
+                      { label: "Mode A", value: "oversold" },
+                      { label: "Mode B", value: "overbought" },
                     ]}
                     disabled={!enableRsi}
                   />
@@ -671,13 +681,13 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
             <div className="indicator-grid__item">
               <div className="indicator-header">
                 <Text strong>MACD</Text>
-                <Space size={6} align="center" className="indicator-header__actions">
+                <div className="indicator-header__toggle">
                   <Form.Item name="use_macd" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle MACD" />
                   </Form.Item>
-                </Space>
+                </div>
               </div>
-              <div className="indicator-fields">
+              <div className="indicator-fields indicator-fields--two">
                 <Form.Item label="Rule" name="macd_rule" className="indicator-field">
                   <Select
                     options={[
@@ -702,17 +712,17 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
             <div className="indicator-grid__item">
               <div className="indicator-header">
                 <Text strong>OBV</Text>
-                <Space size={6} align="center" className="indicator-header__actions">
+                <div className="indicator-header__toggle">
                   <Form.Item name="use_obv" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle OBV" />
                   </Form.Item>
-                </Space>
+                </div>
               </div>
               <div className="indicator-fields">
                 <Form.Item
                   label="Rule"
                   name="obv_rule"
-                  className="indicator-field indicator-field--full"
+                  className="indicator-field indicator-field--full indicator-field--compact-select"
                   extra={
                     <div className="indicator-hint">
                       <div>
@@ -738,14 +748,14 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
             <div className="indicator-grid__item">
               <div className="indicator-header">
                 <Text strong>AROON</Text>
-                <Space size={6} align="center" className="indicator-header__actions">
+                <div className="indicator-header__toggle">
                   <Form.Item name="use_aroon" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle Aroon" />
                   </Form.Item>
-                </Space>
+                </div>
               </div>
-              <div className="indicator-fields">
-                <Form.Item label="Lookback" name="aroon_n" className="indicator-field">
+              <div className="indicator-fields indicator-fields--two">
+                <Form.Item label="Lookback" name="aroon_n" className="indicator-field indicator-field--full">
                   <InputNumber min={5} max={50} style={{ width: "100%" }} disabled={!useAroon} />
                 </Form.Item>
                 <Form.Item label="Aroon Up" name="aroon_up" className="indicator-field">
@@ -762,13 +772,13 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                 <div className="indicator-stack__section">
                   <div className="indicator-header indicator-header--stacked">
                     <Text strong>EMA</Text>
-                    <Space size={6} align="center" className="indicator-header__actions">
+                    <div className="indicator-header__toggle">
                       <Form.Item name="use_ema" valuePropName="checked" noStyle>
                         <Switch size="small" aria-label="Toggle EMA" />
                       </Form.Item>
-                    </Space>
+                    </div>
                   </div>
-                  <div className="indicator-fields indicator-fields--compact">
+                  <div className="indicator-fields indicator-fields--compact indicator-fields--two">
                     <Form.Item label="Short" name="ema_short" className="indicator-field">
                       <InputNumber min={2} max={50} style={{ width: "100%" }} disabled={!useEma} />
                     </Form.Item>
@@ -781,13 +791,13 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                 <div className="indicator-stack__section">
                   <div className="indicator-header indicator-header--stacked">
                     <Text strong>ADX</Text>
-                    <Space size={6} align="center" className="indicator-header__actions">
+                    <div className="indicator-header__toggle">
                       <Form.Item name="use_adx" valuePropName="checked" noStyle>
                         <Switch size="small" aria-label="Toggle ADX" />
                       </Form.Item>
-                    </Space>
+                    </div>
                   </div>
-                  <div className="indicator-fields indicator-fields--compact">
+                  <div className="indicator-fields indicator-fields--compact indicator-fields--two">
                     <Form.Item label="Lookback" name="adx_n" className="indicator-field">
                       <InputNumber min={5} max={50} style={{ width: "100%" }} disabled={!useAdx} />
                     </Form.Item>
@@ -802,13 +812,13 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
             <div className="indicator-grid__item">
               <div className="indicator-header">
                 <Text strong>STOCH</Text>
-                <Space size={6} align="center" className="indicator-header__actions">
+                <div className="indicator-header__toggle">
                   <Form.Item name="use_stoch" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle Stochastic" />
                   </Form.Item>
-                </Space>
+                </div>
               </div>
-              <div className="indicator-fields indicator-fields--triple">
+              <div className="indicator-fields indicator-fields--two">
                 <Form.Item label="Rule" name="stoch_rule" className="indicator-field indicator-field--full">
                   <Select
                     options={[
@@ -842,7 +852,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
             title="Universe Filters"
             size="small"
             bordered={false}
-            className="sidebar-card sidebar-card--half"
+            className="sidebar-card"
             extra={
               <Space size={4} align="center">
                 <Button type="link" size="small" onClick={() => openInfo("universe")}>
@@ -880,7 +890,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
             title="Signal Rules"
             size="small"
             bordered={false}
-            className="sidebar-card sidebar-card--half"
+            className="sidebar-card"
             extra={
               <Button type="link" size="small" onClick={() => openInfo("signals")}>
                 Describe
