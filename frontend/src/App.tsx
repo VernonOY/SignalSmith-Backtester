@@ -7,7 +7,7 @@ import { api } from "./api/client";
 import HistogramChart from "./components/HistogramChart";
 import IndicatorStatsTable from "./components/IndicatorStatsTable";
 import EquityChart from "./components/EquityChart";
-import { formatCurrency, formatNumber } from "./utils/format";
+import { formatCurrency, formatNumber, formatPercent } from "./utils/format";
 
 const { Title, Text } = Typography;
 
@@ -15,6 +15,22 @@ interface InfoTag {
   label: string;
   value: string;
 }
+
+interface MetricConfig {
+  key: string;
+  label: string;
+  format: (value: number) => string;
+}
+
+const EQUITY_METRICS: MetricConfig[] = [
+  { key: "sharpe", label: "Sharpe Ratio", format: (value) => value.toFixed(2) },
+  { key: "sortino", label: "Sortino Ratio", format: (value) => value.toFixed(2) },
+  { key: "annualized_return", label: "Annualized Return", format: (value) => formatPercent(value, 2) },
+  { key: "annualized_vol", label: "Annualized Volatility", format: (value) => formatPercent(value, 2) },
+  { key: "max_drawdown", label: "Max Drawdown", format: (value) => formatPercent(value, 2) },
+  { key: "win_rate", label: "Win Rate", format: (value) => formatPercent(value, 2) },
+  { key: "avg_trade_return", label: "Avg Trade Return", format: (value) => formatPercent(value, 2) },
+];
 
 const formatFilters = (filters?: Filters | null): InfoTag[] => {
   if (!filters) return [];
@@ -84,6 +100,20 @@ const App = () => {
 
   const universeFilterTags = formatFilters(lastRunConfig?.filters);
 
+  const highlightMetrics: { key: string; label: string; value: string }[] = response?.metrics
+    ? (EQUITY_METRICS.map((config) => {
+        const rawValue = response.metrics[config.key];
+        if (typeof rawValue !== "number" || Number.isNaN(rawValue)) {
+          return null;
+        }
+        return {
+          key: config.key,
+          label: config.label,
+          value: config.format(rawValue),
+        };
+      }).filter(Boolean) as { key: string; label: string; value: string }[])
+    : [];
+
   return (
     <ConfigProvider
       theme={{
@@ -93,73 +123,85 @@ const App = () => {
         },
       }}
     >
-      <div className="app-shell">
-        <PanelGroup direction="horizontal">
-          <Panel defaultSize={28} minSize={18} maxSize={50} className="panel panel--sidebar">
-            <div className="sidebar-panel">
-              <SidebarForm loading={loading} onSubmit={handleSubmit} />
-            </div>
-          </Panel>
-          <PanelResizeHandle className="resize-handle" />
-          <Panel defaultSize={72} minSize={40} className="panel panel--content">
-            <div className="results-panel">
-              {!response && (
-                <Card className="result-card intro-card">
-                  <Title level={3}>SignalSmith Backtester</Title>
-                  <Text type="secondary">
-                    Configure parameters on the left and run the backtest to see equity performance and distribution analytics.
-                  </Text>
-                </Card>
-              )}
+      <div className="app-scale-wrapper">
+        <div className="app-shell">
+          <PanelGroup direction="horizontal">
+            <Panel defaultSize={28} minSize={18} maxSize={50} className="panel panel--sidebar">
+              <div className="sidebar-panel">
+                <SidebarForm loading={loading} onSubmit={handleSubmit} />
+              </div>
+            </Panel>
+            <PanelResizeHandle className="resize-handle" />
+            <Panel defaultSize={72} minSize={40} className="panel panel--content">
+              <div className="results-panel">
+                {!response && (
+                  <Card className="result-card intro-card">
+                    <Title level={3}>SignalSmith Backtester</Title>
+                    <Text type="secondary">
+                      Configure parameters on the left and run the backtest to see equity performance and distribution analytics.
+                    </Text>
+                  </Card>
+                )}
 
-              {response && (
-                <div className="results-container">
-                  <div className="results-grid results-grid--charts">
-                    {response.histogram && (
-                      <Card className="result-card result-card--chart histogram-card">
+                {response && (
+                  <div className="results-container">
+                    <div className="results-grid results-grid--charts">
+                      {response.histogram && (
+                        <Card className="result-card result-card--chart histogram-card">
+                          <div className="card-header">
+                            <Title level={4}>Return Distribution</Title>
+                          </div>
+                          {(histogramInfoItems.length > 0 || universeFilterTags.length > 0) && (
+                            <div className="histogram-info">
+                              {[...histogramInfoItems, ...universeFilterTags].map((item) => (
+                                <div key={`${item.label}-${item.value}`} className="info-pill">
+                                  <span className="info-pill__label">{item.label}</span>
+                                  <span className="info-pill__value">{item.value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <HistogramChart data={response.histogram} loading={loading} />
+                        </Card>
+                      )}
+
+                      <Card className="result-card result-card--chart">
                         <div className="card-header">
-                          <Title level={4}>Return Distribution</Title>
+                          <Title level={4}>Equity Curve</Title>
                         </div>
-                        {(histogramInfoItems.length > 0 || universeFilterTags.length > 0) && (
-                          <div className="histogram-info">
-                            {[...histogramInfoItems, ...universeFilterTags].map((item) => (
-                              <div key={`${item.label}-${item.value}`} className="info-pill">
-                                <span className="info-pill__label">{item.label}</span>
-                                <span className="info-pill__value">{item.value}</span>
+                        <EquityChart data={response.equity_curve} loading={loading} />
+                        {highlightMetrics.length > 0 && (
+                          <div className="metrics-grid metrics-grid--compact equity-metrics">
+                            {highlightMetrics.map((metric) => (
+                              <div key={metric.key} className="metrics-item metrics-item--compact">
+                                <h4>{metric.label}</h4>
+                                <span>{metric.value}</span>
                               </div>
                             ))}
                           </div>
                         )}
-                        <HistogramChart data={response.histogram} loading={loading} />
+                      </Card>
+                    </div>
+
+                    {response.indicator_statistics && (
+                      <Card className="result-card result-card--wide">
+                        <div className="card-header">
+                          <Title level={4}>Indicator Statistics</Title>
+                        </div>
+                        <IndicatorStatsTable stats={response.indicator_statistics} />
                       </Card>
                     )}
-
-                    <Card className="result-card result-card--chart">
-                      <div className="card-header">
-                        <Title level={4}>Equity Curve</Title>
-                      </div>
-                      <EquityChart data={response.equity_curve} loading={loading} />
-                    </Card>
                   </div>
-
-                  {response.indicator_statistics && (
-                    <Card className="result-card result-card--wide">
-                      <div className="card-header">
-                        <Title level={4}>Indicator Statistics</Title>
-                      </div>
-                      <IndicatorStatsTable stats={response.indicator_statistics} />
-                    </Card>
-                  )}
-                </div>
-              )}
-            </div>
-          </Panel>
-        </PanelGroup>
+                )}
+              </div>
+            </Panel>
+          </PanelGroup>
+        </div>
+        <footer className="app-footer">
+          <p>By Wendi OUYANG – Chinese University of Hong Kong, Shenzhen</p>
+          <p>Contact: vernonouyang@gmail.com</p>
+        </footer>
       </div>
-      <footer className="app-footer">
-        <p>By Wendi OUYANG – Chinese University of Hong Kong, Shenzhen</p>
-        <p>Contact: vernonouyang@gmail.com</p>
-      </footer>
     </ConfigProvider>
   );
 };
