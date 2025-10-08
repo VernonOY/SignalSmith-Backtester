@@ -91,6 +91,7 @@ const HistogramChart = ({ data, loading, onReady, height = 400 }: Props) => {
             );
           })}
           <Statistic title="Samples" value={data.sample_size} />
+          <Statistic title="Bins" value={data.bin_count} />
         </div>
       )}
     </div>
