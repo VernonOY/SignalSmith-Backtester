@@ -469,6 +469,7 @@ body {
 
 .indicator-grid {
   --indicator-card-gap: var(--sidebar-section-gap);
+  --indicator-field-width: 124px;
   display: grid;
   gap: var(--indicator-card-gap);
   width: 100%;
@@ -541,8 +542,15 @@ body {
 
 .indicator-fields {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: row dense;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(var(--indicator-field-width), max-content)
+  );
+  grid-auto-columns: minmax(var(--indicator-field-width), max-content);
+  justify-content: flex-start;
   gap: 6px;
+  align-items: start;
 }
 
 .indicator-fields--compact {
@@ -550,19 +558,35 @@ body {
 }
 
 .indicator-fields--single {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(var(--indicator-field-width), max-content);
 }
 
 .indicator-fields--triple {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(var(--indicator-field-width), max-content)
+  );
 }
 
 .indicator-field {
   margin-bottom: 0 !important;
+  width: var(--indicator-field-width);
+  min-width: var(--indicator-field-width);
+  max-width: 100%;
 }
 
 .indicator-field--full {
   grid-column: 1 / -1;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+.indicator-field .ant-input-number,
+.indicator-field .ant-select,
+.indicator-field .ant-picker,
+.indicator-field .ant-input {
+  width: 100%;
 }
 
 
@@ -603,8 +627,8 @@ body {
   }
 
   .indicator-grid__item {
-    width: 100%;
-    max-width: none;
+    width: min(100%, var(--indicator-card-max));
+    max-width: var(--indicator-card-max);
   }
 }
 
@@ -614,11 +638,11 @@ body {
   }
 
   .indicator-fields {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(var(--indicator-field-width), max-content);
   }
 
   .indicator-fields--triple {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(var(--indicator-field-width), max-content);
   }
 }
 
