@@ -471,12 +471,8 @@ body {
 
 
 .indicator-grid {
-  --indicator-card-width: clamp(
-    136px,
-    calc(min(100%, var(--sidebar-section-card-width)) * 0.45),
-    210px
-  );
-  --indicator-field-width: 96px;
+  --indicator-card-width: calc(var(--sidebar-section-card-width) / 2);
+  --indicator-field-width: 110px;
   display: flex;
   flex-wrap: wrap;
   gap: var(--indicator-card-gap);
@@ -539,14 +535,15 @@ body {
 .indicator-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 6px;
-  flex-wrap: wrap;
   margin-bottom: 4px;
 }
 
-.indicator-header__toggle {
+.indicator-header__actions {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
 }
 
 
