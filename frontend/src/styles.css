@@ -52,6 +52,7 @@ body {
 
 .sidebar-form {
   --sidebar-section-min-width: 260px;
+  --sidebar-section-gap: 8px;
   height: 100%;
   overflow-y: auto;
   padding: 0 6px 10px;
@@ -152,16 +153,22 @@ body {
   padding: 8px;
 }
 
+
 .sidebar-card-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(var(--sidebar-section-min-width), 1fr));
-  gap: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sidebar-section-gap);
   width: 100%;
   margin: 0;
 }
 
+.sidebar-card-row .sidebar-card {
+  width: auto;
+}
+
 .sidebar-card--half {
-  width: 100%;
+  flex: 1 1 calc(var(--sidebar-section-min-width) * 2 + var(--sidebar-section-gap));
+  max-width: calc(var(--sidebar-section-min-width) * 2 + var(--sidebar-section-gap));
 }
 
 .sidebar-form .ant-form-item {
@@ -457,11 +464,12 @@ body {
 
 
 .indicator-grid {
-  --indicator-card-gap: 8px;
+  --indicator-card-gap: var(--sidebar-section-gap);
   display: grid;
   gap: var(--indicator-card-gap);
   width: 100%;
-  grid-template-columns: repeat(auto-fit, minmax(var(--sidebar-section-min-width), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(var(--sidebar-section-min-width), var(--sidebar-section-min-width)));
+  justify-content: flex-start;
 }
 
 .indicator-grid__item {
@@ -568,6 +576,11 @@ body {
 
   .indicator-fields--triple {
     grid-template-columns: 1fr;
+  }
+
+  .sidebar-card--half {
+    flex: 1 1 100%;
+    max-width: 100%;
   }
 }
 
