@@ -43,7 +43,11 @@ const EquityChart = ({ data, loading, onReady }: Props) => {
   const formatTickLabel = (value: string) => {
     const parsed = dayjs(value);
     if (!parsed.isValid()) return value;
-    return parsed.format("YYYYMMDD");
+    if (useQuarterTicks) {
+      const quarter = Math.floor(parsed.month() / 3) + 1;
+      return `${parsed.format("YYYY")} Q${quarter}`;
+    }
+    return parsed.format("MMM YY");
   };
 
   const option = {

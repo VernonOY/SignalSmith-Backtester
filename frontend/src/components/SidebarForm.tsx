@@ -639,32 +639,22 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
             <div className="indicator-grid__item">
               <div className="indicator-header">
                 <Text strong>RSI</Text>
-                <div className="indicator-header__toggle">
+                <Space size={6} align="center" className="indicator-header__actions">
                   <Form.Item name="enable_rsi" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle RSI" />
                   </Form.Item>
-                </div>
+                </Space>
               </div>
               <div className="indicator-fields">
                 <Form.Item
                   label="Mode"
                   name={["rsi_rule", "mode"]}
                   className="indicator-field indicator-field--full"
-                  extra={
-                    <div className="indicator-hint">
-                      <div>
-                        <strong>Mode A</strong> — Oversold (≤ threshold)
-                      </div>
-                      <div>
-                        <strong>Mode B</strong> — Overbought (≥ threshold)
-                      </div>
-                    </div>
-                  }
                 >
                   <Select
                     options={[
-                      { label: "Mode A", value: "oversold" },
-                      { label: "Mode B", value: "overbought" },
+                      { label: "Oversold (<= threshold)", value: "oversold" },
+                      { label: "Overbought (>= threshold)", value: "overbought" },
                     ]}
                     disabled={!enableRsi}
                   />
@@ -681,11 +671,11 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
             <div className="indicator-grid__item">
               <div className="indicator-header">
                 <Text strong>MACD</Text>
-                <div className="indicator-header__toggle">
+                <Space size={6} align="center" className="indicator-header__actions">
                   <Form.Item name="use_macd" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle MACD" />
                   </Form.Item>
-                </div>
+                </Space>
               </div>
               <div className="indicator-fields">
                 <Form.Item label="Rule" name="macd_rule" className="indicator-field">
@@ -712,11 +702,11 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
             <div className="indicator-grid__item">
               <div className="indicator-header">
                 <Text strong>OBV</Text>
-                <div className="indicator-header__toggle">
+                <Space size={6} align="center" className="indicator-header__actions">
                   <Form.Item name="use_obv" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle OBV" />
                   </Form.Item>
-                </div>
+                </Space>
               </div>
               <div className="indicator-fields">
                 <Form.Item
@@ -748,11 +738,11 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
             <div className="indicator-grid__item">
               <div className="indicator-header">
                 <Text strong>AROON</Text>
-                <div className="indicator-header__toggle">
+                <Space size={6} align="center" className="indicator-header__actions">
                   <Form.Item name="use_aroon" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle Aroon" />
                   </Form.Item>
-                </div>
+                </Space>
               </div>
               <div className="indicator-fields">
                 <Form.Item label="Lookback" name="aroon_n" className="indicator-field">
@@ -772,11 +762,11 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                 <div className="indicator-stack__section">
                   <div className="indicator-header indicator-header--stacked">
                     <Text strong>EMA</Text>
-                    <div className="indicator-header__toggle">
+                    <Space size={6} align="center" className="indicator-header__actions">
                       <Form.Item name="use_ema" valuePropName="checked" noStyle>
                         <Switch size="small" aria-label="Toggle EMA" />
                       </Form.Item>
-                    </div>
+                    </Space>
                   </div>
                   <div className="indicator-fields indicator-fields--compact">
                     <Form.Item label="Short" name="ema_short" className="indicator-field">
@@ -791,11 +781,11 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                 <div className="indicator-stack__section">
                   <div className="indicator-header indicator-header--stacked">
                     <Text strong>ADX</Text>
-                    <div className="indicator-header__toggle">
+                    <Space size={6} align="center" className="indicator-header__actions">
                       <Form.Item name="use_adx" valuePropName="checked" noStyle>
                         <Switch size="small" aria-label="Toggle ADX" />
                       </Form.Item>
-                    </div>
+                    </Space>
                   </div>
                   <div className="indicator-fields indicator-fields--compact">
                     <Form.Item label="Lookback" name="adx_n" className="indicator-field">
@@ -812,11 +802,11 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
             <div className="indicator-grid__item">
               <div className="indicator-header">
                 <Text strong>STOCH</Text>
-                <div className="indicator-header__toggle">
+                <Space size={6} align="center" className="indicator-header__actions">
                   <Form.Item name="use_stoch" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle Stochastic" />
                   </Form.Item>
-                </div>
+                </Space>
               </div>
               <div className="indicator-fields indicator-fields--triple">
                 <Form.Item label="Rule" name="stoch_rule" className="indicator-field indicator-field--full">
