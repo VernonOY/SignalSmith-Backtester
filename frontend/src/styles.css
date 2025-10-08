@@ -64,7 +64,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--sidebar-section-gap);
-  align-items: flex-end;
+  align-items: stretch;
 }
 
 .sidebar-form .form-row {
@@ -147,10 +147,6 @@ body {
   width: 100%;
 }
 
-.sidebar-form > .sidebar-card {
-  margin-left: auto;
-}
-
 .sidebar-form .ant-card-head {
   min-height: 30px;
   padding: 0 8px;
@@ -173,27 +169,13 @@ body {
   width: 100%;
   margin: 0;
   align-items: stretch;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .sidebar-card-row .sidebar-card {
   flex: 0 0 var(--sidebar-section-card-width);
   width: min(100%, var(--sidebar-section-card-width));
   max-width: var(--sidebar-section-card-width);
-}
-
-@media (max-width: 900px) {
-  .sidebar-form {
-    align-items: stretch;
-  }
-
-  .sidebar-form > .sidebar-card {
-    margin-left: 0;
-  }
-
-  .sidebar-card-row {
-    justify-content: flex-start;
-  }
 }
 
 .sidebar-form .ant-form-item {
@@ -242,7 +224,7 @@ body {
 }
 
 .results-container {
-  padding: 16px 24px 16px 24px;
+  padding: 16px 24px 32px 24px;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -489,12 +471,14 @@ body {
 
 
 .indicator-grid {
+  --indicator-card-width: calc(var(--sidebar-section-card-width) / 2);
   --indicator-field-width: 110px;
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--indicator-card-gap);
   width: 100%;
   align-items: stretch;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  justify-content: flex-start;
 }
 
 .indicator-describe {
@@ -527,7 +511,9 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  width: 100%;
+  flex: 0 0 var(--indicator-card-width);
+  width: min(100%, var(--indicator-card-width));
+  max-width: var(--indicator-card-width);
 }
 
 .indicator-grid__item .ant-form-item {
