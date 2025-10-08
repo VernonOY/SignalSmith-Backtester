@@ -126,13 +126,13 @@ const App = () => {
       <div className="app-scale-wrapper">
         <div className="app-shell">
           <PanelGroup direction="horizontal">
-            <Panel defaultSize={35} minSize={30} maxSize={65} className="panel panel--sidebar">
+            <Panel defaultSize={25} minSize={20} maxSize={45} className="panel panel--sidebar">
               <div className="sidebar-panel">
                 <SidebarForm loading={loading} onSubmit={handleSubmit} />
               </div>
             </Panel>
             <PanelResizeHandle className="resize-handle" />
-            <Panel defaultSize={65} minSize={35} className="panel panel--content">
+            <Panel defaultSize={75} minSize={55} className="panel panel--content">
               <div className="results-panel">
                 {!response && (
                   <Card className="result-card intro-card">
