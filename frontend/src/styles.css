@@ -51,7 +51,12 @@ body {
 }
 
 .sidebar-form {
+  --sidebar-section-min-width: 240px;
   --sidebar-section-gap: 8px;
+  --sidebar-section-double: calc(
+    var(--sidebar-section-min-width) * 2 + var(--sidebar-section-gap)
+  );
+  --sidebar-section-card-width: 320px;
   --indicator-card-gap: var(--sidebar-section-gap);
   height: 100%;
   overflow-y: auto;
@@ -159,16 +164,18 @@ body {
 
 .sidebar-card-row {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: var(--sidebar-section-gap);
   width: 100%;
   margin: 0;
+  align-items: stretch;
+  justify-content: flex-start;
 }
 
 .sidebar-card-row .sidebar-card {
-  flex: 1 1 100%;
-  width: 100%;
-  max-width: 100%;
+  flex: 0 0 var(--sidebar-section-card-width);
+  width: min(100%, var(--sidebar-section-card-width));
+  max-width: var(--sidebar-section-card-width);
 }
 
 .sidebar-form .ant-form-item {
@@ -464,6 +471,8 @@ body {
 
 
 .indicator-grid {
+  --indicator-card-width: calc(var(--sidebar-section-card-width) / 2);
+  --indicator-field-width: 110px;
   display: flex;
   flex-wrap: wrap;
   gap: var(--indicator-card-gap);
@@ -502,9 +511,9 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  flex: 0 0 calc((100% - var(--indicator-card-gap)) / 2);
-  width: calc((100% - var(--indicator-card-gap)) / 2);
-  max-width: calc((100% - var(--indicator-card-gap)) / 2);
+  flex: 0 0 var(--indicator-card-width);
+  width: min(100%, var(--indicator-card-width));
+  max-width: var(--indicator-card-width);
 }
 
 .indicator-grid__item .ant-form-item {
@@ -526,41 +535,51 @@ body {
 .indicator-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 6px;
-  flex-wrap: wrap;
   margin-bottom: 4px;
 }
 
-.indicator-header__toggle {
+.indicator-header__actions {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
 }
 
 
 .indicator-fields {
   display: grid;
   grid-auto-flow: row dense;
-  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-  grid-auto-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(var(--indicator-field-width), max-content)
+  );
+  grid-auto-columns: minmax(var(--indicator-field-width), max-content);
   justify-content: flex-start;
-  gap: 4px;
+  gap: 6px;
   align-items: start;
-}
-
-.indicator-fields--two {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-auto-columns: minmax(0, 1fr);
 }
 
 .indicator-fields--compact {
   gap: 4px;
 }
 
+.indicator-fields--single {
+  grid-template-columns: minmax(var(--indicator-field-width), max-content);
+}
+
+.indicator-fields--triple {
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(var(--indicator-field-width), max-content)
+  );
+}
+
 .indicator-field {
   margin-bottom: 0 !important;
-  width: 100%;
-  min-width: 0;
-  max-width: none;
+  width: var(--indicator-field-width);
+  min-width: var(--indicator-field-width);
+  max-width: 100%;
 }
 
 .indicator-field--full {
@@ -568,20 +587,6 @@ body {
   width: 100%;
   max-width: none;
   min-width: 0;
-}
-
-.indicator-fields--two .indicator-field {
-  width: 100%;
-  min-width: 0;
-}
-
-.indicator-field--compact-select .ant-select {
-  width: 100%;
-  max-width: 96px;
-}
-
-.indicator-field--compact-select .ant-select-selector {
-  width: 100%;
 }
 
 .indicator-field .ant-input-number,
@@ -624,16 +629,12 @@ body {
 }
 
 @media (max-width: 640px) {
-  .indicator-grid__item {
-    flex: 1 1 100%;
-    width: 100%;
-    max-width: 100%;
+  .indicator-fields {
+    grid-template-columns: minmax(var(--indicator-field-width), max-content);
   }
 
-  .indicator-fields,
-  .indicator-fields--two {
-    grid-template-columns: minmax(0, 1fr);
-    grid-auto-columns: minmax(0, 1fr);
+  .indicator-fields--triple {
+    grid-template-columns: minmax(var(--indicator-field-width), max-content);
   }
 }
 

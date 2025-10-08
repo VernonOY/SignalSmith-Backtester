@@ -27,33 +27,27 @@ const EquityChart = ({ data, loading, onReady }: Props) => {
   const totalMonths = lastDate.diff(firstDate, "month", true);
   const useQuarterTicks = totalMonths > 18;
 
-  const monthBoundaryIndices = new Set<number>();
-  data.dates.forEach((value, index) => {
+  const shouldShowTick = (value: string) => {
     const parsed = dayjs(value);
-    if (!parsed.isValid()) return;
-    const nextRaw = data.dates[index + 1];
-    const next = nextRaw ? dayjs(nextRaw) : null;
-    const isMonthBoundary = !next || !next.isValid() || parsed.month() !== next.month();
-    if (!isMonthBoundary) {
-      return;
+    if (!parsed.isValid()) return false;
+    const monthEnd = parsed.endOf("month");
+    if (parsed.date() !== monthEnd.date()) {
+      return false;
     }
-    if (useQuarterTicks && parsed.month() % 3 !== 2) {
-      return;
+    if (!useQuarterTicks) {
+      return true;
     }
-    monthBoundaryIndices.add(index);
-  });
-
-  if (data.dates.length > 0) {
-    monthBoundaryIndices.add(0);
-    monthBoundaryIndices.add(data.dates.length - 1);
-  }
-
-  const shouldShowTick = (index: number) => monthBoundaryIndices.has(index);
+    return parsed.month() % 3 === 2;
+  };
 
   const formatTickLabel = (value: string) => {
     const parsed = dayjs(value);
     if (!parsed.isValid()) return value;
-    return parsed.format("YYYYMMDD");
+    if (useQuarterTicks) {
+      const quarter = Math.floor(parsed.month() / 3) + 1;
+      return `${parsed.format("YYYY")} Q${quarter}`;
+    }
+    return parsed.format("MMM YY");
   };
 
   const option = {
@@ -85,14 +79,13 @@ const EquityChart = ({ data, loading, onReady }: Props) => {
       type: "category",
       data: data.dates,
       axisLabel: {
-        formatter: (value: string, index: number) =>
-          shouldShowTick(index) ? formatTickLabel(value) : "",
+        formatter: (value: string) => (shouldShowTick(value) ? formatTickLabel(value) : ""),
         hideOverlap: true,
         margin: 16,
       },
       axisTick: {
         alignWithLabel: true,
-        interval: (index: number) => shouldShowTick(index),
+        interval: (_index: number, value: string) => shouldShowTick(value),
       },
       splitLine: { show: true, lineStyle: { color: "#e2e8f0" } },
     },
