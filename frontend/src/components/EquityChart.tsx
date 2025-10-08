@@ -22,34 +22,6 @@ const EquityChart = ({ data, loading, onReady }: Props) => {
     return <Empty description="No equity data" />;
   }
 
-  const firstDate = dayjs(data.dates[0]);
-  const lastDate = dayjs(data.dates[data.dates.length - 1]);
-  const totalMonths = lastDate.diff(firstDate, "month", true);
-  const useQuarterTicks = totalMonths > 18;
-
-  const shouldShowTick = (value: string) => {
-    const parsed = dayjs(value);
-    if (!parsed.isValid()) return false;
-    const monthEnd = parsed.endOf("month");
-    if (parsed.date() !== monthEnd.date()) {
-      return false;
-    }
-    if (!useQuarterTicks) {
-      return true;
-    }
-    return parsed.month() % 3 === 2;
-  };
-
-  const formatTickLabel = (value: string) => {
-    const parsed = dayjs(value);
-    if (!parsed.isValid()) return value;
-    if (useQuarterTicks) {
-      const quarter = Math.floor(parsed.month() / 3) + 1;
-      return `${parsed.format("YYYY")} Q${quarter}`;
-    }
-    return parsed.format("MMM YY");
-  };
-
   const option = {
     tooltip: {
       trigger: "axis",
@@ -79,13 +51,15 @@ const EquityChart = ({ data, loading, onReady }: Props) => {
       type: "category",
       data: data.dates,
       axisLabel: {
-        formatter: (value: string) => (shouldShowTick(value) ? formatTickLabel(value) : ""),
+        formatter: (value: string) => {
+          const parsed = dayjs(value);
+          return parsed.isValid() ? parsed.format("YYYYMMDD") : value;
+        },
         hideOverlap: true,
         margin: 16,
       },
       axisTick: {
         alignWithLabel: true,
-        interval: (_index: number, value: string) => shouldShowTick(value),
       },
       splitLine: { show: true, lineStyle: { color: "#e2e8f0" } },
     },

@@ -837,85 +837,83 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
           </div>
         </Card>
 
-        <div className="sidebar-card-row">
-          <Card
-            title="Universe Filters"
-            size="small"
-            bordered={false}
-            className="sidebar-card sidebar-card--half"
-            extra={
-              <Space size={4} align="center">
-                <Button type="link" size="small" onClick={() => openInfo("universe")}>
-                  Describe
-                </Button>
-                <Button
-                  type="link"
-                  size="small"
-                  onClick={() => setShowUniverseFilters((prev) => !prev)}
-                >
-                  {showUniverseFilters ? "Hide" : "Show"}
-                </Button>
-              </Space>
-            }
-          >
-            {showUniverseFilters && (
-              <div className="form-grid form-grid--universe">
-                <Form.Item label="Sector" name={["filters", "sectors"]} className="form-grid__item">
-                  <Select mode="multiple" allowClear options={sectorOptions} />
-                </Form.Item>
-                <Form.Item label="Market Cap Min ($)" name={["filters", "mcap_min"]} className="form-grid__item">
-                  <InputNumber min={0} style={{ width: "100%" }} />
-                </Form.Item>
-                <Form.Item label="Market Cap Max ($)" name={["filters", "mcap_max"]} className="form-grid__item">
-                  <InputNumber min={0} style={{ width: "100%" }} />
-                </Form.Item>
-                <Form.Item label="Exclude Tickers" name={["filters", "exclude_tickers"]} className="form-grid__item">
-                  <Select mode="tags" tokenSeparators={[",", " "]} placeholder="e.g. TSLA, NVDA" />
-                </Form.Item>
-              </div>
-            )}
-          </Card>
-
-          <Card
-            title="Signal Rules"
-            size="small"
-            bordered={false}
-            className="sidebar-card sidebar-card--half"
-            extra={
-              <Button type="link" size="small" onClick={() => openInfo("signals")}>
+        <Card
+          title="Universe Filters"
+          size="small"
+          bordered={false}
+          className="sidebar-card"
+          extra={
+            <Space size={4} align="center">
+              <Button type="link" size="small" onClick={() => openInfo("universe")}>
                 Describe
               </Button>
-            }
-          >
-            <div className="form-grid form-grid--signals">
-              <Form.Item
-                label="Combination Policy"
-                name="policy"
-                className="form-grid__item form-grid__item--span-2"
+              <Button
+                type="link"
+                size="small"
+                onClick={() => setShowUniverseFilters((prev) => !prev)}
               >
-                <Select
-                  options={[
-                    { label: "Any", value: "any" },
-                    { label: "All", value: "all" },
-                    { label: "At least k", value: "atleast_k" },
-                  ]}
-                />
+                {showUniverseFilters ? "Hide" : "Show"}
+              </Button>
+            </Space>
+          }
+        >
+          {showUniverseFilters && (
+            <div className="form-grid form-grid--universe">
+              <Form.Item label="Sector" name={["filters", "sectors"]} className="form-grid__item">
+                <Select mode="multiple" allowClear options={sectorOptions} />
               </Form.Item>
-              <Form.Item label="k" name="k" className="form-grid__item">
-                <InputNumber min={1} max={7} style={{ width: "100%" }} />
+              <Form.Item label="Market Cap Min ($)" name={["filters", "mcap_min"]} className="form-grid__item">
+                <InputNumber min={0} style={{ width: "100%" }} />
               </Form.Item>
-              <Form.Item label="Max Horizon (days)" name="max_horizon" className="form-grid__item">
-                <InputNumber min={1} max={10} style={{ width: "100%" }} />
+              <Form.Item label="Market Cap Max ($)" name={["filters", "mcap_max"]} className="form-grid__item">
+                <InputNumber min={0} style={{ width: "100%" }} />
               </Form.Item>
-              <Form.Item label="Histogram Horizon (days)" name="hist_horizon" className="form-grid__item">
-                <InputNumber min={1} max={10} style={{ width: "100%" }} />
-              </Form.Item>
-              <Form.Item label="Histogram Bins" name="hist_bins" className="form-grid__item">
-                <InputNumber min={5} max={60} style={{ width: "100%" }} />
+              <Form.Item label="Exclude Tickers" name={["filters", "exclude_tickers"]} className="form-grid__item">
+                <Select mode="tags" tokenSeparators={[",", " "]} placeholder="e.g. TSLA, NVDA" />
               </Form.Item>
             </div>
-          </Card>
-        </div>
+          )}
+        </Card>
+
+        <Card
+          title="Signal Rules"
+          size="small"
+          bordered={false}
+          className="sidebar-card"
+          extra={
+            <Button type="link" size="small" onClick={() => openInfo("signals")}>
+              Describe
+            </Button>
+          }
+        >
+          <div className="form-grid form-grid--signals">
+            <Form.Item
+              label="Combination Policy"
+              name="policy"
+              className="form-grid__item form-grid__item--span-2"
+            >
+              <Select
+                options={[
+                  { label: "Any", value: "any" },
+                  { label: "All", value: "all" },
+                  { label: "At least k", value: "atleast_k" },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item label="k" name="k" className="form-grid__item">
+              <InputNumber min={1} max={7} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item label="Max Horizon (days)" name="max_horizon" className="form-grid__item">
+              <InputNumber min={1} max={10} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item label="Histogram Horizon (days)" name="hist_horizon" className="form-grid__item">
+              <InputNumber min={1} max={10} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item label="Histogram Bins" name="hist_bins" className="form-grid__item">
+              <InputNumber min={5} max={60} style={{ width: "100%" }} />
+            </Form.Item>
+          </div>
+        </Card>
 
         <Space
           style={{ width: "100%", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}
