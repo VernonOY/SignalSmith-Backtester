@@ -565,7 +565,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
           title="Run Settings"
           size="small"
           bordered={false}
-          className="sidebar-card"
+          className="sidebar-card sidebar-card--narrow"
           extra={
             <Button type="link" size="small" onClick={() => openInfo("execution")}>
               Describe
@@ -608,7 +608,12 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
           </div>
         </Card>
 
-        <Card title="Indicators" size="small" bordered={false} className="sidebar-card sidebar-card--indicators">
+        <Card
+          title="Indicators"
+          size="small"
+          bordered={false}
+          className="sidebar-card sidebar-card--indicators sidebar-card--narrow"
+        >
           <div className="indicator-grid">
             <div className="indicator-grid__item">
               <div className="indicator-header">
@@ -743,47 +748,51 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
               </div>
             </div>
 
-            <div className="indicator-grid__item indicator-grid__item--compact">
-              <div className="indicator-header">
-                <Text strong>ADX</Text>
-                <Space size={6} align="center" className="indicator-header__actions">
-                  <Form.Item name="use_adx" valuePropName="checked" noStyle>
-                    <Switch size="small" aria-label="Toggle ADX" />
-                  </Form.Item>
-                  <Button type="text" size="small" onClick={() => openInfo("adx")}>
-                    Describe
-                  </Button>
-                </Space>
-              </div>
-              <div className="indicator-fields">
-                <Form.Item label="Lookback" name="adx_n" className="indicator-field">
-                  <InputNumber min={5} max={50} style={{ width: "100%" }} disabled={!useAdx} />
-                </Form.Item>
-                <Form.Item label="Min ADX" name="adx_min" className="indicator-field">
-                  <InputNumber min={5} max={60} style={{ width: "100%" }} disabled={!useAdx} />
-                </Form.Item>
-              </div>
-            </div>
-
-            <div className="indicator-grid__item indicator-grid__item--compact">
-              <div className="indicator-header">
-                <Text strong>EMA</Text>
-                <Space size={6} align="center" className="indicator-header__actions">
-                  <Form.Item name="use_ema" valuePropName="checked" noStyle>
-                    <Switch size="small" aria-label="Toggle EMA" />
-                  </Form.Item>
-                  <Button type="text" size="small" onClick={() => openInfo("ema")}>
-                    Describe
-                  </Button>
-                </Space>
-              </div>
-              <div className="indicator-fields">
-                <Form.Item label="Short" name="ema_short" className="indicator-field">
-                  <InputNumber min={2} max={50} style={{ width: "100%" }} disabled={!useEma} />
-                </Form.Item>
-                <Form.Item label="Long" name="ema_long" className="indicator-field">
-                  <InputNumber min={5} max={200} style={{ width: "100%" }} disabled={!useEma} />
-                </Form.Item>
+            <div className="indicator-grid__item">
+              <div className="indicator-stack">
+                <div className="indicator-stack__section">
+                  <div className="indicator-header indicator-header--stacked">
+                    <Text strong>EMA</Text>
+                    <Space size={6} align="center" className="indicator-header__actions">
+                      <Form.Item name="use_ema" valuePropName="checked" noStyle>
+                        <Switch size="small" aria-label="Toggle EMA" />
+                      </Form.Item>
+                      <Button type="text" size="small" onClick={() => openInfo("ema")}>
+                        Describe
+                      </Button>
+                    </Space>
+                  </div>
+                  <div className="indicator-fields indicator-fields--compact">
+                    <Form.Item label="Short" name="ema_short" className="indicator-field">
+                      <InputNumber min={2} max={50} style={{ width: "100%" }} disabled={!useEma} />
+                    </Form.Item>
+                    <Form.Item label="Long" name="ema_long" className="indicator-field">
+                      <InputNumber min={5} max={200} style={{ width: "100%" }} disabled={!useEma} />
+                    </Form.Item>
+                  </div>
+                </div>
+                <div className="indicator-stack__divider" aria-hidden />
+                <div className="indicator-stack__section">
+                  <div className="indicator-header indicator-header--stacked">
+                    <Text strong>ADX</Text>
+                    <Space size={6} align="center" className="indicator-header__actions">
+                      <Form.Item name="use_adx" valuePropName="checked" noStyle>
+                        <Switch size="small" aria-label="Toggle ADX" />
+                      </Form.Item>
+                      <Button type="text" size="small" onClick={() => openInfo("adx")}>
+                        Describe
+                      </Button>
+                    </Space>
+                  </div>
+                  <div className="indicator-fields indicator-fields--compact">
+                    <Form.Item label="Lookback" name="adx_n" className="indicator-field">
+                      <InputNumber min={5} max={50} style={{ width: "100%" }} disabled={!useAdx} />
+                    </Form.Item>
+                    <Form.Item label="Min ADX" name="adx_min" className="indicator-field">
+                      <InputNumber min={5} max={60} style={{ width: "100%" }} disabled={!useAdx} />
+                    </Form.Item>
+                  </div>
+                </div>
               </div>
             </div>
 

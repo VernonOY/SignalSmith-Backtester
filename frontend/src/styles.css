@@ -2,21 +2,35 @@
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #0f172a;
   background-color: #f3f5ff;
+  --app-scale: 0.7;
+  font-size: clamp(12px, 0.9vw + 8px, 15px);
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  font-size: clamp(0.9rem, 0.85rem + 0.15vw, 0.98rem);
+  overflow-x: hidden;
 }
 
 #root {
   min-height: 100vh;
 }
 
+.app-scale-wrapper {
+  transform: scale(var(--app-scale));
+  transform-origin: top left;
+  width: calc(100% / var(--app-scale));
+  min-height: calc(100vh / var(--app-scale));
+  display: flex;
+  flex-direction: column;
+}
+
 .app-shell {
-  height: 100vh;
+  height: calc(100vh / var(--app-scale));
   width: 100%;
   background: #f5f7ff;
+  font-size: clamp(0.92rem, 0.88rem + 0.15vw, 1rem);
 }
 
 .panel {
@@ -44,6 +58,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  align-items: center;
 }
 
 .sidebar-form .form-row {
@@ -119,6 +134,14 @@ body {
   box-shadow: 0 6px 16px rgba(46, 92, 255, 0.08);
 }
 
+.sidebar-card {
+  width: 100%;
+}
+
+.sidebar-card--narrow {
+  width: min(100%, 320px);
+}
+
 .sidebar-form .ant-card-head {
   min-height: 30px;
   padding: 0 8px;
@@ -137,6 +160,9 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  width: min(100%, 648px);
+  justify-content: center;
+  margin: 0 auto;
 }
 
 .sidebar-card--half {
@@ -435,26 +461,22 @@ body {
   margin-bottom: 12px;
 }
 
+
 .indicator-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  --indicator-card-gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--indicator-card-gap);
 }
 
 .indicator-grid__item {
   background: #f9faff;
   border: 1px solid #e2e7ff;
   border-radius: 10px;
-  padding: 6px;
+  padding: 6px 8px;
   display: flex;
   flex-direction: column;
-  flex: 0 0 152px;
-  width: 152px;
-  max-width: 152px;
-}
-
-.indicator-grid__item--compact {
-  padding: 6px;
+  min-width: 0;
 }
 
 .indicator-grid__item .ant-form-item {
@@ -487,6 +509,10 @@ body {
   gap: 6px;
 }
 
+.indicator-fields--compact {
+  gap: 4px;
+}
+
 .indicator-fields--single {
   grid-template-columns: 1fr;
 }
@@ -504,6 +530,27 @@ body {
 }
 
 
+.indicator-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.indicator-stack__section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.indicator-stack__divider {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(29, 63, 174, 0.2), rgba(29, 63, 174, 0));
+}
+
+.indicator-header--stacked {
+  margin-bottom: 0;
+}
+
 .indicator-hint {
   font-size: 11px;
   color: #475569;
@@ -515,11 +562,8 @@ body {
 }
 
 @media (max-width: 640px) {
-  .indicator-grid__item {
-    flex-basis: 100%;
-    max-width: 100%;
-    min-width: 0;
-    width: 100%;
+  .indicator-grid {
+    grid-template-columns: 1fr;
   }
 
   .indicator-fields {
@@ -567,11 +611,19 @@ body {
   gap: 10px;
 }
 
+.metrics-grid--compact {
+  gap: 8px;
+}
+
 .metrics-item {
   padding: 10px 12px;
   border-radius: 10px;
   background: #eef2ff;
   border: 1px solid #dbe1ff;
+}
+
+.metrics-item--compact {
+  padding: 8px 10px;
 }
 
 .metrics-item h4 {
@@ -585,6 +637,10 @@ body {
   font-size: 16px;
   font-weight: 600;
   color: #111827;
+}
+
+.equity-metrics {
+  margin-top: 4px;
 }
 
 .resize-handle {
