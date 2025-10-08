@@ -24,11 +24,9 @@ const DEFAULT_PRESET_KEY = "backtest-sidebar-preset";
 const MIN_DATE = dayjs("2020-01-01");
 const LOOKBACK_YEARS = 5;
 
-type IndicatorKey = "rsi" | "macd" | "obv" | "ema" | "adx" | "aroon" | "stoch";
+type IndicatorKey = "rsi" | "macd" | "obv" | "ema" | "adx" | "aroon" | "stoch" | "signals";
 
-type InfoModalKey = IndicatorKey | "signals" | "execution" | "universe";
-
-const INDICATOR_KEYS: IndicatorKey[] = ["rsi", "macd", "obv", "aroon", "ema", "adx", "stoch"];
+type InfoModalKey = IndicatorKey | "execution" | "universe";
 
 interface SidebarFormProps {
   loading: boolean;
@@ -57,7 +55,6 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
   const [meta, setMeta] = useState<UniverseMeta>({ sectors: [], mcap_buckets: [] });
   const [activeInfo, setActiveInfo] = useState<InfoModalKey | null>(null);
   const [showUniverseFilters, setShowUniverseFilters] = useState(false);
-  const [showIndicatorDetails, setShowIndicatorDetails] = useState(false);
 
   const openInfo = (key: InfoModalKey) => {
     setActiveInfo(key);
@@ -113,7 +110,6 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
   const handleReset = () => {
     form.resetFields();
     setShowUniverseFilters(false);
-    setShowIndicatorDetails(false);
   };
 
   const handleSavePreset = () => {
@@ -612,29 +608,7 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
           </div>
         </Card>
 
-        <Card
-          title="Indicators"
-          size="small"
-          bordered={false}
-          className="sidebar-card sidebar-card--indicators"
-          extra={
-            <Button type="link" size="small" onClick={() => setShowIndicatorDetails((prev) => !prev)}>
-              {showIndicatorDetails ? "Hide" : "Describe"}
-            </Button>
-          }
-        >
-          {showIndicatorDetails && (
-            <div className="indicator-describe">
-              {INDICATOR_KEYS.map((key) => (
-                <div key={key} className="indicator-describe__section">
-                  <Paragraph className="indicator-describe__heading">
-                    <Text strong>{infoTitles[key]}</Text>
-                  </Paragraph>
-                  {renderInfoContent(key)}
-                </div>
-              ))}
-            </div>
-          )}
+        <Card title="Indicators" size="small" bordered={false} className="sidebar-card sidebar-card--indicators">
           <div className="indicator-grid">
             <div className="indicator-grid__item">
               <div className="indicator-header">
@@ -643,6 +617,9 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                   <Form.Item name="enable_rsi" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle RSI" />
                   </Form.Item>
+                  <Button type="text" size="small" onClick={() => openInfo("rsi")}>
+                    Describe
+                  </Button>
                 </Space>
               </div>
               <div className="indicator-fields">
@@ -675,6 +652,9 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                   <Form.Item name="use_macd" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle MACD" />
                   </Form.Item>
+                  <Button type="text" size="small" onClick={() => openInfo("macd")}>
+                    Describe
+                  </Button>
                 </Space>
               </div>
               <div className="indicator-fields">
@@ -706,6 +686,9 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                   <Form.Item name="use_obv" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle OBV" />
                   </Form.Item>
+                  <Button type="text" size="small" onClick={() => openInfo("obv")}>
+                    Describe
+                  </Button>
                 </Space>
               </div>
               <div className="indicator-fields">
@@ -742,6 +725,9 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                   <Form.Item name="use_aroon" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle Aroon" />
                   </Form.Item>
+                  <Button type="text" size="small" onClick={() => openInfo("aroon")}>
+                    Describe
+                  </Button>
                 </Space>
               </div>
               <div className="indicator-fields">
@@ -757,45 +743,47 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
               </div>
             </div>
 
-            <div className="indicator-grid__item">
-              <div className="indicator-stack">
-                <div className="indicator-stack__section">
-                  <div className="indicator-header indicator-header--stacked">
-                    <Text strong>EMA</Text>
-                    <Space size={6} align="center" className="indicator-header__actions">
-                      <Form.Item name="use_ema" valuePropName="checked" noStyle>
-                        <Switch size="small" aria-label="Toggle EMA" />
-                      </Form.Item>
-                    </Space>
-                  </div>
-                  <div className="indicator-fields indicator-fields--compact">
-                    <Form.Item label="Short" name="ema_short" className="indicator-field">
-                      <InputNumber min={2} max={50} style={{ width: "100%" }} disabled={!useEma} />
-                    </Form.Item>
-                    <Form.Item label="Long" name="ema_long" className="indicator-field">
-                      <InputNumber min={5} max={200} style={{ width: "100%" }} disabled={!useEma} />
-                    </Form.Item>
-                  </div>
-                </div>
-                <div className="indicator-stack__divider" aria-hidden />
-                <div className="indicator-stack__section">
-                  <div className="indicator-header indicator-header--stacked">
-                    <Text strong>ADX</Text>
-                    <Space size={6} align="center" className="indicator-header__actions">
-                      <Form.Item name="use_adx" valuePropName="checked" noStyle>
-                        <Switch size="small" aria-label="Toggle ADX" />
-                      </Form.Item>
-                    </Space>
-                  </div>
-                  <div className="indicator-fields indicator-fields--compact">
-                    <Form.Item label="Lookback" name="adx_n" className="indicator-field">
-                      <InputNumber min={5} max={50} style={{ width: "100%" }} disabled={!useAdx} />
-                    </Form.Item>
-                    <Form.Item label="Min ADX" name="adx_min" className="indicator-field">
-                      <InputNumber min={5} max={60} style={{ width: "100%" }} disabled={!useAdx} />
-                    </Form.Item>
-                  </div>
-                </div>
+            <div className="indicator-grid__item indicator-grid__item--compact">
+              <div className="indicator-header">
+                <Text strong>ADX</Text>
+                <Space size={6} align="center" className="indicator-header__actions">
+                  <Form.Item name="use_adx" valuePropName="checked" noStyle>
+                    <Switch size="small" aria-label="Toggle ADX" />
+                  </Form.Item>
+                  <Button type="text" size="small" onClick={() => openInfo("adx")}>
+                    Describe
+                  </Button>
+                </Space>
+              </div>
+              <div className="indicator-fields">
+                <Form.Item label="Lookback" name="adx_n" className="indicator-field">
+                  <InputNumber min={5} max={50} style={{ width: "100%" }} disabled={!useAdx} />
+                </Form.Item>
+                <Form.Item label="Min ADX" name="adx_min" className="indicator-field">
+                  <InputNumber min={5} max={60} style={{ width: "100%" }} disabled={!useAdx} />
+                </Form.Item>
+              </div>
+            </div>
+
+            <div className="indicator-grid__item indicator-grid__item--compact">
+              <div className="indicator-header">
+                <Text strong>EMA</Text>
+                <Space size={6} align="center" className="indicator-header__actions">
+                  <Form.Item name="use_ema" valuePropName="checked" noStyle>
+                    <Switch size="small" aria-label="Toggle EMA" />
+                  </Form.Item>
+                  <Button type="text" size="small" onClick={() => openInfo("ema")}>
+                    Describe
+                  </Button>
+                </Space>
+              </div>
+              <div className="indicator-fields">
+                <Form.Item label="Short" name="ema_short" className="indicator-field">
+                  <InputNumber min={2} max={50} style={{ width: "100%" }} disabled={!useEma} />
+                </Form.Item>
+                <Form.Item label="Long" name="ema_long" className="indicator-field">
+                  <InputNumber min={5} max={200} style={{ width: "100%" }} disabled={!useEma} />
+                </Form.Item>
               </div>
             </div>
 
@@ -806,6 +794,9 @@ const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
                   <Form.Item name="use_stoch" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle Stochastic" />
                   </Form.Item>
+                  <Button type="text" size="small" onClick={() => openInfo("stoch")}>
+                    Describe
+                  </Button>
                 </Space>
               </div>
               <div className="indicator-fields indicator-fields--triple">
