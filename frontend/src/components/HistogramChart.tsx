@@ -1,6 +1,6 @@
 import React from "react";
 import ReactECharts from "echarts-for-react";
-import { Empty, Statistic } from "antd";
+import { Empty } from "antd";
 import type { ECharts } from "echarts";
 import { HistogramPayload } from "../types";
 
@@ -9,9 +9,10 @@ interface Props {
   loading?: boolean;
   onReady?: (instance: ECharts) => void;
   height?: number;
+  compact?: boolean;
 }
 
-const HistogramChart = ({ data, loading, onReady, height = 400 }: Props) => {
+const HistogramChart = ({ data, loading, onReady, height = 256, compact = false }: Props) => {
   if (loading) {
     return <div style={{ textAlign: "center" }}>Loading…</div>;
   }
@@ -39,21 +40,27 @@ const HistogramChart = ({ data, loading, onReady, height = 400 }: Props) => {
       type: "category",
       data: categories,
       axisLabel: {
-        rotate: 30,
+        rotate: 22,
         interval: 0,
-        margin: 12,
+        margin: compact ? 6 : 10,
+        fontSize: compact ? 10 : 11,
+        formatter: (value: string) => value.replace(/\s+/g, ""),
       },
     },
     yAxis: {
       type: "value",
       name: "Trades",
       nameLocation: "middle",
-      nameGap: 48,
+      nameGap: compact ? 32 : 40,
+      axisLabel: {
+        fontSize: compact ? 10 : 11,
+        margin: compact ? 4 : 6,
+      },
     },
     series: [
       {
         type: "bar",
-        barMaxWidth: 32,
+        barMaxWidth: compact ? 18 : 24,
         data: data.buckets.map((bucket) => bucket.count),
         itemStyle: {
           color: "#4c6ef5",
@@ -62,39 +69,15 @@ const HistogramChart = ({ data, loading, onReady, height = 400 }: Props) => {
       },
     ],
     grid: {
-      left: 64,
-      right: 32,
-      bottom: 72,
-      top: 48,
+      left: compact ? 48 : 56,
+      right: compact ? 20 : 28,
+      bottom: compact ? 52 : 64,
+      top: compact ? 28 : 40,
       containLabel: true,
     },
   };
 
-  const statEntries = Object.entries(data.stats || {});
-  const percentStats = new Set(["mean", "median", "std"]);
-
-  return (
-    <div>
-      <ReactECharts option={option} style={{ height }} onChartReady={onReady} />
-      {statEntries.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 24, marginTop: 16 }}>
-          {statEntries.map(([label, value]) => {
-            const isPercent = percentStats.has(label);
-            const formatted = isPercent ? (value * 100).toFixed(2) : value.toFixed(2);
-            return (
-              <Statistic
-                key={label}
-                title={label.toUpperCase()}
-                value={formatted}
-                suffix={isPercent ? "%" : undefined}
-              />
-            );
-          })}
-          <Statistic title="Samples" value={data.sample_size} />
-        </div>
-      )}
-    </div>
-  );
+  return <ReactECharts option={option} style={{ height }} onChartReady={onReady} />;
 };
 
 export default HistogramChart;
