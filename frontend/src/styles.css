@@ -3,8 +3,7 @@
   color: #0f172a;
   background-color: #eef1ff;
   --dashboard-gap: 6px;
-  --sidebar-max: 360px;
-  --sidebar-width: 360px;
+  --sidebar-max: 320px;
   --card-padding: 8px;
   --card-radius: 10px;
   --compact-font: 12px;
@@ -60,8 +59,8 @@ body {
 
 .dashboard__body {
   display: grid;
-  grid-template-columns: var(--sidebar-width, 360px) minmax(0, 1fr);
-  column-gap: var(--dashboard-gap);
+  grid-template-columns: var(--sidebar-width, 280px) 5px minmax(0, 1fr);
+  column-gap: 0;
   row-gap: var(--dashboard-gap);
   flex: 1;
   min-height: 0;
@@ -74,14 +73,21 @@ body {
   gap: var(--dashboard-gap);
   min-width: 0;
   width: 100%;
-  min-height: 0;
-  overflow: hidden;
 }
 
-.dashboard__sidebar--scrollable {
-  overflow-y: auto;
-  padding-right: 4px;
-  scrollbar-gutter: stable;
+.dashboard__resizer {
+  width: 5px;
+  border-radius: 4px;
+  background: rgba(79, 70, 229, 0.18);
+  cursor: col-resize;
+  transition: background 0.2s ease;
+  user-select: none;
+  touch-action: none;
+}
+
+.dashboard__resizer:hover,
+.dashboard__resizer--active {
+  background: rgba(79, 70, 229, 0.36);
 }
 
 .dashboard__content {
@@ -317,12 +323,6 @@ body {
   grid-template-columns: 1fr;
 }
 
-.form-grid--two {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: end;
-  gap: 6px;
-}
-
 .form-grid--four {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -354,37 +354,6 @@ body {
   flex-direction: column;
   gap: 4px;
   min-width: 0;
-}
-
-.equity-metrics {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 6px;
-  padding-top: 6px;
-}
-
-.equity-metrics__item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  background: #f8f9ff;
-  border: 1px solid #dbe4ff;
-  border-radius: 6px;
-  padding: 6px 8px;
-}
-
-.equity-metrics__label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #475569;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.equity-metrics__value {
-  font-size: 13px;
-  font-weight: 600;
-  color: #1e293b;
 }
 
 .indicator-header {
