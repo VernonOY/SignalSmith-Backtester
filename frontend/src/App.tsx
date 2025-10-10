@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { Button, Card, ConfigProvider, Typography, message, theme } from "antd";
 import html2canvas from "html2canvas";
 import SidebarForm from "./components/SidebarForm";
@@ -13,12 +14,6 @@ import { formatCurrency, formatNumber, formatPercent } from "./utils/format";
 const { Title, Text } = Typography;
 
 interface InfoTag {
-  label: string;
-  value: string;
-}
-
-interface EquityMetricDisplay {
-  key: string;
   label: string;
   value: string;
 }
@@ -44,8 +39,11 @@ const App = () => {
   const [response, setResponse] = useState<BacktestResponse | null>(null);
   const [lastRunConfig, setLastRunConfig] = useState<BacktestRequest | null>(null);
   const [compactMode, setCompactMode] = useState(true);
-  const [sidebarScrollable, setSidebarScrollable] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(280);
+  const [resizing, setResizing] = useState(false);
   const dashboardRef = useRef<HTMLDivElement>(null);
+  const sidebarMin = 220;
+  const sidebarMax = 360;
 
   useEffect(() => {
     const root = document.documentElement;
@@ -61,10 +59,6 @@ const App = () => {
 
   const fitToSinglePage = useCallback((enable = true) => {
     setCompactMode(enable);
-  }, []);
-
-  const handleSectorOverflowChange = useCallback((scrollable: boolean) => {
-    setSidebarScrollable(scrollable);
   }, []);
 
   useEffect(() => {
@@ -88,6 +82,30 @@ const App = () => {
       setLoading(false);
     }
   };
+
+  const handleResizeStart = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      setResizing(true);
+      const handleMove = (moveEvent: PointerEvent) => {
+        if (!dashboardRef.current) return;
+        const rect = dashboardRef.current.getBoundingClientRect();
+        const proposed = moveEvent.clientX - rect.left;
+        const bounded = Math.min(sidebarMax, Math.max(sidebarMin, proposed));
+        setSidebarWidth(bounded);
+      };
+      const handleStop = () => {
+        setResizing(false);
+        window.removeEventListener("pointermove", handleMove);
+        window.removeEventListener("pointerup", handleStop);
+        window.removeEventListener("pointercancel", handleStop);
+      };
+      window.addEventListener("pointermove", handleMove);
+      window.addEventListener("pointerup", handleStop, { once: true });
+      window.addEventListener("pointercancel", handleStop, { once: true });
+    },
+    [sidebarMax, sidebarMin]
+  );
 
   const handleExportScreenshot = useCallback(async () => {
     const container = dashboardRef.current;
@@ -146,55 +164,6 @@ const App = () => {
       typeof value === "number" ? formatNumber(value, digits) : "—",
     []
   );
-
-  const equityMetricConfigs = useMemo(
-    () => [
-      {
-        key: "avg_daily_return",
-        label: "Avg Daily Return",
-        format: (value?: number | null) => optionalPercent(value, 2),
-      },
-      {
-        key: "volatility_daily",
-        label: "Daily Volatility",
-        format: (value?: number | null) => optionalPercent(value, 2),
-      },
-      {
-        key: "annualized_return",
-        label: "Annualized Return",
-        format: (value?: number | null) => optionalPercent(value, 2),
-      },
-      {
-        key: "annualized_vol",
-        label: "Annualized Volatility",
-        format: (value?: number | null) => optionalPercent(value, 2),
-      },
-      {
-        key: "sharpe",
-        label: "Sharpe Ratio",
-        format: (value?: number | null) =>
-          typeof value === "number" ? value.toFixed(2) : "—",
-      },
-      {
-        key: "max_drawdown",
-        label: "Max Drawdown",
-        format: (value?: number | null) => optionalPercent(value, 2),
-      },
-    ],
-    [optionalPercent]
-  );
-
-  const equityMetrics = useMemo(() => {
-    if (!response?.metrics) return [] as EquityMetricDisplay[];
-    return equityMetricConfigs.reduce<EquityMetricDisplay[]>((acc, config) => {
-      const rawValue = response.metrics?.[config.key];
-      if (typeof rawValue !== "number" || Number.isNaN(rawValue)) {
-        return acc;
-      }
-      acc.push({ key: config.key, label: config.label, value: config.format(rawValue) });
-      return acc;
-    }, []);
-  }, [equityMetricConfigs, response?.metrics]);
 
   const runSettingsSummary = useMemo(() => {
     if (!lastRunConfig) return [] as InfoTag[];
@@ -321,17 +290,20 @@ const App = () => {
           </div>
         </header>
 
-        <div className="dashboard__body">
-          <aside
-            className={`dashboard__sidebar${sidebarScrollable ? " dashboard__sidebar--scrollable" : ""}`}
-          >
-            <SidebarForm
-              loading={loading}
-              onSubmit={handleSubmit}
-              compact={compactMode}
-              onSectorOverflowChange={handleSectorOverflowChange}
-            />
+        <div
+          className="dashboard__body"
+          style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
+        >
+          <aside className="dashboard__sidebar">
+            <SidebarForm loading={loading} onSubmit={handleSubmit} compact={compactMode} />
           </aside>
+          <div
+            className={`dashboard__resizer${resizing ? " dashboard__resizer--active" : ""}`}
+            onPointerDown={handleResizeStart}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize settings panel"
+          />
 
           <main className="dashboard__content">
             {response ? (
@@ -391,16 +363,6 @@ const App = () => {
                       <Title level={4}>Equity Curve</Title>
                     </div>
                     <EquityChart data={response.equity_curve} loading={loading} compact />
-                    {equityMetrics.length > 0 && (
-                      <div className="equity-metrics">
-                        {equityMetrics.map((metric) => (
-                          <div className="equity-metrics__item" key={metric.key}>
-                            <span className="equity-metrics__label">{metric.label}</span>
-                            <span className="equity-metrics__value">{metric.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </Card>
                 </div>
 
