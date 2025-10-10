@@ -3,12 +3,13 @@
   color: #0f172a;
   background-color: #eef1ff;
   --dashboard-gap: 6px;
-  --sidebar-max: 320px;
+  --sidebar-max: 370px;
+  --sidebar-width: 370px;
   --card-padding: 8px;
   --card-radius: 10px;
   --compact-font: 12px;
   --compact-line: 1.2;
-  --layout-scale: 1;
+  --layout-scale: 1.1;
 }
 
 body {
@@ -59,8 +60,8 @@ body {
 
 .dashboard__body {
   display: grid;
-  grid-template-columns: var(--sidebar-width, 280px) 5px minmax(0, 1fr);
-  column-gap: 0;
+  grid-template-columns: var(--sidebar-width, 370px) minmax(0, 1fr);
+  column-gap: var(--dashboard-gap);
   row-gap: var(--dashboard-gap);
   flex: 1;
   min-height: 0;
@@ -73,21 +74,10 @@ body {
   gap: var(--dashboard-gap);
   min-width: 0;
   width: 100%;
-}
-
-.dashboard__resizer {
-  width: 5px;
-  border-radius: 4px;
-  background: rgba(79, 70, 229, 0.18);
-  cursor: col-resize;
-  transition: background 0.2s ease;
-  user-select: none;
-  touch-action: none;
-}
-
-.dashboard__resizer:hover,
-.dashboard__resizer--active {
-  background: rgba(79, 70, 229, 0.36);
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
 }
 
 .dashboard__content {
@@ -160,6 +150,17 @@ body {
   color: #4338ca;
 }
 
+.sidebar-card__toggle {
+  padding: 0;
+  height: auto;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.sidebar-card__toggle.ant-btn-link {
+  color: #6366f1;
+}
+
 .run-summary__grid {
   display: grid;
   gap: 4px 8px;
@@ -182,6 +183,27 @@ body {
 .run-summary__value {
   color: #111827;
   word-break: break-word;
+  white-space: nowrap;
+}
+
+.form-grid .ant-input-number-group-wrapper {
+  width: 100%;
+}
+
+.form-grid .ant-input-number-group {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+}
+
+.form-grid .ant-input-number-group > .ant-input-number {
+  flex: 1;
+}
+
+.form-grid .ant-input-number-group-addon {
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
 }
 
 .kpi-bar {
@@ -323,6 +345,12 @@ body {
   grid-template-columns: 1fr;
 }
 
+.form-grid--two {
+  grid-template-columns: 3fr 1fr;
+  align-items: end;
+  gap: 6px;
+}
+
 .form-grid--four {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -354,6 +382,37 @@ body {
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+}
+
+.equity-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 6px;
+  padding-top: 6px;
+}
+
+.equity-metrics__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: #f8f9ff;
+  border: 1px solid #dbe4ff;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.equity-metrics__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.equity-metrics__value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
 }
 
 .indicator-header {
@@ -545,7 +604,7 @@ body {
 }
 
 [data-compact="true"] {
-  --layout-scale: 0.8125;
+  --layout-scale: 0.89375;
 }
 
 [data-compact="true"] .kpi-bar__value {

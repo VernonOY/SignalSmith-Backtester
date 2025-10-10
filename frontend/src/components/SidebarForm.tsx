@@ -50,6 +50,8 @@ const DEFAULT_STRATEGY_VALUES: Record<string, unknown> = {
 const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) => {
   const [form] = Form.useForm();
   const [meta, setMeta] = useState<UniverseMeta>({ sectors: [], mcap_buckets: [] });
+  const [showUniverseFilters, setShowUniverseFilters] = useState(true);
+  const [showSignalRules, setShowSignalRules] = useState(true);
   const storage = useMemo(() => {
     if (typeof window === "undefined") {
       return null;
@@ -114,6 +116,8 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
 
   const handleReset = () => {
     form.resetFields();
+    setShowUniverseFilters(true);
+    setShowSignalRules(true);
   };
 
   const handleSavePreset = () => {
@@ -324,14 +328,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
           <Form.Item name="strategy" hidden initialValue="mean_reversion">
             <Input />
           </Form.Item>
-          <div className="form-grid form-grid--stacked">
-            <Form.Item
-              label="Capital"
-              name="capital"
-              className="form-grid__item form-grid__item--capital"
-            >
-              <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
-            </Form.Item>
+          <div className="form-grid form-grid--two">
             <Form.Item
               name="date"
               label="Range"
@@ -339,6 +336,13 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
               className="form-grid__item form-grid__item--range"
             >
               <RangePicker allowClear={false} style={{ width: "100%" }} disabledDate={disabledDate} />
+            </Form.Item>
+            <Form.Item
+              label="Capital"
+              name="capital"
+              className="form-grid__item form-grid__item--capital"
+            >
+              <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
             </Form.Item>
           </div>
           <div className="form-grid form-grid--four">
@@ -573,51 +577,85 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
           </div>
         </Card>
 
-        <Card title="Universe Filters" size="small" bordered={false} className="sidebar-card sidebar-card--half">
-          <div className="form-grid form-grid--universe">
-            <Form.Item label="Sector" name={["filters", "sectors"]} className="form-grid__item">
-              <Select mode="multiple" allowClear options={sectorOptions} dropdownMatchSelectWidth={false} />
-            </Form.Item>
-            <Form.Item label="Cap Min" name={["filters", "mcap_min"]} className="form-grid__item">
-              <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
-            </Form.Item>
-            <Form.Item label="Cap Max" name={["filters", "mcap_max"]} className="form-grid__item">
-              <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
-            </Form.Item>
-            <Form.Item label="Exclude" name={["filters", "exclude_tickers"]} className="form-grid__item">
-              <Select mode="tags" tokenSeparators={[",", " "]} placeholder="TSLA, NVDA" dropdownMatchSelectWidth={false} />
-            </Form.Item>
-          </div>
+        <Card
+          title="Universe Filters"
+          size="small"
+          bordered={false}
+          className="sidebar-card sidebar-card--half"
+          extra={
+            <Button
+              type="link"
+              size="small"
+              className="sidebar-card__toggle"
+              onClick={() => setShowUniverseFilters((prev) => !prev)}
+            >
+              {showUniverseFilters ? "Hide" : "Show"}
+            </Button>
+          }
+        >
+          {showUniverseFilters && (
+            <div className="form-grid form-grid--universe">
+              <Form.Item label="Sector" name={["filters", "sectors"]} className="form-grid__item">
+                <Select mode="multiple" allowClear options={sectorOptions} dropdownMatchSelectWidth={false} />
+              </Form.Item>
+              <Form.Item label="Cap Min" name={["filters", "mcap_min"]} className="form-grid__item">
+                <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
+              </Form.Item>
+              <Form.Item label="Cap Max" name={["filters", "mcap_max"]} className="form-grid__item">
+                <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
+              </Form.Item>
+              <Form.Item label="Exclude" name={["filters", "exclude_tickers"]} className="form-grid__item">
+                <Select mode="tags" tokenSeparators={[",", " "]} placeholder="TSLA, NVDA" dropdownMatchSelectWidth={false} />
+              </Form.Item>
+            </div>
+          )}
         </Card>
 
-        <Card title="Signal Rules" size="small" bordered={false} className="sidebar-card sidebar-card--half">
-          <div className="form-grid form-grid--signals">
-            <Form.Item
-              label="Policy"
-              name="policy"
-              className="form-grid__item form-grid__item--span-2"
+        <Card
+          title="Signal Rules"
+          size="small"
+          bordered={false}
+          className="sidebar-card sidebar-card--half"
+          extra={
+            <Button
+              type="link"
+              size="small"
+              className="sidebar-card__toggle"
+              onClick={() => setShowSignalRules((prev) => !prev)}
             >
-              <Select
-                options={[
-                  { label: "Any", value: "any" },
-                  { label: "All", value: "all" },
-                  { label: "At least k", value: "atleast_k" },
-                ]}
-              />
-            </Form.Item>
-            <Form.Item label="k" name="k" className="form-grid__item">
-              <InputNumber min={1} max={7} style={{ width: "100%" }} />
-            </Form.Item>
-            <Form.Item label="Max Hz" name="max_horizon" className="form-grid__item">
-              <InputNumber min={1} max={10} style={{ width: "100%" }} addonAfter="d" />
-            </Form.Item>
-            <Form.Item label="Hist Hz" name="hist_horizon" className="form-grid__item">
-              <InputNumber min={1} max={10} style={{ width: "100%" }} addonAfter="d" />
-            </Form.Item>
-            <Form.Item label="Bins" name="hist_bins" className="form-grid__item">
-              <InputNumber min={5} max={60} style={{ width: "100%" }} />
-            </Form.Item>
-          </div>
+              {showSignalRules ? "Hide" : "Show"}
+            </Button>
+          }
+        >
+          {showSignalRules && (
+            <div className="form-grid form-grid--signals">
+              <Form.Item
+                label="Policy"
+                name="policy"
+                className="form-grid__item form-grid__item--span-2"
+              >
+                <Select
+                  options={[
+                    { label: "Any", value: "any" },
+                    { label: "All", value: "all" },
+                    { label: "At least k", value: "atleast_k" },
+                  ]}
+                />
+              </Form.Item>
+              <Form.Item label="k" name="k" className="form-grid__item">
+                <InputNumber min={1} max={7} style={{ width: "100%" }} />
+              </Form.Item>
+              <Form.Item label="Max Hz" name="max_horizon" className="form-grid__item">
+                <InputNumber min={1} max={10} style={{ width: "100%" }} addonAfter="d" />
+              </Form.Item>
+              <Form.Item label="Hist Hz" name="hist_horizon" className="form-grid__item">
+                <InputNumber min={1} max={10} style={{ width: "100%" }} addonAfter="d" />
+              </Form.Item>
+              <Form.Item label="Bins" name="hist_bins" className="form-grid__item">
+                <InputNumber min={5} max={60} style={{ width: "100%" }} />
+              </Form.Item>
+            </div>
+          )}
         </Card>
 
         <Space className="sidebar-form__actions">
