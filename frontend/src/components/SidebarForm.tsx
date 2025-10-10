@@ -324,7 +324,14 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
           <Form.Item name="strategy" hidden initialValue="mean_reversion">
             <Input />
           </Form.Item>
-          <div className="form-grid form-grid--two">
+          <div className="form-grid form-grid--stacked">
+            <Form.Item
+              label="Capital"
+              name="capital"
+              className="form-grid__item form-grid__item--capital"
+            >
+              <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
+            </Form.Item>
             <Form.Item
               name="date"
               label="Range"
@@ -332,13 +339,6 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
               className="form-grid__item form-grid__item--range"
             >
               <RangePicker allowClear={false} style={{ width: "100%" }} disabledDate={disabledDate} />
-            </Form.Item>
-            <Form.Item
-              label="Capital"
-              name="capital"
-              className="form-grid__item form-grid__item--capital"
-            >
-              <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
             </Form.Item>
           </div>
           <div className="form-grid form-grid--four">

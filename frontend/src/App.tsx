@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { Button, Card, ConfigProvider, Typography, message, theme } from "antd";
 import html2canvas from "html2canvas";
 import SidebarForm from "./components/SidebarForm";
@@ -7,6 +8,7 @@ import { api } from "./api/client";
 import HistogramChart from "./components/HistogramChart";
 import IndicatorStatsTable from "./components/IndicatorStatsTable";
 import EquityChart from "./components/EquityChart";
+import KPIBar, { KPIEntry } from "./components/KPIBar";
 import { formatCurrency, formatNumber, formatPercent } from "./utils/format";
 
 const { Title, Text } = Typography;
@@ -16,30 +18,43 @@ interface InfoTag {
   value: string;
 }
 
-interface EquityMetricDisplay {
+interface MetricConfig {
   key: string;
   label: string;
-  value: string;
+  format: (value: number) => string;
 }
+
+const KPI_METRICS: MetricConfig[] = [
+  { key: "sharpe", label: "Sharpe", format: (value) => value.toFixed(2) },
+  { key: "annualized_return", label: "Ann Ret", format: (value) => formatPercent(value, 2) },
+  { key: "annualized_vol", label: "Ann Vol", format: (value) => formatPercent(value, 2) },
+  { key: "max_drawdown", label: "Max DD", format: (value) => formatPercent(value, 2) },
+  { key: "sortino", label: "Sortino", format: (value) => value.toFixed(2) },
+  { key: "win_rate", label: "Win %", format: (value) => formatPercent(value, 2) },
+  { key: "avg_trade_return", label: "Avg Trd", format: (value) => formatPercent(value, 2) },
+];
 
 const App = () => {
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<BacktestResponse | null>(null);
   const [lastRunConfig, setLastRunConfig] = useState<BacktestRequest | null>(null);
   const [compactMode, setCompactMode] = useState(true);
-  const [showUniverseSummary, setShowUniverseSummary] = useState(true);
-  const [showSignalSummary, setShowSignalSummary] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(280);
+  const [resizing, setResizing] = useState(false);
   const dashboardRef = useRef<HTMLDivElement>(null);
+  const sidebarMin = 220;
+  const sidebarMax = 360;
 
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty("--dashboard-compact", compactMode ? "1" : "0");
     if (compactMode) {
       root.setAttribute("data-compact", "true");
+      document.body.style.overflow = "hidden";
     } else {
       root.removeAttribute("data-compact");
+      document.body.style.overflow = "auto";
     }
-    document.body.style.overflow = "auto";
   }, [compactMode]);
 
   const fitToSinglePage = useCallback((enable = true) => {
@@ -59,8 +74,6 @@ const App = () => {
       const { data } = await api.post<BacktestResponse>("/run_backtest", payload);
       setResponse(data);
       setLastRunConfig(payload);
-      setShowUniverseSummary(true);
-      setShowSignalSummary(true);
       message.success("Backtest complete");
     } catch (error: any) {
       const detail = error?.response?.data?.detail || error.message;
@@ -69,6 +82,30 @@ const App = () => {
       setLoading(false);
     }
   };
+
+  const handleResizeStart = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      setResizing(true);
+      const handleMove = (moveEvent: PointerEvent) => {
+        if (!dashboardRef.current) return;
+        const rect = dashboardRef.current.getBoundingClientRect();
+        const proposed = moveEvent.clientX - rect.left;
+        const bounded = Math.min(sidebarMax, Math.max(sidebarMin, proposed));
+        setSidebarWidth(bounded);
+      };
+      const handleStop = () => {
+        setResizing(false);
+        window.removeEventListener("pointermove", handleMove);
+        window.removeEventListener("pointerup", handleStop);
+        window.removeEventListener("pointercancel", handleStop);
+      };
+      window.addEventListener("pointermove", handleMove);
+      window.addEventListener("pointerup", handleStop, { once: true });
+      window.addEventListener("pointercancel", handleStop, { once: true });
+    },
+    [sidebarMax, sidebarMin]
+  );
 
   const handleExportScreenshot = useCallback(async () => {
     const container = dashboardRef.current;
@@ -92,6 +129,27 @@ const App = () => {
     }
   }, [compactMode, fitToSinglePage]);
 
+  const kpiEntries: KPIEntry[] = useMemo(() => {
+    if (!response?.metrics) return [];
+    const base = KPI_METRICS.reduce<KPIEntry[]>((acc, config) => {
+      const rawValue = response.metrics?.[config.key];
+      if (typeof rawValue !== "number" || Number.isNaN(rawValue)) {
+        return acc;
+      }
+      acc.push({
+        key: config.key,
+        label: config.label,
+        value: config.format(rawValue),
+      });
+      return acc;
+    }, []);
+    const sampleSize = response.histogram?.sample_size;
+    if (typeof sampleSize === "number" && !Number.isNaN(sampleSize)) {
+      base.unshift({ key: "samples", label: "Samples", value: formatNumber(sampleSize, 0) });
+    }
+    return base;
+  }, [response?.metrics, response?.histogram?.sample_size]);
+
   const optionalCurrency = useCallback(
     (value?: number | null) => (typeof value === "number" ? formatCurrency(value, 0) : "—"),
     []
@@ -106,55 +164,6 @@ const App = () => {
       typeof value === "number" ? formatNumber(value, digits) : "—",
     []
   );
-
-  const equityMetricConfigs = useMemo(
-    () => [
-      {
-        key: "avg_daily_return",
-        label: "Avg Daily Return",
-        format: (value?: number | null) => optionalPercent(value, 2),
-      },
-      {
-        key: "volatility_daily",
-        label: "Daily Volatility",
-        format: (value?: number | null) => optionalPercent(value, 2),
-      },
-      {
-        key: "annualized_return",
-        label: "Annualized Return",
-        format: (value?: number | null) => optionalPercent(value, 2),
-      },
-      {
-        key: "annualized_vol",
-        label: "Annualized Volatility",
-        format: (value?: number | null) => optionalPercent(value, 2),
-      },
-      {
-        key: "sharpe",
-        label: "Sharpe Ratio",
-        format: (value?: number | null) =>
-          typeof value === "number" ? value.toFixed(2) : "—",
-      },
-      {
-        key: "max_drawdown",
-        label: "Max Drawdown",
-        format: (value?: number | null) => optionalPercent(value, 2),
-      },
-    ],
-    [optionalPercent]
-  );
-
-  const equityMetrics = useMemo(() => {
-    if (!response?.metrics) return [] as EquityMetricDisplay[];
-    return equityMetricConfigs.reduce<EquityMetricDisplay[]>((acc, config) => {
-      const rawValue = response.metrics?.[config.key];
-      if (typeof rawValue !== "number" || Number.isNaN(rawValue)) {
-        return acc;
-      }
-      acc.push({ key: config.key, label: config.label, value: config.format(rawValue) });
-      return acc;
-    }, []);
-  }, [equityMetricConfigs, response?.metrics]);
 
   const runSettingsSummary = useMemo(() => {
     if (!lastRunConfig) return [] as InfoTag[];
@@ -281,18 +290,26 @@ const App = () => {
           </div>
         </header>
 
-        <div className="dashboard__body">
+        <div
+          className="dashboard__body"
+          style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
+        >
           <aside className="dashboard__sidebar">
-            <SidebarForm
-              loading={loading}
-              onSubmit={handleSubmit}
-              compact={compactMode}
-            />
+            <SidebarForm loading={loading} onSubmit={handleSubmit} compact={compactMode} />
           </aside>
+          <div
+            className={`dashboard__resizer${resizing ? " dashboard__resizer--active" : ""}`}
+            onPointerDown={handleResizeStart}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize settings panel"
+          />
 
           <main className="dashboard__content">
             {response ? (
               <>
+                {kpiEntries.length > 0 && <KPIBar entries={kpiEntries} compact />}
+
                 <div className="dashboard__charts">
                   {response.histogram && (
                     <Card className="result-card histogram-card" size="small">
@@ -315,50 +332,26 @@ const App = () => {
                             </div>
                           </div>
                           <div className="run-summary__section">
-                            <div className="run-summary__section-header">
-                              <div className="run-summary__title">Universe Filters</div>
-                              <Button
-                                size="small"
-                                type="link"
-                                className="run-summary__toggle"
-                                onClick={() => setShowUniverseSummary((prev) => !prev)}
-                              >
-                                {showUniverseSummary ? "Hide" : "Show"}
-                              </Button>
+                            <div className="run-summary__title">Universe Filters</div>
+                            <div className="run-summary__grid">
+                              {universeSummary.map((item) => (
+                                <div className="run-summary__item" key={`filter-${item.label}-${item.value}`}>
+                                  <span className="run-summary__label">{item.label}</span>
+                                  <span className="run-summary__value">{item.value}</span>
+                                </div>
+                              ))}
                             </div>
-                            {showUniverseSummary && (
-                              <div className="run-summary__grid">
-                                {universeSummary.map((item) => (
-                                  <div className="run-summary__item" key={`filter-${item.label}-${item.value}`}>
-                                    <span className="run-summary__label">{item.label}</span>
-                                    <span className="run-summary__value">{item.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
                           </div>
                           <div className="run-summary__section">
-                            <div className="run-summary__section-header">
-                              <div className="run-summary__title">Signal Rules</div>
-                              <Button
-                                size="small"
-                                type="link"
-                                className="run-summary__toggle"
-                                onClick={() => setShowSignalSummary((prev) => !prev)}
-                              >
-                                {showSignalSummary ? "Hide" : "Show"}
-                              </Button>
+                            <div className="run-summary__title">Signal Rules</div>
+                            <div className="run-summary__grid">
+                              {signalSummary.map((item) => (
+                                <div className="run-summary__item" key={`signal-${item.label}-${item.value}`}>
+                                  <span className="run-summary__label">{item.label}</span>
+                                  <span className="run-summary__value">{item.value}</span>
+                                </div>
+                              ))}
                             </div>
-                            {showSignalSummary && (
-                              <div className="run-summary__grid">
-                                {signalSummary.map((item) => (
-                                  <div className="run-summary__item" key={`signal-${item.label}-${item.value}`}>
-                                    <span className="run-summary__label">{item.label}</span>
-                                    <span className="run-summary__value">{item.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
                           </div>
                         </div>
                       )}
@@ -370,16 +363,6 @@ const App = () => {
                       <Title level={4}>Equity Curve</Title>
                     </div>
                     <EquityChart data={response.equity_curve} loading={loading} compact />
-                    {equityMetrics.length > 0 && (
-                      <div className="equity-metrics">
-                        {equityMetrics.map((metric) => (
-                          <div className="equity-metrics__item" key={metric.key}>
-                            <span className="equity-metrics__label">{metric.label}</span>
-                            <span className="equity-metrics__value">{metric.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </Card>
                 </div>
 
