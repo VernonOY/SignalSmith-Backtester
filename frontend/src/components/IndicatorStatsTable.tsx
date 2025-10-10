@@ -12,10 +12,9 @@ interface IndicatorRow {
 
 interface Props {
   stats?: Record<string, Record<string, number>>;
-  compact?: boolean;
 }
 
-const IndicatorStatsTable = ({ stats, compact = false }: Props) => {
+const IndicatorStatsTable = ({ stats }: Props) => {
   if (!stats || !Object.keys(stats).length) {
     return null;
   }
@@ -29,47 +28,36 @@ const IndicatorStatsTable = ({ stats, compact = false }: Props) => {
   });
 
   const columns: ColumnsType<IndicatorRow> = [
-    {
-      title: "Hzn",
-      dataIndex: "horizon",
-      key: "horizon",
-      width: 72,
-      render: (value: string) => <span className="indicator-table__horizon">{value}</span>,
-    },
+    { title: "Horizon", dataIndex: "horizon", key: "horizon" },
     {
       title: "Mean",
       dataIndex: "mean",
       key: "mean",
-      align: "right",
-      render: (value?: number) => (value !== undefined ? `${(value * 100).toFixed(2)}%` : "—"),
+      render: (value?: number) => (value !== undefined ? `${(value * 100).toFixed(2)}%` : "-"),
     },
     {
       title: "Median",
       dataIndex: "median",
       key: "median",
-      align: "right",
-      render: (value?: number) => (value !== undefined ? `${(value * 100).toFixed(2)}%` : "—"),
+      render: (value?: number) => (value !== undefined ? `${(value * 100).toFixed(2)}%` : "-"),
     },
     {
       title: "Std",
       dataIndex: "std",
       key: "std",
-      align: "right",
-      render: (value?: number) => (value !== undefined ? `${(value * 100).toFixed(2)}%` : "—"),
+      render: (value?: number) => (value !== undefined ? `${(value * 100).toFixed(2)}%` : "-"),
     },
     {
       title: "Skew",
       dataIndex: "skew",
       key: "skew",
-      align: "right",
-      render: (value?: number) => (value !== undefined ? value.toFixed(2) : "—"),
+      render: (value?: number) => (value !== undefined ? value.toFixed(2) : "-"),
     },
     {
       title: "Kurt",
       dataIndex: "kurt",
       key: "kurt",
-      align: "right",
-      render: (value?: number) => (value !== undefined ? value.toFixed(2) : "—"),
+      render: (value?: number) => (value !== undefined ? value.toFixed(2) : "-"),
     },
   ];
 
@@ -80,7 +68,6 @@ const IndicatorStatsTable = ({ stats, compact = false }: Props) => {
       columns={columns}
       dataSource={rows}
       pagination={false}
-      className={`indicator-table${compact ? " indicator-table--compact" : ""}`}
     />
   );
 };
