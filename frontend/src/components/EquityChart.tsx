@@ -10,9 +10,10 @@ interface Props {
   data?: TimeSeries | null;
   loading?: boolean;
   onReady?: (instance: ECharts) => void;
+  compact?: boolean;
 }
 
-const EquityChart = ({ data, loading, onReady }: Props) => {
+const EquityChart = ({ data, loading, onReady, compact = false }: Props) => {
   const chartInstanceRef = useRef<ECharts | null>(null);
 
   if (loading) {
@@ -28,35 +29,46 @@ const EquityChart = ({ data, loading, onReady }: Props) => {
       valueFormatter: (value: number) => formatCurrency(value, 0),
     },
     toolbox: { feature: { saveAsImage: {} } },
-    dataZoom: [
-      {
-        type: "inside",
-        filterMode: "weakFilter",
-        zoomOnMouseWheel: false,
-        moveOnMouseWheel: true,
-        moveOnMouseMove: true,
-      },
-      {
-        type: "slider",
-        showDetail: false,
-        height: 26,
-        fillerColor: "rgba(76, 110, 245, 0.18)",
-        borderColor: "rgba(76, 110, 245, 0.3)",
-        handleSize: 14,
-        handleStyle: { color: "#4c6ef5" },
-        moveHandleSize: 10,
-      },
-    ],
+    dataZoom: compact
+      ? [
+          {
+            type: "inside",
+            filterMode: "weakFilter",
+            zoomOnMouseWheel: false,
+            moveOnMouseWheel: true,
+            moveOnMouseMove: true,
+          },
+        ]
+      : [
+          {
+            type: "inside",
+            filterMode: "weakFilter",
+            zoomOnMouseWheel: false,
+            moveOnMouseWheel: true,
+            moveOnMouseMove: true,
+          },
+          {
+            type: "slider",
+            showDetail: false,
+            height: 22,
+            fillerColor: "rgba(76, 110, 245, 0.18)",
+            borderColor: "rgba(76, 110, 245, 0.3)",
+            handleSize: 12,
+            handleStyle: { color: "#4c6ef5" },
+            moveHandleSize: 9,
+          },
+        ],
     xAxis: {
       type: "category",
       data: data.dates,
       axisLabel: {
         formatter: (value: string) => {
           const parsed = dayjs(value);
-          return parsed.isValid() ? parsed.format("YYYYMMDD") : value;
+          return parsed.isValid() ? parsed.format("YYMMDD") : value;
         },
         hideOverlap: true,
-        margin: 16,
+        margin: compact ? 8 : 14,
+        fontSize: compact ? 10 : 11,
       },
       axisTick: {
         alignWithLabel: true,
@@ -68,14 +80,16 @@ const EquityChart = ({ data, loading, onReady }: Props) => {
       scale: true,
       axisLabel: {
         formatter: (value: number) => formatCurrency(value, 0),
+        fontSize: compact ? 10 : 11,
+        margin: compact ? 6 : 8,
       },
       splitLine: { show: true, lineStyle: { color: "#e2e8f0" } },
     },
     grid: {
-      top: 40,
-      left: 72,
-      right: 28,
-      bottom: 64,
+      top: compact ? 24 : 32,
+      left: compact ? 56 : 68,
+      right: compact ? 18 : 24,
+      bottom: compact ? 36 : 52,
     },
     series: [
       {
@@ -83,7 +97,7 @@ const EquityChart = ({ data, loading, onReady }: Props) => {
         name: "Equity",
         showSymbol: false,
         smooth: true,
-        lineStyle: { width: 2 },
+        lineStyle: { width: compact ? 1.5 : 2 },
         data: data.values,
       },
     ],
@@ -123,7 +137,7 @@ const EquityChart = ({ data, loading, onReady }: Props) => {
       >
         ‹
       </button>
-      <ReactECharts option={option} style={{ height: 320 }} onChartReady={handleReady} />
+      <ReactECharts option={option} style={{ height: compact ? 220 : 288 }} onChartReady={handleReady} />
       <button
         type="button"
         className="chart-nudge chart-nudge--right"
