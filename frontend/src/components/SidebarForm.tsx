@@ -28,6 +28,7 @@ interface SidebarFormProps {
   loading: boolean;
   onSubmit: (payload: BacktestRequest, rawValues: any) => Promise<void> | void;
   compact?: boolean;
+  onSectorOverflowChange?: (scrollable: boolean) => void;
 }
 
 const getEarliestAllowed = () => {
@@ -47,7 +48,7 @@ const DEFAULT_STRATEGY_VALUES: Record<string, unknown> = {
   rsi_rule: { mode: "oversold", threshold: 30 },
 };
 
-const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) => {
+const SidebarForm = ({ loading, onSubmit, compact = false, onSectorOverflowChange }: SidebarFormProps) => {
   const [form] = Form.useForm();
   const [meta, setMeta] = useState<UniverseMeta>({ sectors: [], mcap_buckets: [] });
   const storage = useMemo(() => {
@@ -155,6 +156,14 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
   const useAdx = Form.useWatch("use_adx", form) ?? false;
   const useAroon = Form.useWatch("use_aroon", form) ?? false;
   const useStoch = Form.useWatch("use_stoch", form) ?? false;
+
+  const selectedSectors = Form.useWatch(["filters", "sectors"], form);
+
+  useEffect(() => {
+    if (!onSectorOverflowChange) return;
+    const count = Array.isArray(selectedSectors) ? selectedSectors.length : 0;
+    onSectorOverflowChange(count > 3);
+  }, [onSectorOverflowChange, selectedSectors]);
 
   const submit = async (values: any) => {
     const [start, end] = values.date as [Dayjs, Dayjs];
@@ -324,14 +333,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
           <Form.Item name="strategy" hidden initialValue="mean_reversion">
             <Input />
           </Form.Item>
-          <div className="form-grid form-grid--stacked">
-            <Form.Item
-              label="Capital"
-              name="capital"
-              className="form-grid__item form-grid__item--capital"
-            >
-              <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
-            </Form.Item>
+          <div className="form-grid form-grid--two">
             <Form.Item
               name="date"
               label="Range"
@@ -339,6 +341,13 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
               className="form-grid__item form-grid__item--range"
             >
               <RangePicker allowClear={false} style={{ width: "100%" }} disabledDate={disabledDate} />
+            </Form.Item>
+            <Form.Item
+              label="Capital"
+              name="capital"
+              className="form-grid__item form-grid__item--capital"
+            >
+              <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
             </Form.Item>
           </div>
           <div className="form-grid form-grid--four">
