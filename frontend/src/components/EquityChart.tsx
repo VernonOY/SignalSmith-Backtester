@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import ReactECharts from "echarts-for-react";
 import type { ECharts } from "echarts";
 import { Spin, Empty } from "antd";
@@ -10,10 +10,10 @@ interface Props {
   data?: TimeSeries | null;
   loading?: boolean;
   onReady?: (instance: ECharts) => void;
-  compact?: boolean;
 }
 
-const EquityChart = ({ data, loading, onReady, compact = false }: Props) => {
+const EquityChart = ({ data, loading, onReady }: Props) => {
+  const chartInstanceRef = useRef<ECharts | null>(null);
 
   if (loading) {
     return <Spin />;
@@ -28,46 +28,35 @@ const EquityChart = ({ data, loading, onReady, compact = false }: Props) => {
       valueFormatter: (value: number) => formatCurrency(value, 0),
     },
     toolbox: { feature: { saveAsImage: {} } },
-    dataZoom: compact
-      ? [
-          {
-            type: "inside",
-            filterMode: "weakFilter",
-            zoomOnMouseWheel: false,
-            moveOnMouseWheel: true,
-            moveOnMouseMove: true,
-          },
-        ]
-      : [
-          {
-            type: "inside",
-            filterMode: "weakFilter",
-            zoomOnMouseWheel: false,
-            moveOnMouseWheel: true,
-            moveOnMouseMove: true,
-          },
-          {
-            type: "slider",
-            showDetail: false,
-            height: 22,
-            fillerColor: "rgba(76, 110, 245, 0.18)",
-            borderColor: "rgba(76, 110, 245, 0.3)",
-            handleSize: 12,
-            handleStyle: { color: "#4c6ef5" },
-            moveHandleSize: 9,
-          },
-        ],
+    dataZoom: [
+      {
+        type: "inside",
+        filterMode: "weakFilter",
+        zoomOnMouseWheel: false,
+        moveOnMouseWheel: true,
+        moveOnMouseMove: true,
+      },
+      {
+        type: "slider",
+        showDetail: false,
+        height: 26,
+        fillerColor: "rgba(76, 110, 245, 0.18)",
+        borderColor: "rgba(76, 110, 245, 0.3)",
+        handleSize: 14,
+        handleStyle: { color: "#4c6ef5" },
+        moveHandleSize: 10,
+      },
+    ],
     xAxis: {
       type: "category",
       data: data.dates,
       axisLabel: {
         formatter: (value: string) => {
           const parsed = dayjs(value);
-          return parsed.isValid() ? parsed.format("YYMMDD") : value;
+          return parsed.isValid() ? parsed.format("YYYYMMDD") : value;
         },
         hideOverlap: true,
-        margin: compact ? 8 : 14,
-        fontSize: compact ? 10 : 11,
+        margin: 16,
       },
       axisTick: {
         alignWithLabel: true,
@@ -79,16 +68,14 @@ const EquityChart = ({ data, loading, onReady, compact = false }: Props) => {
       scale: true,
       axisLabel: {
         formatter: (value: number) => formatCurrency(value, 0),
-        fontSize: compact ? 10 : 11,
-        margin: compact ? 6 : 8,
       },
       splitLine: { show: true, lineStyle: { color: "#e2e8f0" } },
     },
     grid: {
-      top: compact ? 24 : 32,
-      left: compact ? 56 : 68,
-      right: compact ? 18 : 24,
-      bottom: compact ? 36 : 52,
+      top: 40,
+      left: 72,
+      right: 28,
+      bottom: 64,
     },
     series: [
       {
@@ -96,17 +83,57 @@ const EquityChart = ({ data, loading, onReady, compact = false }: Props) => {
         name: "Equity",
         showSymbol: false,
         smooth: true,
-        lineStyle: { width: compact ? 1.5 : 2 },
+        lineStyle: { width: 2 },
         data: data.values,
       },
     ],
   };
 
   const handleReady = (instance: ECharts) => {
+    chartInstanceRef.current = instance;
     onReady?.(instance);
   };
 
-  return <ReactECharts option={option} style={{ height: compact ? 220 : 288 }} onChartReady={handleReady} />;
+  const shiftWindow = (direction: -1 | 1) => {
+    const chart = chartInstanceRef.current;
+    if (!chart) return;
+    const option = chart.getOption() as any;
+    const dz = option.dataZoom?.[0];
+    if (!dz) return;
+    const total = Math.max(data.dates.length, 1);
+    const percentStep = 100 / total;
+    let start = typeof dz.start === "number" ? dz.start : 0;
+    let end = typeof dz.end === "number" ? dz.end : 100;
+    let windowSize = end - start;
+    if (windowSize <= 0) {
+      windowSize = Math.max(percentStep, 5 * percentStep);
+    }
+    const newStart = Math.max(0, Math.min(start + direction * percentStep, 100 - windowSize));
+    const newEnd = Math.min(100, newStart + windowSize);
+    chart.dispatchAction({ type: "dataZoom", dataZoomIndex: 0, start: newStart, end: newEnd });
+  };
+
+  return (
+    <div className="chart-wrapper">
+      <button
+        type="button"
+        className="chart-nudge chart-nudge--left"
+        onClick={() => shiftWindow(-1)}
+        aria-label="Shift time window left"
+      >
+        ‹
+      </button>
+      <ReactECharts option={option} style={{ height: 320 }} onChartReady={handleReady} />
+      <button
+        type="button"
+        className="chart-nudge chart-nudge--right"
+        onClick={() => shiftWindow(1)}
+        aria-label="Shift time window right"
+      >
+        ›
+      </button>
+    </div>
+  );
 };
 
 export default EquityChart;
