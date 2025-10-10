@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import {
   Button,
   Card,
@@ -6,10 +6,10 @@ import {
   Form,
   Input,
   InputNumber,
+  Modal,
   Select,
   Space,
   Switch,
-  Tooltip,
   Typography,
   message,
 } from "antd";
@@ -18,16 +18,21 @@ import { api } from "../api/client";
 import { BacktestRequest, Filters, RSIRule, UniverseMeta } from "../types";
 
 const { RangePicker } = DatePicker;
-const { Text } = Typography;
+const { Paragraph, Text } = Typography;
 
 const DEFAULT_PRESET_KEY = "backtest-sidebar-preset";
 const MIN_DATE = dayjs("2020-01-01");
 const LOOKBACK_YEARS = 5;
 
+type IndicatorKey = "rsi" | "macd" | "obv" | "ema" | "adx" | "aroon" | "stoch";
+
+type InfoModalKey = IndicatorKey | "signals" | "execution" | "universe";
+
+const INDICATOR_KEYS: IndicatorKey[] = ["rsi", "macd", "obv", "aroon", "ema", "adx", "stoch"];
+
 interface SidebarFormProps {
   loading: boolean;
   onSubmit: (payload: BacktestRequest, rawValues: any) => Promise<void> | void;
-  compact?: boolean;
 }
 
 const getEarliestAllowed = () => {
@@ -47,9 +52,20 @@ const DEFAULT_STRATEGY_VALUES: Record<string, unknown> = {
   rsi_rule: { mode: "oversold", threshold: 30 },
 };
 
-const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) => {
+const SidebarForm = ({ loading, onSubmit }: SidebarFormProps) => {
   const [form] = Form.useForm();
   const [meta, setMeta] = useState<UniverseMeta>({ sectors: [], mcap_buckets: [] });
+  const [activeInfo, setActiveInfo] = useState<InfoModalKey | null>(null);
+  const [showUniverseFilters, setShowUniverseFilters] = useState(false);
+  const [showIndicatorDetails, setShowIndicatorDetails] = useState(false);
+
+  const openInfo = (key: InfoModalKey) => {
+    setActiveInfo(key);
+  };
+
+  const closeInfo = () => {
+    setActiveInfo(null);
+  };
 
   useEffect(() => {
     const fetchMeta = async () => {
@@ -96,6 +112,8 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
 
   const handleReset = () => {
     form.resetFields();
+    setShowUniverseFilters(false);
+    setShowIndicatorDetails(false);
   };
 
   const handleSavePreset = () => {
@@ -245,13 +263,272 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
     await onSubmit(payload, values);
   };
 
+  const renderInfoContent = (key: InfoModalKey | null): ReactNode => {
+    if (!key) return null;
+    switch (key) {
+      case "execution":
+        return (
+          <>
+            <Paragraph>
+              <Text strong>Initial Capital.</Text> Defines the cash balance your test begins with. Every position size, return, and
+              drawdown is translated into dollars using this amount, so doubling it would double the simulated profits and losses
+              while leaving percentage metrics unchanged.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Fee (bps).</Text> Estimated round-trip trading friction expressed in basis points (1 bp = 0.01%). The
+              platform deducts the cost on both entry and exit, meaning that a 25 bp setting shaves 0.25% from each trade’s gross
+              performance to mimic commissions and slippage. Higher fees naturally reduce win rates for shorter-term strategies.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Hold Days.</Text> Caps the lifespan of any open trade. Once this limit is hit, the engine force-closes the
+              position at the prevailing price, ensuring that signals which fail to resolve quickly cannot linger and distort
+              capital availability for new ideas.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Position sizing.</Text> Trades are sized using fractional shares so every allocation uses the full cash
+              slice it receives. This avoids leftover capital from rounding to whole lots and keeps returns aligned with the
+              percentage signals you configure.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Stop Loss (%).</Text> Optional protective floor based on percentage drop from entry. Setting this to 5
+              means the trade exits if price declines 5%, crystallising a controlled loss and preventing deeper drawdowns during
+              volatile swings. Leave blank to disable the safety valve.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Take Profit (%).</Text> Optional profit target measured from entry. A value of 10 locks in gains once price
+              advances 10%, banking momentum-driven wins before they can mean-revert. Leaving the field empty keeps winners running
+              until other exit rules intervene.
+            </Paragraph>
+          </>
+        );
+      case "rsi":
+        return (
+          <>
+            <Paragraph>
+              The Relative Strength Index compares the magnitude of recent gains and losses to spot momentum extremes. Traders
+              watch for the oscillator to push into extreme zones (typically below 30 or above 70) as early signals that a swing is
+              stretched and may soon revert, a technique popularised by J. Welles Wilder and still widely cited in modern technical
+              analysis primers.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Enable RSI.</Text> Toggles the indicator on or off for signal generation.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>RSI Lookback.</Text> Number of days used when averaging up and down moves. Shorter windows (e.g., 7-14
+              periods) react faster to fresh momentum shifts but introduce more whipsaws; longer windows smooth noise at the cost of
+              slower turns.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>RSI Mode.</Text> Choose <Text strong>Oversold (&lt;= threshold)</Text> to buy dips or <Text strong>Overbought (&gt;=
+              threshold)</Text> to fade rallies.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>RSI Threshold.</Text> Sets the oversold or overbought trigger level (0-100). Lower oversold triggers demand
+              heavier pullbacks before acting, while higher overbought triggers wait for exceptionally strong rallies before fading
+              them.
+            </Paragraph>
+          </>
+        );
+      case "macd":
+        return (
+          <>
+            <Paragraph>
+              Moving Average Convergence Divergence (MACD) compares a fast and slow exponential moving average to reveal the
+              direction and pace of trend momentum. Histogram flips or signal-line crossovers often flag the transition from
+              accumulation to distribution and vice versa.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Enable MACD.</Text> Include or exclude MACD from the voting process.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Fast / Slow.</Text> Length of the short- and long-term EMAs that form the MACD line. Wider separation (e.g.,
+              12/26) focuses on medium-term swings, whereas tighter spans pick up shorter bursts of momentum but whipsaw more often.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Signal.</Text> Smoothing period applied to the MACD line. Short values yield quicker crossovers and early
+              warnings; longer ones filter noise at the expense of timeliness.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>MACD Rule.</Text> Decide whether a trade triggers when the MACD crosses its signal line—classic momentum
+              confirmation—or simply remains above zero to capture periods when the short EMA stays above the long EMA.
+            </Paragraph>
+          </>
+        );
+      case "obv":
+        return (
+          <>
+            <Paragraph>
+              On-Balance Volume cumulates volume on up days and subtracts it on down days to confirm participation behind price moves.
+              Rising OBV alongside price can validate a breakout’s strength, while divergences warn that momentum lacks conviction.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Enable OBV.</Text> Turn the volume confirmation filter on or off.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>OBV Rule.</Text> Choose between requiring OBV to cross above its moving average (<Text strong>Rise</Text>) or
+              simply turn positive (<Text strong>Positive</Text>). The moving-average approach waits for a momentum surge in volume,
+              while the positive filter reacts as soon as buying pressure outweighs selling pressure.
+            </Paragraph>
+          </>
+        );
+      case "ema":
+        return (
+          <>
+            <Paragraph>
+              The EMA crossover looks for shifts in trend when a fast-moving average overtakes a slower one. Many traders treat these
+              events as objective evidence that price has shifted regimes because exponential weighting emphasises the latest data.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Enable EMA Cross.</Text> Toggle whether the crossover contributes to signals.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Short / Long.</Text> Window length (in days) for the fast and slow EMAs. Short spans track swing trading
+              setups with faster, but noisier, reactions; longer spans smooth noise and favour primary trend following.
+            </Paragraph>
+          </>
+        );
+      case "adx":
+        return (
+          <>
+            <Paragraph>
+              Average Directional Index (ADX) measures the strength of a trend regardless of direction. Values above roughly 25 often
+              indicate an established trend, whereas readings below 20 suggest range-bound markets prone to false breakouts.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Enable ADX.</Text> Adds or removes the trend-strength filter.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Lookback.</Text> Number of periods used to calculate ADX. Longer lookbacks smooth the reading and avoid
+              knee-jerk spikes, while shorter ones adjust faster to fresh surges in directional strength.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Min ADX.</Text> Minimum value required before signals are allowed. Requiring at least 20–25 helps avoid
+              choppy, low-trend environments where breakout systems underperform.
+            </Paragraph>
+          </>
+        );
+      case "aroon":
+        return (
+          <>
+            <Paragraph>
+              Aroon Up and Down indicate how recently price has made new highs or lows to gauge emerging trends. When Aroon Up stays
+              elevated while Aroon Down sinks, the market is consistently printing fresh highs, hinting at bullish control.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Enable Aroon.</Text> Switch the indicator participation on or off.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Lookback.</Text> Days inspected when determining recent highs and lows. Larger windows slow the indicator and
+              spotlight dominant multi-week trends; smaller windows sharpen its sensitivity to fresh breakouts.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Aroon Up / Down.</Text> Thresholds (0-100) that define when bullish or bearish momentum is strong enough to
+              vote. Higher requirements demand sustained momentum before trades fire, reducing noise but delaying entries.
+            </Paragraph>
+          </>
+        );
+      case "stoch":
+        return (
+          <>
+            <Paragraph>
+              The stochastic oscillator compares the latest close with the recent high-low range to spot overbought or oversold
+              conditions. It highlights moments when price closes near the extreme of its range, signalling potential exhaustion or
+              continuation depending on crossovers and threshold rules.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Enable Stochastic.</Text> Include or exclude the oscillator from the rules.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>%K / %D.</Text> %K controls the base oscillator lookback; %D sets the smoothing applied to %K. Shorter %K
+              settings react rapidly to fresh highs or lows, while longer %D smooths the noise and focuses on decisive turns.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Threshold.</Text> Level used for oversold or overbought checks when those modes are selected. Lower
+              thresholds catch deeper pullbacks, whereas higher ones wait for exceptionally strong overbought readings before acting.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Rule.</Text> Choose between acting on signal-line crossovers or extreme zone tests.
+            </Paragraph>
+          </>
+        );
+      case "signals":
+        return (
+          <>
+            <Paragraph>
+              <Text strong>Combination Policy.</Text> Defines how many indicators must agree before a trade triggers. <Text strong>Any</Text>
+              fires on a single vote, <Text strong>All</Text> requires unanimous agreement, and <Text strong>At least k</Text> lets you set
+              the minimum number explicitly.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>k.</Text> Only used when the policy is “At least k”; it specifies the count of confirming indicators needed.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Max Horizon (days).</Text> Longest forward-return period evaluated. It caps hold days and histogram horizon to
+              keep calculations consistent.
+            </Paragraph>
+          <Paragraph>
+            <Text strong>Histogram Horizon (days).</Text> Select which horizon feeds the return distribution chart. It cannot exceed the
+            max horizon.
+          </Paragraph>
+          <Paragraph>
+            <Text strong>Histogram Bins.</Text> Controls how many buckets summarise the forward returns in the distribution chart.
+          </Paragraph>
+        </>
+      );
+      case "universe":
+        return (
+          <>
+            <Paragraph>
+              Universe filters narrow the list of securities before signals run.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Sector.</Text> Choose industries to include. Leave empty to consider every available sector.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Market Cap Min / Max.</Text> Bound the allowable company size in US dollars. Use both boxes to target a
+              specific capitalization range.
+            </Paragraph>
+            <Paragraph>
+              <Text strong>Exclude Tickers.</Text> Remove individual symbols (comma or space separated) from consideration regardless of
+              other filters.
+            </Paragraph>
+          </>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const infoTitles: Record<InfoModalKey, string> = {
+    execution: "Execution Settings",
+    rsi: "Relative Strength Index (RSI)",
+    macd: "Moving Average Convergence Divergence (MACD)",
+    obv: "On-Balance Volume (OBV)",
+    ema: "Exponential Moving Average Cross (EMA)",
+    adx: "Average Directional Index (ADX)",
+    aroon: "Aroon Oscillator",
+    stoch: "Stochastic Oscillator",
+    signals: "Signal Rules",
+    universe: "Universe Filters",
+  };
+
   return (
     <>
+      <Modal
+        open={activeInfo !== null}
+        onCancel={closeInfo}
+        footer={null}
+        title={activeInfo ? infoTitles[activeInfo] : undefined}
+        centered
+        width={560}
+      >
+        {renderInfoContent(activeInfo)}
+      </Modal>
       <Form
         form={form}
         layout="vertical"
         size="small"
-        className={`sidebar-form${compact ? " sidebar-form--compact" : ""}`}
+        className="sidebar-form"
         onFinish={submit}
         initialValues={{
           strategy: "mean_reversion",
@@ -288,21 +565,31 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
           filters: {},
         }}
       >
-        <Card title="Run Settings" size="small" bordered={false} className="sidebar-card sidebar-card--compact">
+        <Card
+          title="Run Settings"
+          size="small"
+          bordered={false}
+          className="sidebar-card"
+          extra={
+            <Button type="link" size="small" onClick={() => openInfo("execution")}>
+              Describe
+            </Button>
+          }
+        >
           <Form.Item name="strategy" hidden initialValue="mean_reversion">
             <Input />
           </Form.Item>
           <div className="form-grid form-grid--capital-range">
             <Form.Item
-              label="Capital"
+              label="Initial Capital"
               name="capital"
               className="form-grid__item form-grid__item--capital"
             >
-              <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
+              <InputNumber min={0} style={{ width: "100%" }} prefix="$" />
             </Form.Item>
             <Form.Item
               name="date"
-              label="Range"
+              label="Backtest Range"
               rules={[{ required: true }]}
               className="form-grid__item form-grid__item--range"
             >
@@ -310,17 +597,17 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
             </Form.Item>
           </div>
           <div className="form-grid form-grid--four">
-            <Form.Item label="Fee" name="fee_bps" className="form-grid__item">
-              <InputNumber min={0} max={100} style={{ width: "100%" }} addonAfter="bp" />
+            <Form.Item label="Fee (bps)" name="fee_bps" className="form-grid__item">
+              <InputNumber min={0} max={100} style={{ width: "100%" }} />
             </Form.Item>
-            <Form.Item label="Hold" name="hold_days" className="form-grid__item">
-              <InputNumber min={1} max={10} style={{ width: "100%" }} addonAfter="d" />
+            <Form.Item label="Hold Days" name="hold_days" className="form-grid__item">
+              <InputNumber min={1} max={10} style={{ width: "100%" }} />
             </Form.Item>
-            <Form.Item label="SL" name="stop_loss_pct" className="form-grid__item">
-              <InputNumber min={0} max={100} style={{ width: "100%" }} addonAfter="%" placeholder="—" />
+            <Form.Item label="Stop Loss (%)" name="stop_loss_pct" className="form-grid__item">
+              <InputNumber min={0} max={100} style={{ width: "100%" }} placeholder="Optional" />
             </Form.Item>
-            <Form.Item label="TP" name="take_profit_pct" className="form-grid__item">
-              <InputNumber min={0} max={200} style={{ width: "100%" }} addonAfter="%" placeholder="—" />
+            <Form.Item label="Take Profit (%)" name="take_profit_pct" className="form-grid__item">
+              <InputNumber min={0} max={200} style={{ width: "100%" }} placeholder="Optional" />
             </Form.Item>
           </div>
         </Card>
@@ -330,13 +617,28 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
           size="small"
           bordered={false}
           className="sidebar-card sidebar-card--indicators"
+          extra={
+            <Button type="link" size="small" onClick={() => setShowIndicatorDetails((prev) => !prev)}>
+              {showIndicatorDetails ? "Hide" : "Describe"}
+            </Button>
+          }
         >
+          {showIndicatorDetails && (
+            <div className="indicator-describe">
+              {INDICATOR_KEYS.map((key) => (
+                <div key={key} className="indicator-describe__section">
+                  <Paragraph className="indicator-describe__heading">
+                    <Text strong>{infoTitles[key]}</Text>
+                  </Paragraph>
+                  {renderInfoContent(key)}
+                </div>
+              ))}
+            </div>
+          )}
           <div className="indicator-grid">
             <div className="indicator-grid__item">
               <div className="indicator-header">
-                <Tooltip title="Relative Strength Index">
-                  <Text strong>RSI</Text>
-                </Tooltip>
+                <Text strong>RSI</Text>
                 <Space size={6} align="center" className="indicator-header__actions">
                   <Form.Item name="enable_rsi" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle RSI" />
@@ -351,17 +653,16 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                 >
                   <Select
                     options={[
-                      { label: "Oversold", value: "oversold" },
-                      { label: "Overbought", value: "overbought" },
+                      { label: "Oversold (<= threshold)", value: "oversold" },
+                      { label: "Overbought (>= threshold)", value: "overbought" },
                     ]}
-                    dropdownMatchSelectWidth={false}
                     disabled={!enableRsi}
                   />
                 </Form.Item>
-                <Form.Item label="Lkb" name="rsi_n" className="indicator-field">
+                <Form.Item label="Lookback" name="rsi_n" className="indicator-field">
                   <InputNumber min={2} max={100} style={{ width: "100%" }} disabled={!enableRsi} />
                 </Form.Item>
-                <Form.Item label="Th" name={["rsi_rule", "threshold"]} className="indicator-field">
+                <Form.Item label="Threshold" name={["rsi_rule", "threshold"]} className="indicator-field">
                   <InputNumber min={0} max={100} style={{ width: "100%" }} disabled={!enableRsi} />
                 </Form.Item>
               </div>
@@ -369,9 +670,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
 
             <div className="indicator-grid__item">
               <div className="indicator-header">
-                <Tooltip title="Moving Average Convergence Divergence">
-                  <Text strong>MACD</Text>
-                </Tooltip>
+                <Text strong>MACD</Text>
                 <Space size={6} align="center" className="indicator-header__actions">
                   <Form.Item name="use_macd" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle MACD" />
@@ -382,10 +681,9 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                 <Form.Item label="Rule" name="macd_rule" className="indicator-field">
                   <Select
                     options={[
-                      { label: "Signal", value: "signal" },
-                      { label: "> 0", value: "positive" },
+                      { label: "Signal crossover", value: "signal" },
+                      { label: "MACD > 0", value: "positive" },
                     ]}
-                    dropdownMatchSelectWidth={false}
                     disabled={!useMacd}
                   />
                 </Form.Item>
@@ -395,7 +693,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                 <Form.Item label="Slow" name="macd_slow" className="indicator-field">
                   <InputNumber min={1} max={40} style={{ width: "100%" }} disabled={!useMacd} />
                 </Form.Item>
-                <Form.Item label="Sig" name="macd_signal" className="indicator-field">
+                <Form.Item label="Signal" name="macd_signal" className="indicator-field">
                   <InputNumber min={1} max={20} style={{ width: "100%" }} disabled={!useMacd} />
                 </Form.Item>
               </div>
@@ -403,9 +701,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
 
             <div className="indicator-grid__item">
               <div className="indicator-header">
-                <Tooltip title="On-Balance Volume">
-                  <Text strong>OBV</Text>
-                </Tooltip>
+                <Text strong>OBV</Text>
                 <Space size={6} align="center" className="indicator-header__actions">
                   <Form.Item name="use_obv" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle OBV" />
@@ -417,13 +713,22 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                   label="Rule"
                   name="obv_rule"
                   className="indicator-field indicator-field--full"
+                  extra={
+                    <div className="indicator-hint">
+                      <div>
+                        <strong>Rule A</strong> — OBV crosses above its moving average
+                      </div>
+                      <div>
+                        <strong>Rule B</strong> — OBV turns positive
+                      </div>
+                    </div>
+                  }
                 >
                   <Select
                     options={[
-                      { label: "MA Rise", value: "rise" },
-                      { label: "> 0", value: "positive" },
+                      { label: "Rule A", value: "rise" },
+                      { label: "Rule B", value: "positive" },
                     ]}
-                    dropdownMatchSelectWidth={false}
                     disabled={!useObv}
                   />
                 </Form.Item>
@@ -432,9 +737,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
 
             <div className="indicator-grid__item">
               <div className="indicator-header">
-                <Tooltip title="Aroon Oscillator">
-                  <Text strong>AROON</Text>
-                </Tooltip>
+                <Text strong>AROON</Text>
                 <Space size={6} align="center" className="indicator-header__actions">
                   <Form.Item name="use_aroon" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle Aroon" />
@@ -442,13 +745,13 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                 </Space>
               </div>
               <div className="indicator-fields">
-                <Form.Item label="Lkb" name="aroon_n" className="indicator-field">
+                <Form.Item label="Lookback" name="aroon_n" className="indicator-field">
                   <InputNumber min={5} max={50} style={{ width: "100%" }} disabled={!useAroon} />
                 </Form.Item>
-                <Form.Item label="Up" name="aroon_up" className="indicator-field">
+                <Form.Item label="Aroon Up" name="aroon_up" className="indicator-field">
                   <InputNumber min={0} max={100} style={{ width: "100%" }} disabled={!useAroon} />
                 </Form.Item>
-                <Form.Item label="Dn" name="aroon_down" className="indicator-field">
+                <Form.Item label="Aroon Down" name="aroon_down" className="indicator-field">
                   <InputNumber min={0} max={100} style={{ width: "100%" }} disabled={!useAroon} />
                 </Form.Item>
               </div>
@@ -458,9 +761,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
               <div className="indicator-stack">
                 <div className="indicator-stack__section">
                   <div className="indicator-header indicator-header--stacked">
-                    <Tooltip title="EMA crossover">
-                      <Text strong>EMA</Text>
-                    </Tooltip>
+                    <Text strong>EMA</Text>
                     <Space size={6} align="center" className="indicator-header__actions">
                       <Form.Item name="use_ema" valuePropName="checked" noStyle>
                         <Switch size="small" aria-label="Toggle EMA" />
@@ -479,9 +780,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                 <div className="indicator-stack__divider" aria-hidden />
                 <div className="indicator-stack__section">
                   <div className="indicator-header indicator-header--stacked">
-                    <Tooltip title="Average Directional Index">
-                      <Text strong>ADX</Text>
-                    </Tooltip>
+                    <Text strong>ADX</Text>
                     <Space size={6} align="center" className="indicator-header__actions">
                       <Form.Item name="use_adx" valuePropName="checked" noStyle>
                         <Switch size="small" aria-label="Toggle ADX" />
@@ -489,10 +788,10 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                     </Space>
                   </div>
                   <div className="indicator-fields indicator-fields--compact">
-                    <Form.Item label="Lkb" name="adx_n" className="indicator-field">
+                    <Form.Item label="Lookback" name="adx_n" className="indicator-field">
                       <InputNumber min={5} max={50} style={{ width: "100%" }} disabled={!useAdx} />
                     </Form.Item>
-                    <Form.Item label="Min" name="adx_min" className="indicator-field">
+                    <Form.Item label="Min ADX" name="adx_min" className="indicator-field">
                       <InputNumber min={5} max={60} style={{ width: "100%" }} disabled={!useAdx} />
                     </Form.Item>
                   </div>
@@ -502,9 +801,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
 
             <div className="indicator-grid__item">
               <div className="indicator-header">
-                <Tooltip title="Stochastic Oscillator">
-                  <Text strong>STOCH</Text>
-                </Tooltip>
+                <Text strong>STOCH</Text>
                 <Space size={6} align="center" className="indicator-header__actions">
                   <Form.Item name="use_stoch" valuePropName="checked" noStyle>
                     <Switch size="small" aria-label="Toggle Stochastic" />
@@ -515,11 +812,10 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                 <Form.Item label="Rule" name="stoch_rule" className="indicator-field indicator-field--full">
                   <Select
                     options={[
-                      { label: "Signal", value: "signal" },
-                      { label: "OS", value: "oversold" },
-                      { label: "OB", value: "overbought" },
+                      { label: "Signal crossover", value: "signal" },
+                      { label: "Oversold", value: "oversold" },
+                      { label: "Overbought", value: "overbought" },
                     ]}
-                    dropdownMatchSelectWidth={false}
                     disabled={!useStoch}
                   />
                 </Form.Item>
@@ -530,7 +826,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                   <InputNumber min={1} max={20} style={{ width: "100%" }} disabled={!useStoch} />
                 </Form.Item>
                 <Form.Item
-                  label="Th"
+                  label="Threshold"
                   name="stoch_threshold"
                   className="indicator-field indicator-field--full"
                 >
@@ -541,27 +837,58 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
           </div>
         </Card>
 
-        <Card title="Universe Filters" size="small" bordered={false} className="sidebar-card">
-          <div className="form-grid form-grid--universe">
-            <Form.Item label="Sector" name={["filters", "sectors"]} className="form-grid__item">
-              <Select mode="multiple" allowClear options={sectorOptions} dropdownMatchSelectWidth={false} />
-            </Form.Item>
-            <Form.Item label="Cap Min" name={["filters", "mcap_min"]} className="form-grid__item">
-              <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
-            </Form.Item>
-            <Form.Item label="Cap Max" name={["filters", "mcap_max"]} className="form-grid__item">
-              <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
-            </Form.Item>
-            <Form.Item label="Exclude" name={["filters", "exclude_tickers"]} className="form-grid__item">
-              <Select mode="tags" tokenSeparators={[",", " "]} placeholder="TSLA, NVDA" dropdownMatchSelectWidth={false} />
-            </Form.Item>
-          </div>
+        <Card
+          title="Universe Filters"
+          size="small"
+          bordered={false}
+          className="sidebar-card"
+          extra={
+            <Space size={4} align="center">
+              <Button type="link" size="small" onClick={() => openInfo("universe")}>
+                Describe
+              </Button>
+              <Button
+                type="link"
+                size="small"
+                onClick={() => setShowUniverseFilters((prev) => !prev)}
+              >
+                {showUniverseFilters ? "Hide" : "Show"}
+              </Button>
+            </Space>
+          }
+        >
+          {showUniverseFilters && (
+            <div className="form-grid form-grid--universe">
+              <Form.Item label="Sector" name={["filters", "sectors"]} className="form-grid__item">
+                <Select mode="multiple" allowClear options={sectorOptions} />
+              </Form.Item>
+              <Form.Item label="Market Cap Min ($)" name={["filters", "mcap_min"]} className="form-grid__item">
+                <InputNumber min={0} style={{ width: "100%" }} />
+              </Form.Item>
+              <Form.Item label="Market Cap Max ($)" name={["filters", "mcap_max"]} className="form-grid__item">
+                <InputNumber min={0} style={{ width: "100%" }} />
+              </Form.Item>
+              <Form.Item label="Exclude Tickers" name={["filters", "exclude_tickers"]} className="form-grid__item">
+                <Select mode="tags" tokenSeparators={[",", " "]} placeholder="e.g. TSLA, NVDA" />
+              </Form.Item>
+            </div>
+          )}
         </Card>
 
-        <Card title="Signal Rules" size="small" bordered={false} className="sidebar-card">
+        <Card
+          title="Signal Rules"
+          size="small"
+          bordered={false}
+          className="sidebar-card"
+          extra={
+            <Button type="link" size="small" onClick={() => openInfo("signals")}>
+              Describe
+            </Button>
+          }
+        >
           <div className="form-grid form-grid--signals">
             <Form.Item
-              label="Policy"
+              label="Combination Policy"
               name="policy"
               className="form-grid__item form-grid__item--span-2"
             >
@@ -576,13 +903,13 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
             <Form.Item label="k" name="k" className="form-grid__item">
               <InputNumber min={1} max={7} style={{ width: "100%" }} />
             </Form.Item>
-            <Form.Item label="Max Hz" name="max_horizon" className="form-grid__item">
-              <InputNumber min={1} max={10} style={{ width: "100%" }} addonAfter="d" />
+            <Form.Item label="Max Horizon (days)" name="max_horizon" className="form-grid__item">
+              <InputNumber min={1} max={10} style={{ width: "100%" }} />
             </Form.Item>
-            <Form.Item label="Hist Hz" name="hist_horizon" className="form-grid__item">
-              <InputNumber min={1} max={10} style={{ width: "100%" }} addonAfter="d" />
+            <Form.Item label="Histogram Horizon (days)" name="hist_horizon" className="form-grid__item">
+              <InputNumber min={1} max={10} style={{ width: "100%" }} />
             </Form.Item>
-            <Form.Item label="Bins" name="hist_bins" className="form-grid__item">
+            <Form.Item label="Histogram Bins" name="hist_bins" className="form-grid__item">
               <InputNumber min={5} max={60} style={{ width: "100%" }} />
             </Form.Item>
           </div>
