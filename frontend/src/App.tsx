@@ -278,23 +278,40 @@ const App = () => {
 
         <div className="dashboard__body">
           <aside className="dashboard__sidebar">
-            <SidebarForm
-              loading={loading}
-              onSubmit={handleSubmit}
-              compact={compactMode}
-            />
+            <div className="dashboard__sidebar-inner">
+              <SidebarForm
+                loading={loading}
+                onSubmit={handleSubmit}
+                compact={compactMode}
+              />
+            </div>
           </aside>
 
           <main className="dashboard__content">
-            {response ? (
-              <>
+            <div className="dashboard__workspace">
+              {response ? (
                 <div className="dashboard__charts">
                   {response.histogram && (
                     <Card className="result-card histogram-card" size="small">
                       <div className="card-header">
                         <Title level={4}>Return Distribution</Title>
                       </div>
-                      <HistogramChart data={response.histogram} loading={loading} compact />
+                      <HistogramChart
+                        data={response.histogram}
+                        loading={loading}
+                        compact
+                        height={compactMode ? 320 : 360}
+                      />
+                      {equityMetrics.length > 0 && (
+                        <div className="equity-metrics">
+                          {equityMetrics.map((metric) => (
+                            <div className="equity-metrics__item" key={metric.key}>
+                              <span className="equity-metrics__label">{metric.label}</span>
+                              <span className="equity-metrics__value">{metric.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       {lastRunConfig &&
                         (runSettingsSummary.length || universeSummary.length || signalSummary.length) && (
                         <div className="run-summary">
@@ -340,37 +357,29 @@ const App = () => {
                     <div className="card-header">
                       <Title level={4}>Equity Curve</Title>
                     </div>
-                    <EquityChart data={response.equity_curve} loading={loading} compact />
-                    {equityMetrics.length > 0 && (
-                      <div className="equity-metrics">
-                        {equityMetrics.map((metric) => (
-                          <div className="equity-metrics__item" key={metric.key}>
-                            <span className="equity-metrics__label">{metric.label}</span>
-                            <span className="equity-metrics__value">{metric.value}</span>
-                          </div>
-                        ))}
+                    <EquityChart
+                      data={response.equity_curve}
+                      loading={loading}
+                      compact
+                      height={compactMode ? 320 : 360}
+                    />
+                    {response.indicator_statistics && (
+                      <div className="indicator-stats">
+                        <div className="indicator-stats__header">Indicator Statistics</div>
+                        <IndicatorStatsTable stats={response.indicator_statistics} compact />
                       </div>
                     )}
                   </Card>
                 </div>
-
-                {response.indicator_statistics && (
-                  <Card className="result-card table-card" size="small">
-                    <div className="card-header">
-                      <Title level={4}>Indicator Statistics</Title>
-                    </div>
-                    <IndicatorStatsTable stats={response.indicator_statistics} compact />
-                  </Card>
-                )}
-              </>
-            ) : (
-              <Card className="result-card intro-card" size="small">
-                <Title level={4}>Configure &amp; Run</Title>
-                <Text type="secondary">
-                  Adjust parameters on the left and run the engine to populate the dashboard.
-                </Text>
-              </Card>
-            )}
+              ) : (
+                <Card className="result-card intro-card" size="small">
+                  <Title level={4}>Configure &amp; Run</Title>
+                  <Text type="secondary">
+                    Adjust parameters on the left and run the engine to populate the dashboard.
+                  </Text>
+                </Card>
+              )}
+            </div>
           </main>
         </div>
 
