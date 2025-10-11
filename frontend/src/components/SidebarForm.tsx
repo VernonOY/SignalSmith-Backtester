@@ -176,13 +176,9 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
   useEffect(() => {
     if (!maxHorizon) return;
     const currentHold = form.getFieldValue("hold_days");
-    const currentHist = form.getFieldValue("hist_horizon");
     const next: Record<string, number> = {};
     if (currentHold && currentHold > maxHorizon) {
       next.hold_days = maxHorizon;
-    }
-    if (currentHist && currentHist > maxHorizon) {
-      next.hist_horizon = maxHorizon;
     }
     if (Object.keys(next).length) {
       form.setFieldsValue(next);
@@ -196,6 +192,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
   const useAdx = Form.useWatch("use_adx", form) ?? false;
   const useAroon = Form.useWatch("use_aroon", form) ?? false;
   const useStoch = Form.useWatch("use_stoch", form) ?? false;
+  const policyValue = Form.useWatch("policy", form) ?? "all";
 
   const submit = async (values: any) => {
     const [start, end] = values.date as [Dayjs, Dayjs];
@@ -225,7 +222,6 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
       policy: values.policy,
       atleast_k: values.k,
       max_horizon: values.max_horizon,
-      hist_horizon: values.hist_horizon,
       hold_days: values.hold_days,
       stop_loss_pct: stopLoss,
       take_profit_pct: takeProfit,
@@ -307,7 +303,6 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
       hold_days: values.hold_days,
       stop_loss_pct: stopLoss,
       take_profit_pct: takeProfit,
-      hist_bins: values.hist_bins,
     };
 
     await onSubmit(payload, values);
@@ -348,11 +343,9 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
           stoch_d: 3,
           stoch_rule: "signal",
           stoch_threshold: 20,
-          policy: "any",
+          policy: "all",
           k: 2,
           max_horizon: 10,
-          hist_horizon: 1,
-          hist_bins: 5,
           filters: {},
         }}
       >
@@ -622,17 +615,14 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
           bordered={false}
           className="sidebar-card sidebar-card--half"
           extra={
-            <Space size={4} align="center">
-              {renderDescribeButton()}
-              <Button
-                type="link"
-                size="small"
-                className="sidebar-card__action"
-                onClick={() => setShowUniverseFilters((prev) => !prev)}
-              >
-                {showUniverseFilters ? "Hide" : "Show"}
-              </Button>
-            </Space>
+            <Button
+              type="link"
+              size="small"
+              className="sidebar-card__action"
+              onClick={() => setShowUniverseFilters((prev) => !prev)}
+            >
+              {showUniverseFilters ? "Hide" : "Show"}
+            </Button>
           }
         >
           {showUniverseFilters && (
@@ -659,17 +649,14 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
           bordered={false}
           className="sidebar-card sidebar-card--half"
           extra={
-            <Space size={4} align="center">
-              {renderDescribeButton()}
-              <Button
-                type="link"
-                size="small"
-                className="sidebar-card__action"
-                onClick={() => setShowSignalRules((prev) => !prev)}
-              >
-                {showSignalRules ? "Hide" : "Show"}
-              </Button>
-            </Space>
+            <Button
+              type="link"
+              size="small"
+              className="sidebar-card__action"
+              onClick={() => setShowSignalRules((prev) => !prev)}
+            >
+              {showSignalRules ? "Hide" : "Show"}
+            </Button>
           }
         >
           {showSignalRules && (
@@ -688,16 +675,10 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                 />
               </Form.Item>
               <Form.Item label="k" name="k" className="form-grid__item">
-                <InputNumber min={1} max={7} style={{ width: "100%" }} />
+                <InputNumber min={1} max={7} style={{ width: "100%" }} disabled={policyValue !== "atleast_k"} />
               </Form.Item>
               <Form.Item label="Max Hz" name="max_horizon" className="form-grid__item">
                 <InputNumber min={1} max={10} style={{ width: "100%" }} addonAfter="d" />
-              </Form.Item>
-              <Form.Item label="Hist Hz" name="hist_horizon" className="form-grid__item">
-                <InputNumber min={1} max={10} style={{ width: "100%" }} addonAfter="d" />
-              </Form.Item>
-              <Form.Item label="Bins" name="hist_bins" className="form-grid__item">
-                <InputNumber min={5} max={60} style={{ width: "100%" }} />
               </Form.Item>
             </div>
           )}
