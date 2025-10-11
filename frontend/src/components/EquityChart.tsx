@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import ReactECharts from "echarts-for-react";
 import type { ECharts } from "echarts";
 import { Spin, Empty } from "antd";
@@ -22,6 +22,11 @@ const EquityChart = ({ data, loading, onReady, compact = false, height }: Props)
   if (!data || data.dates.length === 0) {
     return <Empty description="No equity data" />;
   }
+
+  const seriesData = useMemo(
+    () => data.dates.map((date, idx) => [date, data.values[idx]] as [string, number]),
+    [data.dates, data.values]
+  );
 
   const option = {
     tooltip: {
@@ -59,19 +64,31 @@ const EquityChart = ({ data, loading, onReady, compact = false, height }: Props)
           },
         ],
     xAxis: {
-      type: "category",
-      data: data.dates,
+      type: "time",
       axisLabel: {
-        formatter: (value: string) => {
-          const parsed = dayjs(value);
-          return parsed.isValid() ? parsed.format("YYMMDD") : value;
-        },
+        formatter: (() => {
+          let lastLabel: string | null = null;
+          return (value: number) => {
+            const parsed = dayjs(value);
+            if (!parsed.isValid()) return "";
+            const quarter = Math.floor(parsed.month() / 3) + 1;
+            const year = parsed.year();
+            const label = `Q${quarter} ${year}`;
+            if (label === lastLabel) {
+              return "";
+            }
+            lastLabel = label;
+            return label;
+          };
+        })(),
         hideOverlap: true,
+        showMinLabel: true,
+        showMaxLabel: true,
         margin: compact ? 8 : 14,
         fontSize: compact ? 10 : 11,
       },
       axisTick: {
-        alignWithLabel: true,
+        show: false,
       },
       splitLine: { show: true, lineStyle: { color: "#e2e8f0" } },
     },
@@ -98,7 +115,7 @@ const EquityChart = ({ data, loading, onReady, compact = false, height }: Props)
         showSymbol: false,
         smooth: true,
         lineStyle: { width: compact ? 1.5 : 2 },
-        data: data.values,
+        data: seriesData,
       },
     ],
   };

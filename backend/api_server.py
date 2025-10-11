@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import pathlib
 import platform
+import re
 from functools import lru_cache
 from typing import Any, Dict, Iterable, List, Literal, Optional, Sequence, Tuple
 
@@ -121,6 +122,7 @@ class BacktestParams(BaseModel):
     stop_loss_pct: Optional[float] = Field(default=None, ge=0.0)
     take_profit_pct: Optional[float] = Field(default=None, ge=0.0)
     hist_bins: Optional[int] = Field(default=20, ge=5, le=100)
+    hist_bin_width: Optional[float] = Field(default=0.01, gt=0.0, le=1.0)
 
 
 class TimeSeries(BaseModel):
@@ -153,18 +155,16 @@ class Trade(BaseModel):
     sell_fee: float
 
 
-class HistogramBucket(BaseModel):
-    bin_start: float
-    bin_end: float
-    count: int
+class HistogramSeries(BaseModel):
+    horizon: int
+    returns: List[float] = Field(default_factory=list)
+    sample_size: int = 0
+    stats: Dict[str, float] = Field(default_factory=dict)
 
 
 class HistogramPayload(BaseModel):
-    horizon: int
-    buckets: List[HistogramBucket]
-    stats: Dict[str, float] = Field(default_factory=dict)
-    sample_size: int = 0
-    bin_count: int = 0
+    series: List[HistogramSeries] = Field(default_factory=list)
+    bin_width: float = 0.01
 
 
 class BacktestResponse(BaseModel):
@@ -418,17 +418,9 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
     indicators = _map_indicators(payload)
     config = _build_config(indicators)
     max_horizon = payload.indicators.get("max_horizon", 10)
-    hist_horizon = payload.indicators.get("hist_horizon", 1)
-    hist_bins = payload.hist_bins or 5
     hold_days = payload.hold_days or payload.indicators.get("hold_days") or 1
     if hold_days > max_horizon:
         hold_days = max_horizon
-    if hist_horizon > max_horizon:
-        hist_horizon = max_horizon
-    if hist_horizon < 1:
-        hist_horizon = 1
-    if hist_bins < 5:
-        hist_bins = 5
 
     result = backtest_system.run_backtest_for_all(
         tables["adj"],
@@ -438,7 +430,6 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
         tables.get("volume"),
         config=config,
         max_horizon=max_horizon,
-        hist_horizon=hist_horizon,
         allowed_symbols=tickers,
     )
 
@@ -514,36 +505,52 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
             values=price_series.round(6).tolist(),
         )
 
+    def _safe(value: float) -> float:
+        if pd.isna(value) or not np.isfinite(value):
+            return 0.0
+        return float(value)
+
     histogram_payload: Optional[HistogramPayload] = None
-    hist_col = f"fwd_ret_{hist_horizon}d"
-    sample = hist_df[hist_col] if hist_col in hist_df.columns else pd.Series(dtype=float)
-    sample_clean = sample.dropna()
-    if not sample_clean.empty:
-        simple_sample = np.expm1(sample_clean)
-        counts, bin_edges = np.histogram(simple_sample, bins=hist_bins)
-        buckets = [
-            HistogramBucket(
-                bin_start=float(bin_edges[i]),
-                bin_end=float(bin_edges[i + 1]),
-                count=int(counts[i]),
+    if not hist_df.empty:
+        horizon_cols = [col for col in hist_df.columns if col.startswith("fwd_ret_")]
+        series_payload: List[HistogramSeries] = []
+        for col in horizon_cols:
+            match = re.search(r"fwd_ret_(\d+)d", col)
+            if not match:
+                continue
+            horizon = int(match.group(1))
+            sample = hist_df[col].dropna()
+            if sample.empty:
+                continue
+            simple_array = np.expm1(sample)
+            simple_series = pd.Series(simple_array)
+            simple_series.replace([np.inf, -np.inf], np.nan, inplace=True)
+            simple_series.dropna(inplace=True)
+            if simple_series.empty:
+                continue
+            stats_for_hist = {
+                "mean": _safe(simple_series.mean()),
+                "median": _safe(simple_series.median()),
+                "std": _safe(simple_series.std(ddof=0)),
+                "skew": _safe(simple_series.skew()),
+                "kurt": _safe(simple_series.kurt()),
+            }
+            rounded = [float(round(val, 8)) for val in simple_series]
+            series_payload.append(
+                HistogramSeries(
+                    horizon=horizon,
+                    returns=rounded,
+                    sample_size=int(simple_series.shape[0]),
+                    stats=stats_for_hist,
+                )
             )
-            for i in range(len(counts))
-        ]
-        simple_series = pd.Series(simple_sample)
-        stats_for_hist = {
-            "mean": float(simple_series.mean()),
-            "median": float(simple_series.median()),
-            "std": float(simple_series.std(ddof=0)),
-            "skew": float(simple_series.skew()),
-            "kurt": float(simple_series.kurt()),
-        }
-        histogram_payload = HistogramPayload(
-            horizon=hist_horizon,
-            buckets=buckets,
-            stats=stats_for_hist,
-            sample_size=int(simple_series.shape[0]),
-            bin_count=int(hist_bins),
-        )
+        if series_payload:
+            series_payload.sort(key=lambda item: item.horizon)
+            requested_width = payload.hist_bin_width or 0.01
+            safe_width = float(max(0.0005, min(requested_width, 1.0)))
+            histogram_payload = HistogramPayload(
+                series=series_payload, bin_width=round(safe_width, 6)
+            )
 
     indicator_stats: Dict[str, Dict[str, float]] = {}
     if not picks.empty:
@@ -551,13 +558,17 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
             series = picks[col].dropna()
             if series.empty:
                 continue
-            simple_series = np.expm1(series)
+            converted = pd.Series(np.expm1(series))
+            converted.replace([np.inf, -np.inf], np.nan, inplace=True)
+            converted.dropna(inplace=True)
+            if converted.empty:
+                continue
             indicator_stats[col] = {
-                "mean": float(simple_series.mean()),
-                "median": float(simple_series.median()),
-                "std": float(simple_series.std(ddof=0)),
-                "skew": float(simple_series.skew()),
-                "kurt": float(simple_series.kurt()),
+                "mean": _safe(converted.mean()),
+                "median": _safe(converted.median()),
+                "std": _safe(converted.std(ddof=0)),
+                "skew": _safe(converted.skew()),
+                "kurt": _safe(converted.kurt()),
             }
 
     return BacktestResponse(
