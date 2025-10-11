@@ -134,12 +134,12 @@ body {
 }
 
 .histogram-card {
-  grid-column: span 5;
+  grid-column: span 7;
   min-width: 0;
 }
 
 .equity-card {
-  grid-column: span 7;
+  grid-column: span 5;
   min-width: 0;
 }
 
@@ -439,23 +439,6 @@ body {
   flex-direction: column;
   gap: 3px;
   min-width: 0;
-}
-
-.indicator-stats {
-  margin-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow-x: hidden;
-  padding-bottom: 4px;
-}
-
-.indicator-stats__header {
-  font-size: 11px;
-  font-weight: 600;
-  color: #475569;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .indicator-header {
