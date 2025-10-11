@@ -11,9 +11,10 @@ interface Props {
   loading?: boolean;
   onReady?: (instance: ECharts) => void;
   compact?: boolean;
+  height?: number;
 }
 
-const EquityChart = ({ data, loading, onReady, compact = false }: Props) => {
+const EquityChart = ({ data, loading, onReady, compact = false, height }: Props) => {
 
   if (loading) {
     return <Spin />;
@@ -106,7 +107,9 @@ const EquityChart = ({ data, loading, onReady, compact = false }: Props) => {
     onReady?.(instance);
   };
 
-  return <ReactECharts option={option} style={{ height: compact ? 220 : 288 }} onChartReady={handleReady} />;
+  const chartHeight = height ?? (compact ? 220 : 288);
+
+  return <ReactECharts option={option} style={{ height: chartHeight }} onChartReady={handleReady} />;
 };
 
 export default EquityChart;
