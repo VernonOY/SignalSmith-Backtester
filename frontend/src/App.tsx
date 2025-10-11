@@ -96,11 +96,6 @@ const App = () => {
       typeof value === "number" ? formatPercent(value, digits) : "—",
     []
   );
-  const optionalNumber = useCallback(
-    (value?: number | null, digits = 0) =>
-      typeof value === "number" ? formatNumber(value, digits) : "—",
-    []
-  );
 
   const equityMetricConfigs = useMemo(
     () => [
@@ -164,10 +159,6 @@ const App = () => {
         value: typeof indicators.max_horizon === "number" ? `${formatNumber(indicators.max_horizon, 0)} d` : "—",
       },
       {
-        label: "Hist Hz",
-        value: typeof indicators.hist_horizon === "number" ? `${formatNumber(indicators.hist_horizon, 0)} d` : "—",
-      },
-      {
         label: "Stop",
         value: optionalPercent(lastRunConfig.stop_loss_pct),
       },
@@ -175,12 +166,8 @@ const App = () => {
         label: "Take",
         value: optionalPercent(lastRunConfig.take_profit_pct),
       },
-      {
-        label: "Bins",
-        value: optionalNumber(lastRunConfig.hist_bins ?? response?.histogram?.bin_count, 0),
-      },
     ];
-  }, [lastRunConfig, optionalCurrency, optionalNumber, optionalPercent, response?.histogram?.bin_count]);
+  }, [lastRunConfig, optionalCurrency, optionalPercent]);
 
   const universeSummary = useMemo(() => {
     if (!lastRunConfig?.filters) {
@@ -207,18 +194,28 @@ const App = () => {
     if (!lastRunConfig?.indicators) {
       return [{ label: "Signals", value: "None" }];
     }
+
     const indicators = lastRunConfig.indicators as Record<string, any>;
     const items: InfoTag[] = [];
+
     if (indicators.policy) {
       const formatted = indicators.policy === "any" ? "Any" : String(indicators.policy);
       items.push({ label: "Policy", value: formatted });
     }
+
     if (typeof indicators.atleast_k === "number") {
       items.push({ label: "At Least", value: formatNumber(indicators.atleast_k, 0) });
     }
-    const addIndicator = (name: string, config: any, formatter: (cfg: any) => string) => {
-      if (!config || !config.use) return;
-      items.push({ label: name, value: formatter(config) });
+
+    const addIndicator = (
+      name: string,
+      config: any,
+      formatter: (cfg: any) => string | undefined | null
+    ) => {
+      if (!config || config.use === false) return;
+      const value = formatter(config);
+      if (!value) return;
+      items.push({ label: name, value });
     };
 
     addIndicator("RSI", indicators.rsi, (cfg) => {
@@ -233,19 +230,38 @@ const App = () => {
     });
 
     addIndicator("MACD", indicators.macd, (cfg) => {
+      if (typeof cfg.fast !== "number" || typeof cfg.slow !== "number" || typeof cfg.signal !== "number") {
+        return undefined;
+      }
       const rule = cfg.rule ? String(cfg.rule).toUpperCase() : "—";
       return `${formatNumber(cfg.fast, 0)}/${formatNumber(cfg.slow, 0)}/${formatNumber(cfg.signal, 0)} · ${rule}`;
     });
 
     addIndicator("OBV", indicators.obv, (cfg) => (cfg.rule ? String(cfg.rule).toUpperCase() : "—"));
 
-    addIndicator("EMA", indicators.ema, (cfg) => `${formatNumber(cfg.short, 0)}/${formatNumber(cfg.long, 0)}`);
+    addIndicator("EMA", indicators.ema, (cfg) => {
+      if (typeof cfg.short !== "number" || typeof cfg.long !== "number") return undefined;
+      return `${formatNumber(cfg.short, 0)}/${formatNumber(cfg.long, 0)}`;
+    });
 
-    addIndicator("ADX", indicators.adx, (cfg) => `n=${formatNumber(cfg.n, 0)} · ≥${formatNumber(cfg.min, 0)}`);
+    addIndicator("ADX", indicators.adx, (cfg) => {
+      if (typeof cfg.n !== "number" || typeof cfg.min !== "number") return undefined;
+      return `n=${formatNumber(cfg.n, 0)} · ≥${formatNumber(cfg.min, 0)}`;
+    });
 
-    addIndicator("Aroon", indicators.aroon, (cfg) => `n=${formatNumber(cfg.n, 0)} · ↑${formatNumber(cfg.up, 0)} / ↓${formatNumber(cfg.down, 0)}`);
+    addIndicator("Aroon", indicators.aroon, (cfg) => {
+      if (
+        typeof cfg.n !== "number" ||
+        typeof cfg.up !== "number" ||
+        typeof cfg.down !== "number"
+      ) {
+        return undefined;
+      }
+      return `n=${formatNumber(cfg.n, 0)} · ↑${formatNumber(cfg.up, 0)} / ↓${formatNumber(cfg.down, 0)}`;
+    });
 
     addIndicator("Stoch", indicators.stoch, (cfg) => {
+      if (typeof cfg.k !== "number" || typeof cfg.d !== "number") return undefined;
       const base = `K${formatNumber(cfg.k, 0)}/D${formatNumber(cfg.d, 0)}`;
       const rule = cfg.rule ? ` · ${String(cfg.rule).toUpperCase()}` : "";
       const threshold = typeof cfg.threshold === "number" ? ` · ${formatNumber(cfg.threshold, 0)}` : "";
@@ -254,6 +270,7 @@ const App = () => {
 
     return items.length ? items : [{ label: "Signals", value: "None" }];
   }, [lastRunConfig]);
+
 
   return (
     <ConfigProvider
@@ -303,51 +320,36 @@ const App = () => {
                         height={compactMode ? 320 : 360}
                       />
                       {equityMetrics.length > 0 && (
-                        <div className="equity-metrics">
+                        <div className="run-summary__grid run-summary__grid--metrics">
                           {equityMetrics.map((metric) => (
-                            <div className="equity-metrics__item" key={metric.key}>
-                              <span className="equity-metrics__label">{metric.label}</span>
-                              <span className="equity-metrics__value">{metric.value}</span>
+                            <div className="run-summary__item" key={metric.key}>
+                              <span className="run-summary__label">{metric.label}</span>
+                              <span className="run-summary__value">{metric.value}</span>
                             </div>
                           ))}
                         </div>
                       )}
-                      {lastRunConfig &&
-                        (runSettingsSummary.length || universeSummary.length || signalSummary.length) && (
+                      {(runSettingsSummary.length > 0 || response.indicator_statistics) && (
                         <div className="run-summary">
-                          <div className="run-summary__section">
-                            <div className="run-summary__title">Run Settings</div>
-                            <div className="run-summary__grid">
-                              {runSettingsSummary.map((item) => (
-                                <div className="run-summary__item" key={`run-${item.label}`}>
-                                  <span className="run-summary__label">{item.label}</span>
-                                  <span className="run-summary__value">{item.value}</span>
-                                </div>
-                              ))}
+                          {runSettingsSummary.length > 0 && (
+                            <div className="run-summary__section">
+                              <div className="run-summary__title">Run Settings</div>
+                              <div className="run-summary__grid">
+                                {runSettingsSummary.map((item) => (
+                                  <div className="run-summary__item" key={`run-${item.label}`}>
+                                    <span className="run-summary__label">{item.label}</span>
+                                    <span className="run-summary__value">{item.value}</span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                          <div className="run-summary__section">
-                            <div className="run-summary__title">Universe Filters</div>
-                            <div className="run-summary__grid">
-                              {universeSummary.map((item) => (
-                                <div className="run-summary__item" key={`filter-${item.label}-${item.value}`}>
-                                  <span className="run-summary__label">{item.label}</span>
-                                  <span className="run-summary__value">{item.value}</span>
-                                </div>
-                              ))}
+                          )}
+                          {response.indicator_statistics && (
+                            <div className="run-summary__section">
+                              <div className="run-summary__title">Indicator Statistics</div>
+                              <IndicatorStatsTable stats={response.indicator_statistics} compact />
                             </div>
-                          </div>
-                          <div className="run-summary__section">
-                            <div className="run-summary__title">Signal Rules</div>
-                            <div className="run-summary__grid">
-                              {signalSummary.map((item) => (
-                                <div className="run-summary__item" key={`signal-${item.label}-${item.value}`}>
-                                  <span className="run-summary__label">{item.label}</span>
-                                  <span className="run-summary__value">{item.value}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
+                          )}
                         </div>
                       )}
                     </Card>
@@ -363,10 +365,30 @@ const App = () => {
                       compact
                       height={compactMode ? 320 : 360}
                     />
-                    {response.indicator_statistics && (
-                      <div className="indicator-stats">
-                        <div className="indicator-stats__header">Indicator Statistics</div>
-                        <IndicatorStatsTable stats={response.indicator_statistics} compact />
+                    {lastRunConfig && (universeSummary.length || signalSummary.length) && (
+                      <div className="run-summary">
+                        <div className="run-summary__section">
+                          <div className="run-summary__title">Universe Filters</div>
+                          <div className="run-summary__grid">
+                            {universeSummary.map((item) => (
+                              <div className="run-summary__item" key={`filter-${item.label}-${item.value}`}>
+                                <span className="run-summary__label">{item.label}</span>
+                                <span className="run-summary__value">{item.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="run-summary__section">
+                          <div className="run-summary__title">Signal Rules</div>
+                          <div className="run-summary__grid">
+                            {signalSummary.map((item) => (
+                              <div className="run-summary__item" key={`signal-${item.label}-${item.value}`}>
+                                <span className="run-summary__label">{item.label}</span>
+                                <span className="run-summary__value">{item.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </Card>
