@@ -131,12 +131,12 @@ body {
 }
 
 .histogram-card {
-  grid-column: span 6;
+  grid-column: span 5;
   min-width: 0;
 }
 
 .equity-card {
-  grid-column: span 6;
+  grid-column: span 7;
   min-width: 0;
 }
 
