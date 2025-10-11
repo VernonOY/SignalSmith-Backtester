@@ -28,9 +28,6 @@ const EquityChart = ({ data, loading, onReady, compact = false, height }: Props)
     [data.dates, data.values]
   );
 
-  const firstDate = useMemo(() => dayjs(data.dates[0]), [data.dates]);
-  const lastDate = useMemo(() => dayjs(data.dates[data.dates.length - 1]), [data.dates]);
-
   const option = {
     tooltip: {
       trigger: "axis",
@@ -69,19 +66,21 @@ const EquityChart = ({ data, loading, onReady, compact = false, height }: Props)
     xAxis: {
       type: "time",
       axisLabel: {
-        formatter: (value: number) => {
-          const parsed = dayjs(value);
-          if (!parsed.isValid()) return "";
-          const month = parsed.month();
-          const isQuarterStart = parsed.date() === 1 && month % 3 === 0;
-          const isFirst = parsed.isSame(firstDate, "day");
-          const isLast = parsed.isSame(lastDate, "day");
-          if (!isQuarterStart && !isFirst && !isLast) {
-            return "";
-          }
-          const quarter = Math.floor(month / 3) + 1;
-          return `Q${quarter} ${parsed.year()}`;
-        },
+        formatter: (() => {
+          let lastLabel: string | null = null;
+          return (value: number) => {
+            const parsed = dayjs(value);
+            if (!parsed.isValid()) return "";
+            const quarter = Math.floor(parsed.month() / 3) + 1;
+            const year = parsed.year();
+            const label = `Q${quarter} ${year}`;
+            if (label === lastLabel) {
+              return "";
+            }
+            lastLabel = label;
+            return label;
+          };
+        })(),
         hideOverlap: true,
         showMinLabel: true,
         showMaxLabel: true,
