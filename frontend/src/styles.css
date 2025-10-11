@@ -11,7 +11,7 @@
   --compact-line: 1.2;
   --layout-scale: 1.4;
   --sidebar-scale: 0.98;
-  --workspace-scale: 1.150;
+  --workspace-scale: 1.130;
   --workspace-max-width: 3000px;
   --workspace-padding-right: 48px;
 }
@@ -134,7 +134,7 @@ body {
 }
 
 .histogram-card {
-  grid-column: span 6;
+  grid-column: span 5;
   min-width: 0;
 }
 
