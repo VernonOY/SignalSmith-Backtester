@@ -3,8 +3,8 @@
   color: #0f172a;
   background-color: #eef1ff;
   --dashboard-gap: 5px;
-  --sidebar-max: 360px;
-  --sidebar-width: 360px;
+  --sidebar-max: 420px;
+  --sidebar-width: 420px;
   --card-padding: 8px;
   --card-radius: 10px;
   --compact-font: 12px;
@@ -134,12 +134,12 @@ body {
 }
 
 .histogram-card {
-  grid-column: span 5;
+  grid-column: span 8;
   min-width: 0;
 }
 
 .equity-card {
-  grid-column: span 7;
+  grid-column: span 4;
   min-width: 0;
 }
 
@@ -208,6 +208,11 @@ body {
   display: grid;
   gap: 4px 8px;
   grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+}
+
+.run-summary__grid--metrics {
+  padding-top: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 }
 
 .run-summary__item {
@@ -436,54 +441,6 @@ body {
   min-width: 0;
 }
 
-.equity-metrics {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 6px;
-  padding-top: 6px;
-}
-
-.equity-metrics__item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  background: #f8f9ff;
-  border: 1px solid #dbe4ff;
-  border-radius: 6px;
-  padding: 6px 8px;
-}
-
-.equity-metrics__label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #475569;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.equity-metrics__value {
-  font-size: 13px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.indicator-stats {
-  margin-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow-x: hidden;
-  padding-bottom: 4px;
-}
-
-.indicator-stats__header {
-  font-size: 11px;
-  font-weight: 600;
-  color: #475569;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
 .indicator-header {
   display: flex;
   align-items: center;
@@ -518,6 +475,40 @@ body {
 .indicator-field .ant-form-item-control,
 .indicator-field .ant-form-item-control-input {
   min-width: 0;
+}
+
+.histogram-explorer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.histogram-explorer__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.histogram-explorer__controls .ant-checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+
+.histogram-explorer__label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #4338ca;
+}
+
+.histogram-explorer__tags .ant-tag {
+  margin-inline-end: 0;
+}
+
+.histogram-summary {
+  margin-top: 4px;
 }
 
 .indicator-fields .ant-select,

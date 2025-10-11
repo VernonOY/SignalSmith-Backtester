@@ -588,7 +588,6 @@ def _run_baseline_backtest(
     adj: pd.DataFrame,
     tickers: Sequence[str],
     max_horizon: int,
-    hist_horizon: int,
 ) -> Dict[str, pd.DataFrame]:
     return_cols = [f"fwd_ret_{h}d" for h in range(1, max_horizon + 1)]
     price_frame = adj[tickers] if tickers else adj.copy()
@@ -606,7 +605,8 @@ def _run_baseline_backtest(
         ]
     )
     empty_stats = calculate_statistics(pd.DataFrame(columns=return_cols))
-    empty_hist = pd.DataFrame(columns=["date", "symbol", f"fwd_ret_{hist_horizon}d"])
+    hist_columns = ["date", "symbol", *return_cols]
+    empty_hist = pd.DataFrame(columns=hist_columns)
     universe_df = pd.DataFrame({"symbol": tickers})
 
     if price_frame.empty or len(price_frame) < 2:
@@ -644,9 +644,10 @@ def _run_baseline_backtest(
 
     stats_df = calculate_statistics(picks_df[return_cols])
 
-    hist_col = f"fwd_ret_{hist_horizon}d"
-    if hist_col in picks_df.columns:
-        hist_df = picks_df[["date", "symbol", hist_col]].dropna(subset=[hist_col])
+    hist_cols = [col for col in picks_df.columns if col.startswith("fwd_ret_")]
+    if hist_cols:
+        subset_cols = ["date", "symbol", *hist_cols]
+        hist_df = picks_df[subset_cols].dropna(subset=hist_cols, how="all")
     else:
         hist_df = empty_hist.copy()
 
@@ -666,7 +667,6 @@ def run_backtest_for_all(
     volume_wide: Optional[pd.DataFrame],
     config: Optional[Mapping[str, Any]] = None,
     max_horizon: int = 10,
-    hist_horizon: int = 1,
     allowed_symbols: Optional[Sequence[str]] = None,
 ) -> Dict[str, pd.DataFrame]:
     """Run indicator-driven backtests across all tickers in the wide tables.
@@ -676,8 +676,6 @@ def run_backtest_for_all(
     and the filtered ``universe`` of tickers that were evaluated.
     """
     cfg = IndicatorConfig.from_mapping(config)
-    if hist_horizon < 1 or hist_horizon > max_horizon:
-        raise ValueError("hist_horizon must be between 1 and max_horizon.")
 
     def prep(frame: pd.DataFrame) -> pd.DataFrame:
         if frame is None:
@@ -705,7 +703,7 @@ def run_backtest_for_all(
         raise ValueError("Volume data is required when OBV is enabled.")
 
     if not cfg.enabled():
-        return _run_baseline_backtest(adj, tickers, max_horizon=max_horizon, hist_horizon=hist_horizon)
+        return _run_baseline_backtest(adj, tickers, max_horizon=max_horizon)
 
     min_obs = max(
         max_horizon + 1,
@@ -842,11 +840,12 @@ def run_backtest_for_all(
         picks_df = pd.DataFrame(columns=cols)
 
     stats_df = calculate_statistics(picks_df[return_cols])
-    hist_col = f"fwd_ret_{hist_horizon}d"
-    if hist_col not in picks_df.columns:
-        hist_df = pd.DataFrame(columns=["date", "symbol", hist_col])
+    hist_cols = [col for col in picks_df.columns if col.startswith("fwd_ret_")]
+    if hist_cols:
+        subset_cols = ["date", "symbol", *hist_cols]
+        hist_df = picks_df[subset_cols].dropna(subset=hist_cols, how="all")
     else:
-        hist_df = picks_df[["date", "symbol", hist_col]].dropna(subset=[hist_col])
+        hist_df = pd.DataFrame(columns=["date", "symbol", *hist_cols])
 
     universe_df = pd.DataFrame({"symbol": tickers})
 
