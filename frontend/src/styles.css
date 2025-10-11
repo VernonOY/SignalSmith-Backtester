@@ -10,9 +10,6 @@
   --compact-font: 12px;
   --compact-line: 1.2;
   --layout-scale: 1.1;
-  --sidebar-scale: 0.9;
-  --workspace-scale: 1.06;
-  --workspace-max-width: 1120px;
 }
 
 body {
@@ -84,50 +81,17 @@ body {
   scrollbar-gutter: stable;
 }
 
-.dashboard__sidebar-inner {
-  transform: scale(var(--sidebar-scale));
-  transform-origin: top left;
-  width: calc(100% / var(--sidebar-scale));
-  display: flex;
-  flex-direction: column;
-  gap: var(--dashboard-gap);
-}
-
 .dashboard__content {
   display: flex;
   flex-direction: column;
   gap: var(--dashboard-gap);
   min-width: 0;
-  flex: 1;
-  align-items: flex-start;
-  justify-content: center;
-}
-
-.dashboard__workspace {
-  width: calc(100% / var(--workspace-scale));
-  max-width: calc(var(--workspace-max-width) / var(--workspace-scale));
-  transform: scale(var(--workspace-scale));
-  transform-origin: top left;
-  display: flex;
-  flex-direction: column;
-  gap: var(--dashboard-gap);
-  margin: 0;
-  flex: 1;
-  justify-content: center;
-}
-
-.dashboard__workspace > * {
-  width: 100%;
 }
 
 .dashboard__charts {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: var(--dashboard-gap);
-  align-items: stretch;
-  justify-content: center;
-  grid-auto-rows: minmax(0, 1fr);
-  min-height: 0;
 }
 
 .histogram-card {
@@ -148,9 +112,6 @@ body {
 .result-card {
   border-radius: var(--card-radius) !important;
   box-shadow: 0 6px 16px rgba(46, 92, 255, 0.08);
-  height: 100%;
-  display: flex;
-  flex-direction: column;
 }
 
 .result-card .ant-card-body {
@@ -158,17 +119,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.intro-card {
-  height: auto;
-  max-width: 640px;
-  margin: 0 auto;
-}
-
-.intro-card .ant-card-body {
-  align-items: center;
-  text-align: center;
 }
 
 .card-header {
