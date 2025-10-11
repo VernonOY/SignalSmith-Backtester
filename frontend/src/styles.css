@@ -139,7 +139,7 @@ body {
 }
 
 .equity-card {
-  grid-column: span 6;
+  grid-column: span 7;
   min-width: 0;
 }
 
