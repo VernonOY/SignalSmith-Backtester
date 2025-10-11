@@ -218,6 +218,12 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
     const stopLoss = stopLossInput !== undefined && stopLossInput !== null ? stopLossInput / 100 : undefined;
     const takeProfit = takeProfitInput !== undefined && takeProfitInput !== null ? takeProfitInput / 100 : undefined;
 
+    const binWidthInput = values.hist_bin_width_pct;
+    const binWidth =
+      typeof binWidthInput === "number" && !Number.isNaN(binWidthInput)
+        ? binWidthInput / 100
+        : undefined;
+
     const indicatorsPayload: Record<string, any> = {
       policy: values.policy,
       atleast_k: values.k,
@@ -226,6 +232,10 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
       stop_loss_pct: stopLoss,
       take_profit_pct: takeProfit,
     };
+
+    if (typeof binWidth === "number") {
+      indicatorsPayload.bin_width = binWidth;
+    }
 
     indicatorsPayload.rsi = enableRsi
       ? {
@@ -303,6 +313,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
       hold_days: values.hold_days,
       stop_loss_pct: stopLoss,
       take_profit_pct: takeProfit,
+      hist_bin_width: binWidth,
     };
 
     await onSubmit(payload, values);
@@ -346,6 +357,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
           policy: "all",
           k: 2,
           max_horizon: 10,
+          hist_bin_width_pct: 1,
           filters: {},
         }}
       >
@@ -679,6 +691,15 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
               </Form.Item>
               <Form.Item label="Max Hz" name="max_horizon" className="form-grid__item">
                 <InputNumber min={1} max={10} style={{ width: "100%" }} addonAfter="d" />
+              </Form.Item>
+              <Form.Item label="Bin Width" name="hist_bin_width_pct" className="form-grid__item">
+                <InputNumber
+                  min={0.1}
+                  max={20}
+                  step={0.1}
+                  style={{ width: "100%" }}
+                  addonAfter="%"
+                />
               </Form.Item>
             </div>
           )}

@@ -224,8 +224,9 @@ const HistogramChart = ({ data, loading, onReady, height = 320, compact = false 
           interval: 0,
           rotate: 90,
           fontSize: compact ? 10 : 11,
-          margin: compact ? 12 : 16,
-          align: "left",
+          margin: compact ? 14 : 20,
+          align: "right",
+          verticalAlign: "middle",
         },
       },
       yAxis: {

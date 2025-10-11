@@ -122,6 +122,7 @@ class BacktestParams(BaseModel):
     stop_loss_pct: Optional[float] = Field(default=None, ge=0.0)
     take_profit_pct: Optional[float] = Field(default=None, ge=0.0)
     hist_bins: Optional[int] = Field(default=20, ge=5, le=100)
+    hist_bin_width: Optional[float] = Field(default=0.01, gt=0.0, le=1.0)
 
 
 class TimeSeries(BaseModel):
@@ -545,7 +546,11 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
             )
         if series_payload:
             series_payload.sort(key=lambda item: item.horizon)
-            histogram_payload = HistogramPayload(series=series_payload, bin_width=0.01)
+            requested_width = payload.hist_bin_width or 0.01
+            safe_width = float(max(0.0005, min(requested_width, 1.0)))
+            histogram_payload = HistogramPayload(
+                series=series_payload, bin_width=round(safe_width, 6)
+            )
 
     indicator_stats: Dict[str, Dict[str, float]] = {}
     if not picks.empty:

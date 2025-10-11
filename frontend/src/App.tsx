@@ -207,6 +207,10 @@ const App = () => {
       items.push({ label: "At Least", value: formatNumber(indicators.atleast_k, 0) });
     }
 
+    if (typeof indicators.bin_width === "number") {
+      items.push({ label: "Bin Width", value: formatPercent(indicators.bin_width, 1) });
+    }
+
     const addIndicator = (
       name: string,
       config: any,
@@ -319,37 +323,12 @@ const App = () => {
                         compact
                         height={compactMode ? 320 : 360}
                       />
-                      {equityMetrics.length > 0 && (
-                        <div className="run-summary__grid run-summary__grid--metrics">
-                          {equityMetrics.map((metric) => (
-                            <div className="run-summary__item" key={metric.key}>
-                              <span className="run-summary__label">{metric.label}</span>
-                              <span className="run-summary__value">{metric.value}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {(runSettingsSummary.length > 0 || response.indicator_statistics) && (
+                      {response.indicator_statistics && (
                         <div className="run-summary">
-                          {runSettingsSummary.length > 0 && (
-                            <div className="run-summary__section">
-                              <div className="run-summary__title">Run Settings</div>
-                              <div className="run-summary__grid">
-                                {runSettingsSummary.map((item) => (
-                                  <div className="run-summary__item" key={`run-${item.label}`}>
-                                    <span className="run-summary__label">{item.label}</span>
-                                    <span className="run-summary__value">{item.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {response.indicator_statistics && (
-                            <div className="run-summary__section">
-                              <div className="run-summary__title">Indicator Statistics</div>
-                              <IndicatorStatsTable stats={response.indicator_statistics} compact />
-                            </div>
-                          )}
+                          <div className="run-summary__section">
+                            <div className="run-summary__title">Indicator Statistics</div>
+                            <IndicatorStatsTable stats={response.indicator_statistics} compact />
+                          </div>
                         </div>
                       )}
                     </Card>
@@ -365,30 +344,58 @@ const App = () => {
                       compact
                       height={compactMode ? 320 : 360}
                     />
-                    {lastRunConfig && (universeSummary.length || signalSummary.length) && (
+                    {equityMetrics.length > 0 && (
+                      <div className="run-summary__grid run-summary__grid--metrics">
+                        {equityMetrics.map((metric) => (
+                          <div className="run-summary__item" key={metric.key}>
+                            <span className="run-summary__label">{metric.label}</span>
+                            <span className="run-summary__value">{metric.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {(runSettingsSummary.length > 0 ||
+                      (lastRunConfig && (universeSummary.length || signalSummary.length))) && (
                       <div className="run-summary">
-                        <div className="run-summary__section">
-                          <div className="run-summary__title">Universe Filters</div>
-                          <div className="run-summary__grid">
-                            {universeSummary.map((item) => (
-                              <div className="run-summary__item" key={`filter-${item.label}-${item.value}`}>
-                                <span className="run-summary__label">{item.label}</span>
-                                <span className="run-summary__value">{item.value}</span>
-                              </div>
-                            ))}
+                        {runSettingsSummary.length > 0 && (
+                          <div className="run-summary__section">
+                            <div className="run-summary__title">Run Settings</div>
+                            <div className="run-summary__grid">
+                              {runSettingsSummary.map((item) => (
+                                <div className="run-summary__item" key={`run-${item.label}`}>
+                                  <span className="run-summary__label">{item.label}</span>
+                                  <span className="run-summary__value">{item.value}</span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                        <div className="run-summary__section">
-                          <div className="run-summary__title">Signal Rules</div>
-                          <div className="run-summary__grid">
-                            {signalSummary.map((item) => (
-                              <div className="run-summary__item" key={`signal-${item.label}-${item.value}`}>
-                                <span className="run-summary__label">{item.label}</span>
-                                <span className="run-summary__value">{item.value}</span>
+                        )}
+                        {lastRunConfig && (universeSummary.length || signalSummary.length) && (
+                          <>
+                            <div className="run-summary__section">
+                              <div className="run-summary__title">Universe Filters</div>
+                              <div className="run-summary__grid">
+                                {universeSummary.map((item) => (
+                                  <div className="run-summary__item" key={`filter-${item.label}-${item.value}`}>
+                                    <span className="run-summary__label">{item.label}</span>
+                                    <span className="run-summary__value">{item.value}</span>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
-                        </div>
+                            </div>
+                            <div className="run-summary__section">
+                              <div className="run-summary__title">Signal Rules</div>
+                              <div className="run-summary__grid">
+                                {signalSummary.map((item) => (
+                                  <div className="run-summary__item" key={`signal-${item.label}-${item.value}`}>
+                                    <span className="run-summary__label">{item.label}</span>
+                                    <span className="run-summary__value">{item.value}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
                   </Card>

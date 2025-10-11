@@ -25,6 +25,7 @@ export interface BacktestRequest {
   hold_days?: number;
   stop_loss_pct?: number;
   take_profit_pct?: number;
+  hist_bin_width?: number;
 }
 
 export interface TimeSeries {
