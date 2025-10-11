@@ -3,8 +3,8 @@
   color: #0f172a;
   background-color: #eef1ff;
   --dashboard-gap: 5px;
-  --sidebar-max: 350px;
-  --sidebar-width: 350px;
+  --sidebar-max: 325px;
+  --sidebar-width: 325px;
   --card-padding: 8px;
   --card-radius: 10px;
   --compact-font: 12px;
@@ -134,12 +134,12 @@ body {
 }
 
 .histogram-card {
-  grid-column: span 6;
+  grid-column: span 7;
   min-width: 0;
 }
 
 .equity-card {
-  grid-column: span 6;
+  grid-column: span 5;
   min-width: 0;
 }
 
