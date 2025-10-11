@@ -2,12 +2,9 @@ import { Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
 
 interface IndicatorRow {
-  horizon: string;
-  mean?: number;
-  median?: number;
-  std?: number;
-  skew?: number;
-  kurt?: number;
+  key: string;
+  stat: string;
+  [horizon: string]: string;
 }
 
 interface Props {
@@ -20,63 +17,78 @@ const IndicatorStatsTable = ({ stats, compact = false }: Props) => {
     return null;
   }
 
-  const rows: IndicatorRow[] = Object.entries(stats).map(([horizon, values]) => {
+  const horizonEntries = Object.entries(stats).map(([horizon, values]) => {
     const label = horizon.startsWith("fwd_ret_") ? horizon.replace("fwd_ret_", "") : horizon;
     return {
-      horizon: label,
-      ...values,
+      key: horizon,
+      label,
+      values,
     };
+  });
+
+  const statConfigs = [
+    {
+      key: "mean",
+      label: "Mean",
+      format: (value?: number) => (value !== undefined ? `${(value * 100).toFixed(2)}%` : "—"),
+    },
+    {
+      key: "median",
+      label: "Median",
+      format: (value?: number) => (value !== undefined ? `${(value * 100).toFixed(2)}%` : "—"),
+    },
+    {
+      key: "std",
+      label: "Std",
+      format: (value?: number) => (value !== undefined ? `${(value * 100).toFixed(2)}%` : "—"),
+    },
+    {
+      key: "skew",
+      label: "Skew",
+      format: (value?: number) => (value !== undefined ? value.toFixed(2) : "—"),
+    },
+    {
+      key: "kurt",
+      label: "Kurt",
+      format: (value?: number) => (value !== undefined ? value.toFixed(2) : "—"),
+    },
+  ] as const;
+
+  const rows: IndicatorRow[] = statConfigs.map((config) => {
+    const row: IndicatorRow = {
+      key: config.key,
+      stat: config.label,
+    };
+
+    horizonEntries.forEach(({ label, values }) => {
+      const rawValue = values[config.key as keyof typeof values];
+      row[label] = config.format(typeof rawValue === "number" ? rawValue : undefined);
+    });
+
+    return row;
   });
 
   const columns: ColumnsType<IndicatorRow> = [
     {
-      title: "Hzn",
-      dataIndex: "horizon",
-      key: "horizon",
-      width: 72,
-      render: (value: string) => <span className="indicator-table__horizon">{value}</span>,
+      title: "Stat",
+      dataIndex: "stat",
+      key: "stat",
+      width: 96,
+      render: (value: string) => <span className="indicator-table__stat">{value}</span>,
     },
-    {
-      title: "Mean",
-      dataIndex: "mean",
-      key: "mean",
-      align: "right",
-      render: (value?: number) => (value !== undefined ? `${(value * 100).toFixed(2)}%` : "—"),
-    },
-    {
-      title: "Median",
-      dataIndex: "median",
-      key: "median",
-      align: "right",
-      render: (value?: number) => (value !== undefined ? `${(value * 100).toFixed(2)}%` : "—"),
-    },
-    {
-      title: "Std",
-      dataIndex: "std",
-      key: "std",
-      align: "right",
-      render: (value?: number) => (value !== undefined ? `${(value * 100).toFixed(2)}%` : "—"),
-    },
-    {
-      title: "Skew",
-      dataIndex: "skew",
-      key: "skew",
-      align: "right",
-      render: (value?: number) => (value !== undefined ? value.toFixed(2) : "—"),
-    },
-    {
-      title: "Kurt",
-      dataIndex: "kurt",
-      key: "kurt",
-      align: "right",
-      render: (value?: number) => (value !== undefined ? value.toFixed(2) : "—"),
-    },
+    ...horizonEntries.map(({ label, key }) => ({
+      title: label,
+      dataIndex: label,
+      key: `horizon-${key}`,
+      align: "right" as const,
+      render: (value?: string) => value ?? "—",
+    })),
   ];
 
   return (
     <Table
       size="small"
-      rowKey={(record) => record.horizon}
+      rowKey={(record) => record.key}
       columns={columns}
       dataSource={rows}
       pagination={false}
