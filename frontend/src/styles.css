@@ -3,8 +3,8 @@
   color: #0f172a;
   background-color: #eef1ff;
   --dashboard-gap: 6px;
-  --sidebar-max: 370px;
-  --sidebar-width: 370px;
+  --sidebar-max: 400px;
+  --sidebar-width: 400px;
   --card-padding: 8px;
   --card-radius: 10px;
   --compact-font: 12px;
