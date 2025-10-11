@@ -134,7 +134,7 @@ body {
 }
 
 .histogram-card {
-  grid-column: span 7;
+  grid-column: span 6;
   min-width: 0;
 }
 
