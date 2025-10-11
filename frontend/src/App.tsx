@@ -295,6 +295,16 @@ const App = () => {
                         <Title level={4}>Return Distribution</Title>
                       </div>
                       <HistogramChart data={response.histogram} loading={loading} compact />
+                      {equityMetrics.length > 0 && (
+                        <div className="equity-metrics">
+                          {equityMetrics.map((metric) => (
+                            <div className="equity-metrics__item" key={metric.key}>
+                              <span className="equity-metrics__label">{metric.label}</span>
+                              <span className="equity-metrics__value">{metric.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       {lastRunConfig &&
                         (runSettingsSummary.length || universeSummary.length || signalSummary.length) && (
                         <div className="run-summary">
@@ -341,27 +351,14 @@ const App = () => {
                       <Title level={4}>Equity Curve</Title>
                     </div>
                     <EquityChart data={response.equity_curve} loading={loading} compact />
-                    {equityMetrics.length > 0 && (
-                      <div className="equity-metrics">
-                        {equityMetrics.map((metric) => (
-                          <div className="equity-metrics__item" key={metric.key}>
-                            <span className="equity-metrics__label">{metric.label}</span>
-                            <span className="equity-metrics__value">{metric.value}</span>
-                          </div>
-                        ))}
+                    {response.indicator_statistics && (
+                      <div className="indicator-stats">
+                        <div className="indicator-stats__header">Indicator Statistics</div>
+                        <IndicatorStatsTable stats={response.indicator_statistics} compact />
                       </div>
                     )}
                   </Card>
                 </div>
-
-                {response.indicator_statistics && (
-                  <Card className="result-card table-card" size="small">
-                    <div className="card-header">
-                      <Title level={4}>Indicator Statistics</Title>
-                    </div>
-                    <IndicatorStatsTable stats={response.indicator_statistics} compact />
-                  </Card>
-                )}
               </>
             ) : (
               <Card className="result-card intro-card" size="small">
