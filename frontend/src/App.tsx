@@ -278,13 +278,11 @@ const App = () => {
 
         <div className="dashboard__body">
           <aside className="dashboard__sidebar">
-            <div className="dashboard__sidebar-inner">
-              <SidebarForm
-                loading={loading}
-                onSubmit={handleSubmit}
-                compact={compactMode}
-              />
-            </div>
+            <SidebarForm
+              loading={loading}
+              onSubmit={handleSubmit}
+              compact={compactMode}
+            />
           </aside>
 
           <main className="dashboard__content">

@@ -10,7 +10,6 @@
   --compact-font: 12px;
   --compact-line: 1.2;
   --layout-scale: 1.1;
-  --sidebar-scale: 0.9;
 }
 
 body {
@@ -80,15 +79,6 @@ body {
   overflow-y: auto;
   padding-right: 4px;
   scrollbar-gutter: stable;
-}
-
-.dashboard__sidebar-inner {
-  transform: scale(var(--sidebar-scale));
-  transform-origin: top left;
-  width: calc(100% / var(--sidebar-scale));
-  display: flex;
-  flex-direction: column;
-  gap: var(--dashboard-gap);
 }
 
 .dashboard__content {
