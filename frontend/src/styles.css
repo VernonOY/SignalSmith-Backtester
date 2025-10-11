@@ -13,6 +13,7 @@
   --sidebar-scale: 0.98;
   --workspace-scale: 1.150;
   --workspace-max-width: 3000px;
+  --workspace-padding-right: 32px;
 }
 
 body {
@@ -114,6 +115,8 @@ body {
   margin: 0;
   flex: 1;
   justify-content: flex-start;
+  box-sizing: border-box;
+  padding-right: var(--workspace-padding-right);
 }
 
 .dashboard__workspace > * {
