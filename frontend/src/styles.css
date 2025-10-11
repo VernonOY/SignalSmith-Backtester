@@ -13,7 +13,7 @@
   --sidebar-scale: 0.98;
   --workspace-scale: 1.130;
   --workspace-max-width: 3000px;
-  --workspace-padding-right: 48px;
+  --workspace-padding-right: 0px;
 }
 
 body {
@@ -134,12 +134,12 @@ body {
 }
 
 .histogram-card {
-  grid-column: span 5;
+  grid-column: span 6;
   min-width: 0;
 }
 
 .equity-card {
-  grid-column: span 7;
+  grid-column: span 6;
   min-width: 0;
 }
 
@@ -472,6 +472,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
 }
 
 .indicator-stats__header {
