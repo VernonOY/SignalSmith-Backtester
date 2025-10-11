@@ -2,9 +2,9 @@
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #0f172a;
   background-color: #eef1ff;
-  --dashboard-gap: 6px;
-  --sidebar-max: 500px;
-  --sidebar-width: 500px;
+  --dashboard-gap: 5px;
+  --sidebar-max: 400px;
+  --sidebar-width: 400px;
   --card-padding: 8px;
   --card-radius: 10px;
   --compact-font: 12px;
@@ -12,7 +12,7 @@
   --layout-scale: 1.4;
   --sidebar-scale: 0.90;
   --workspace-scale: 1.1;
-  --workspace-max-width: 1250px;
+  --workspace-max-width: 1300px;
 }
 
 body {
