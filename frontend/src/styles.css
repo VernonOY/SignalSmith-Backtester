@@ -10,9 +10,9 @@
   --compact-font: 12px;
   --compact-line: 1.2;
   --layout-scale: 1.2;
-  --sidebar-scale: 0.98;
-  --workspace-scale: 1.0;
-  --workspace-max-width: 1180px;
+  --sidebar-scale: 0.90;
+  --workspace-scale: 1.1;
+  --workspace-max-width: 1250px;
 }
 
 body {
