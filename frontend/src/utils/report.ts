@@ -76,8 +76,6 @@ export const buildSelectionRows = (values: RawSelectionValues): SelectionRow[] =
   addRow("Signal Rules", "Policy", values.policy);
   addRow("Signal Rules", "k", values.policy === "atleast_k" ? values.k : "—");
   addRow("Signal Rules", "Max horizon", values.max_horizon);
-  addRow("Signal Rules", "Histogram horizon", values.hist_horizon);
-  addRow("Signal Rules", "Histogram bins", values.hist_bins);
 
   return rows;
 };

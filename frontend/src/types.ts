@@ -25,7 +25,6 @@ export interface BacktestRequest {
   hold_days?: number;
   stop_loss_pct?: number;
   take_profit_pct?: number;
-  hist_bins?: number;
 }
 
 export interface TimeSeries {
@@ -62,18 +61,16 @@ export interface Metrics {
   [k: string]: number;
 }
 
-export interface HistogramBucket {
-  bin_start: number;
-  bin_end: number;
-  count: number;
+export interface HistogramSeries {
+  horizon: number;
+  returns: number[];
+  stats: Record<string, number>;
+  sample_size: number;
 }
 
 export interface HistogramPayload {
-  horizon: number;
-  buckets: HistogramBucket[];
-  stats: Record<string, number>;
-  sample_size: number;
-  bin_count: number;
+  series: HistogramSeries[];
+  bin_width: number;
 }
 
 export interface BacktestResponse {
