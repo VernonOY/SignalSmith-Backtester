@@ -200,7 +200,7 @@ const HistogramChart = ({ data, loading, onReady, height = 320, compact = false 
   const categories = histogram.bins.map((bin) => {
     const start = formatNumber(bin.start * 100, 1);
     const end = formatNumber(bin.end * 100, 1);
-    return `${start} – ${end}`;
+    return `${start} - ${end}`;
   });
 
   const option = useMemo(() => {
@@ -238,7 +238,7 @@ const HistogramChart = ({ data, loading, onReady, height = 320, compact = false 
             if (!count) {
               return "";
             }
-            return value.replace(" – ", "\n");
+            return value.replace(" - ", "\n-");
           },
         },
         axisTick: {
