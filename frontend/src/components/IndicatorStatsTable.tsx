@@ -17,14 +17,36 @@ const IndicatorStatsTable = ({ stats, compact = false }: Props) => {
     return null;
   }
 
-  const horizonEntries = Object.entries(stats).map(([horizon, values]) => {
-    const label = horizon.startsWith("fwd_ret_") ? horizon.replace("fwd_ret_", "") : horizon;
-    return {
-      key: horizon,
-      label,
-      values,
-    };
-  });
+  const numericHorizons = Object.keys(stats)
+    .map((key) => {
+      const match = key.match(/fwd_ret_(\d+)d/);
+      return match ? Number(match[1]) : null;
+    })
+    .filter((value): value is number => value !== null);
+
+  const combinedLabel = numericHorizons.length
+    ? `All (${Math.min(...numericHorizons)}–${Math.max(...numericHorizons)}d)`
+    : "All";
+
+  const horizonEntries = Object.entries(stats)
+    .map(([horizon, values]) => {
+      const match = horizon.match(/fwd_ret_(\d+)d/);
+      const order = match ? Number(match[1]) : horizon === "combined" ? -1 : Number.POSITIVE_INFINITY;
+      const label = horizon === "combined" ? combinedLabel : match ? `${match[1]}d` : horizon;
+      return {
+        key: horizon,
+        label,
+        values,
+        order,
+      };
+    })
+    .sort((a, b) => {
+      if (a.order !== b.order) {
+        return a.order - b.order;
+      }
+      return a.label.localeCompare(b.label, undefined, { numeric: true });
+    })
+    .map(({ key, label, values }) => ({ key, label, values }));
 
   const statConfigs = [
     {

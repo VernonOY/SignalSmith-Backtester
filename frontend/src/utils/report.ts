@@ -31,7 +31,6 @@ export const buildSelectionRows = (values: RawSelectionValues): SelectionRow[] =
   addRow("Strategy", "End date", formatDate(end));
   addRow("Strategy", "Initial capital", values.capital);
   addRow("Strategy", "Fee (bps)", values.fee_bps);
-  addRow("Strategy", "Hold days", values.hold_days);
   addRow("Strategy", "Stop loss (%)", values.stop_loss_pct);
   addRow("Strategy", "Take profit (%)", values.take_profit_pct);
 
