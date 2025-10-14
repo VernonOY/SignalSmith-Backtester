@@ -129,17 +129,25 @@ body {
   gap: var(--dashboard-gap);
   align-items: stretch;
   justify-content: center;
-  grid-auto-rows: minmax(0, 1fr);
+  grid-auto-rows: auto;
   min-height: 0;
 }
 
 .histogram-card {
-  grid-column: span 7;
+  grid-column: span 12;
   min-width: 0;
 }
 
+.details-card {
+  grid-column: span 6;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .equity-card {
-  grid-column: span 5;
+  grid-column: span 6;
   min-width: 0;
 }
 
