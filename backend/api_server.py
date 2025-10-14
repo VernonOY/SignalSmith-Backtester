@@ -553,8 +553,10 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
             )
 
     indicator_stats: Dict[str, Dict[str, float]] = {}
+    combined_returns: List[pd.Series] = []
     if not picks.empty:
-        for col in [c for c in picks.columns if c.startswith("fwd_ret_")]:
+        horizon_columns = [c for c in picks.columns if c.startswith("fwd_ret_")]
+        for col in horizon_columns:
             series = picks[col].dropna()
             if series.empty:
                 continue
@@ -570,6 +572,23 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
                 "skew": _safe(converted.skew()),
                 "kurt": _safe(converted.kurt()),
             }
+            combined_returns.append(converted)
+
+        if combined_returns:
+            combined_series = pd.concat(combined_returns, ignore_index=True)
+            combined_series.replace([np.inf, -np.inf], np.nan, inplace=True)
+            combined_series.dropna(inplace=True)
+            if not combined_series.empty:
+                indicator_stats = {
+                    "combined": {
+                        "mean": _safe(combined_series.mean()),
+                        "median": _safe(combined_series.median()),
+                        "std": _safe(combined_series.std(ddof=0)),
+                        "skew": _safe(combined_series.skew()),
+                        "kurt": _safe(combined_series.kurt()),
+                    },
+                    **indicator_stats,
+                }
 
     return BacktestResponse(
         equity_curve=equity_ts,
