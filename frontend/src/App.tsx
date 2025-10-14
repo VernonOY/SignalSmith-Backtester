@@ -395,7 +395,7 @@ const App = () => {
                         data={response.histogram}
                         loading={loading}
                         compact
-                        height={compactMode ? 320 : 360}
+                        height={compactMode ? 360 : 440}
                       />
                     </Card>
                   )}

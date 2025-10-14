@@ -84,7 +84,22 @@ const buildHistogram = (values: number[], binWidth: number): HistogramResult => 
 
   const trimmedBins = bins.slice(first, last + 1);
   const trimmedCounts = counts.slice(first, last + 1);
-  return { bins: trimmedBins, counts: trimmedCounts };
+
+  const filteredBins: HistogramBin[] = [];
+  const filteredCounts: number[] = [];
+  trimmedBins.forEach((bin, index) => {
+    const count = trimmedCounts[index];
+    if (count > 0) {
+      filteredBins.push(bin);
+      filteredCounts.push(count);
+    }
+  });
+
+  if (!filteredBins.length) {
+    return { bins: trimmedBins, counts: trimmedCounts };
+  }
+
+  return { bins: filteredBins, counts: filteredCounts };
 };
 
 const computeStats = (values: number[]): HistogramStats | null => {
@@ -120,7 +135,7 @@ const computeStats = (values: number[]): HistogramStats | null => {
   return { mean, median, std, skew, kurt, sampleSize: n };
 };
 
-const HistogramChart = ({ data, loading, onReady, height = 320, compact = false }: Props) => {
+const HistogramChart = ({ data, loading, onReady, height = 360, compact = false }: Props) => {
   const [selectedHorizons, setSelectedHorizons] = useState<number[]>([]);
 
   const seriesMap = useMemo(() => {
@@ -162,12 +177,6 @@ const HistogramChart = ({ data, loading, onReady, height = 320, compact = false 
   const histogram = useMemo(() => buildHistogram(selectedValues, binWidth), [selectedValues, binWidth]);
   const stats = useMemo(() => computeStats(selectedValues), [selectedValues]);
 
-  const categories = histogram.bins.map((bin) => {
-    const start = formatNumber(bin.start * 100, 1);
-    const end = formatNumber(bin.end * 100, 1);
-    return `${start} - ${end}`;
-  });
-
   const option = useMemo(() => {
     if (!histogram.bins.length || !histogram.counts.length) {
       return null;
@@ -184,26 +193,26 @@ const HistogramChart = ({ data, loading, onReady, height = 320, compact = false 
       },
       xAxis: {
         type: "category",
-        data: categories,
-        name: "%",
-        nameLocation: "end",
-        nameGap: compact ? 24 : 32,
-        nameTextStyle: {
-          fontSize: compact ? 10 : 11,
-          padding: [0, 0, 4, 0],
-        },
+        data: histogram.bins.map((bin) => {
+          const start = formatNumber(bin.start * 100, 1);
+          const end = formatNumber(bin.end * 100, 1);
+          return `${start} - ${end}`;
+        }),
         axisLabel: {
           interval: 0,
           rotate: 0,
           fontSize: compact ? 8 : 9,
           margin: compact ? 10 : 14,
           lineHeight: compact ? 12 : 14,
-          formatter: (value: string, index: number) => {
+          formatter: (_value: string, index: number) => {
             const count = histogram.counts[index];
-            if (!count) {
+            const bin = histogram.bins[index];
+            if (!count || !bin) {
               return "";
             }
-            return value.replace(" - ", "\n-");
+            const start = formatNumber(bin.start * 100, 1);
+            const end = formatNumber(bin.end * 100, 1);
+            return `${start}\n-\n${end}`;
           },
         },
         axisTick: {
@@ -223,7 +232,7 @@ const HistogramChart = ({ data, loading, onReady, height = 320, compact = false 
       series: [
         {
           type: "bar",
-          barMaxWidth: compact ? 18 : 24,
+          barMaxWidth: compact ? 22 : 28,
           data: histogram.counts,
           label: {
             show: true,
@@ -239,14 +248,26 @@ const HistogramChart = ({ data, loading, onReady, height = 320, compact = false 
         },
       ],
       grid: {
-        left: compact ? 48 : 56,
-        right: compact ? 24 : 32,
-        bottom: compact ? 64 : 82,
+        left: compact ? 40 : 48,
+        right: compact ? 16 : 24,
+        bottom: compact ? 72 : 90,
         top: compact ? 32 : 44,
         containLabel: true,
       },
+      graphic: [
+        {
+          type: "text",
+          right: compact ? 10 : 18,
+          bottom: compact ? 18 : 24,
+          style: {
+            text: "%",
+            fontSize: compact ? 11 : 13,
+            fill: "#475569",
+          },
+        },
+      ],
     };
-  }, [histogram, categories, compact]);
+  }, [histogram, compact]);
 
   const handleToggleHorizon = (horizon: number, event: CheckboxChangeEvent) => {
     const checked = event.target.checked;
@@ -305,7 +326,7 @@ const HistogramChart = ({ data, loading, onReady, height = 320, compact = false 
         </div>
       </div>
       {option ? (
-        <ReactECharts option={option} style={{ height }} onChartReady={onReady} />
+        <ReactECharts option={option} style={{ height, width: "100%" }} onChartReady={onReady} />
       ) : (
         <Empty description="No returns for selected ranges" />
       )}
