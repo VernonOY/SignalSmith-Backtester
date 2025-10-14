@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button, Card, ConfigProvider, Typography, message, theme } from "antd";
+import { Button, Card, ConfigProvider, Select, Typography, message, theme } from "antd";
 import html2canvas from "html2canvas";
 import SidebarForm from "./components/SidebarForm";
 import { BacktestRequest, BacktestResponse } from "./types";
@@ -27,6 +27,7 @@ const App = () => {
   const [response, setResponse] = useState<BacktestResponse | null>(null);
   const [lastRunConfig, setLastRunConfig] = useState<BacktestRequest | null>(null);
   const [compactMode, setCompactMode] = useState(true);
+  const [selectedHorizon, setSelectedHorizon] = useState<number | null>(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -97,6 +98,68 @@ const App = () => {
     []
   );
 
+  const horizonResults = response?.horizon_results ?? null;
+
+  const availableHorizons = useMemo(() => {
+    if (!horizonResults) {
+      return [] as number[];
+    }
+    return Object.keys(horizonResults)
+      .map((key) => Number(key))
+      .filter((value) => Number.isFinite(value))
+      .sort((a, b) => a - b);
+  }, [horizonResults]);
+
+  useEffect(() => {
+    if (!response) {
+      setSelectedHorizon(null);
+      return;
+    }
+    if (!availableHorizons.length) {
+      setSelectedHorizon(null);
+      return;
+    }
+    const preferred = response.hold_days;
+    if (preferred && availableHorizons.includes(preferred)) {
+      setSelectedHorizon(preferred);
+      return;
+    }
+    setSelectedHorizon((current) => {
+      if (current && availableHorizons.includes(current)) {
+        return current;
+      }
+      return availableHorizons[0] ?? null;
+    });
+  }, [response, availableHorizons]);
+
+  const activeHorizon = useMemo(() => {
+    if (!availableHorizons.length) {
+      return null;
+    }
+    if (selectedHorizon && availableHorizons.includes(selectedHorizon)) {
+      return selectedHorizon;
+    }
+    if (response?.hold_days && availableHorizons.includes(response.hold_days)) {
+      return response.hold_days;
+    }
+    return availableHorizons[0] ?? null;
+  }, [availableHorizons, selectedHorizon, response?.hold_days]);
+
+  const activeHorizonResult = useMemo(() => {
+    if (!horizonResults || activeHorizon == null) {
+      return null;
+    }
+    const key = String(activeHorizon);
+    return horizonResults[key] ?? null;
+  }, [horizonResults, activeHorizon]);
+
+  const equitySeries = activeHorizonResult?.equity_curve ?? response?.equity_curve;
+
+  const horizonOptions = useMemo(
+    () => availableHorizons.map((value) => ({ label: `${value}d`, value })),
+    [availableHorizons]
+  );
+
   const equityMetricConfigs = useMemo(
     () => [
       {
@@ -135,16 +198,17 @@ const App = () => {
   );
 
   const equityMetrics = useMemo(() => {
-    if (!response?.metrics) return [] as EquityMetricDisplay[];
+    const metricSource = activeHorizonResult?.metrics ?? response?.metrics;
+    if (!metricSource) return [] as EquityMetricDisplay[];
     return equityMetricConfigs.reduce<EquityMetricDisplay[]>((acc, config) => {
-      const rawValue = response.metrics?.[config.key];
+      const rawValue = metricSource?.[config.key];
       if (typeof rawValue !== "number" || Number.isNaN(rawValue)) {
         return acc;
       }
       acc.push({ key: config.key, label: config.label, value: config.format(rawValue) });
       return acc;
     }, []);
-  }, [equityMetricConfigs, response?.metrics]);
+  }, [equityMetricConfigs, activeHorizonResult, response?.metrics]);
 
   const runSettingsSummary = useMemo(() => {
     if (!lastRunConfig) return [] as InfoTag[];
@@ -153,7 +217,10 @@ const App = () => {
       { label: "Range", value: `${lastRunConfig.start} → ${lastRunConfig.end}` },
       { label: "Capital", value: optionalCurrency(lastRunConfig.capital) },
       { label: "Fee", value: typeof lastRunConfig.fee_bps === "number" ? `${formatNumber(lastRunConfig.fee_bps, 1)} bp` : "—" },
-      { label: "Hold", value: typeof lastRunConfig.hold_days === "number" ? `${formatNumber(lastRunConfig.hold_days, 0)} d` : "—" },
+      {
+        label: "Hold",
+        value: response ? `${formatNumber(response.hold_days, 0)} d` : "—",
+      },
       {
         label: "Max Hz",
         value: typeof indicators.max_horizon === "number" ? `${formatNumber(indicators.max_horizon, 0)} d` : "—",
@@ -167,7 +234,7 @@ const App = () => {
         value: optionalPercent(lastRunConfig.take_profit_pct),
       },
     ];
-  }, [lastRunConfig, optionalCurrency, optionalPercent]);
+  }, [lastRunConfig, optionalCurrency, optionalPercent, response]);
 
   const universeSummary = useMemo(() => {
     if (!lastRunConfig?.filters) {
@@ -276,6 +343,13 @@ const App = () => {
   }, [lastRunConfig]);
 
 
+  const hasIndicatorStats = Boolean(response?.indicator_statistics);
+  const hasRunSettings = runSettingsSummary.length > 0;
+  const hasUniverseDetails = Boolean(lastRunConfig) && universeSummary.length > 0;
+  const hasSignalDetails = Boolean(lastRunConfig) && signalSummary.length > 0;
+  const showDetailsCard =
+    hasIndicatorStats || hasRunSettings || hasUniverseDetails || hasSignalDetails;
+
   return (
     <ConfigProvider
       theme={{
@@ -323,12 +397,60 @@ const App = () => {
                         compact
                         height={compactMode ? 320 : 360}
                       />
-                      {response.indicator_statistics && (
-                        <div className="run-summary">
-                          <div className="run-summary__section">
-                            <div className="run-summary__title">Indicator Statistics</div>
-                            <IndicatorStatsTable stats={response.indicator_statistics} compact />
+                    </Card>
+                  )}
+
+                  {showDetailsCard && (
+                    <Card className="result-card details-card" size="small">
+                      {hasIndicatorStats && (
+                        <>
+                          <div className="card-header">
+                            <Title level={4}>Indicator Statistics</Title>
                           </div>
+                          <IndicatorStatsTable stats={response!.indicator_statistics!} compact />
+                        </>
+                      )}
+                      {(hasRunSettings || hasUniverseDetails || hasSignalDetails) && (
+                        <div className="run-summary">
+                          {hasRunSettings && (
+                            <div className="run-summary__section">
+                              <div className="run-summary__title">Run Settings</div>
+                              <div className="run-summary__grid">
+                                {runSettingsSummary.map((item) => (
+                                  <div className="run-summary__item" key={`run-${item.label}`}>
+                                    <span className="run-summary__label">{item.label}</span>
+                                    <span className="run-summary__value">{item.value}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {hasUniverseDetails && (
+                            <div className="run-summary__section">
+                              <div className="run-summary__title">Universe Filters</div>
+                              <div className="run-summary__grid">
+                                {universeSummary.map((item) => (
+                                  <div className="run-summary__item" key={`filter-${item.label}-${item.value}`}>
+                                    <span className="run-summary__label">{item.label}</span>
+                                    <span className="run-summary__value">{item.value}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {hasSignalDetails && (
+                            <div className="run-summary__section">
+                              <div className="run-summary__title">Signal Rules</div>
+                              <div className="run-summary__grid">
+                                {signalSummary.map((item) => (
+                                  <div className="run-summary__item" key={`signal-${item.label}-${item.value}`}>
+                                    <span className="run-summary__label">{item.label}</span>
+                                    <span className="run-summary__value">{item.value}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </Card>
@@ -337,9 +459,22 @@ const App = () => {
                   <Card className="result-card equity-card" size="small">
                     <div className="card-header">
                       <Title level={4}>Equity Curve</Title>
+                      {horizonOptions.length > 0 && (
+                        <div className="card-header__actions">
+                          <span className="card-header__label">Holding period</span>
+                          <Select
+                            size="small"
+                            value={activeHorizon ?? undefined}
+                            onChange={(value: number) => setSelectedHorizon(value)}
+                            options={horizonOptions}
+                            style={{ minWidth: 96 }}
+                            disabled={loading}
+                          />
+                        </div>
+                      )}
                     </div>
                     <EquityChart
-                      data={response.equity_curve}
+                      data={equitySeries}
                       loading={loading}
                       compact
                       height={compactMode ? 320 : 360}
@@ -352,50 +487,6 @@ const App = () => {
                             <span className="run-summary__value">{metric.value}</span>
                           </div>
                         ))}
-                      </div>
-                    )}
-                    {(runSettingsSummary.length > 0 ||
-                      (lastRunConfig && (universeSummary.length || signalSummary.length))) && (
-                      <div className="run-summary">
-                        {runSettingsSummary.length > 0 && (
-                          <div className="run-summary__section">
-                            <div className="run-summary__title">Run Settings</div>
-                            <div className="run-summary__grid">
-                              {runSettingsSummary.map((item) => (
-                                <div className="run-summary__item" key={`run-${item.label}`}>
-                                  <span className="run-summary__label">{item.label}</span>
-                                  <span className="run-summary__value">{item.value}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {lastRunConfig && (universeSummary.length || signalSummary.length) && (
-                          <>
-                            <div className="run-summary__section">
-                              <div className="run-summary__title">Universe Filters</div>
-                              <div className="run-summary__grid">
-                                {universeSummary.map((item) => (
-                                  <div className="run-summary__item" key={`filter-${item.label}-${item.value}`}>
-                                    <span className="run-summary__label">{item.label}</span>
-                                    <span className="run-summary__value">{item.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                            <div className="run-summary__section">
-                              <div className="run-summary__title">Signal Rules</div>
-                              <div className="run-summary__grid">
-                                {signalSummary.map((item) => (
-                                  <div className="run-summary__item" key={`signal-${item.label}-${item.value}`}>
-                                    <span className="run-summary__label">{item.label}</span>
-                                    <span className="run-summary__value">{item.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </>
-                        )}
                       </div>
                     )}
                   </Card>
