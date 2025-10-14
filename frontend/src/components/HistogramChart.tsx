@@ -198,8 +198,8 @@ const HistogramChart = ({ data, loading, onReady, height = 320, compact = false 
   const stats = useMemo(() => computeStats(selectedValues), [selectedValues]);
 
   const categories = histogram.bins.map((bin) => {
-    const start = formatPercent(bin.start, 1);
-    const end = formatPercent(bin.end, 1);
+    const start = formatNumber(bin.start * 100, 1);
+    const end = formatNumber(bin.end * 100, 1);
     return `${start} – ${end}`;
   });
 
@@ -220,12 +220,19 @@ const HistogramChart = ({ data, loading, onReady, height = 320, compact = false 
       xAxis: {
         type: "category",
         data: categories,
+        name: "%",
+        nameLocation: "end",
+        nameGap: compact ? 24 : 32,
+        nameTextStyle: {
+          fontSize: compact ? 10 : 11,
+          padding: [0, 0, 4, 0],
+        },
         axisLabel: {
           interval: 0,
           rotate: 0,
-          fontSize: compact ? 10 : 11,
-          margin: compact ? 12 : 16,
-          lineHeight: compact ? 14 : 16,
+          fontSize: compact ? 8 : 9,
+          margin: compact ? 10 : 14,
+          lineHeight: compact ? 12 : 14,
           formatter: (value: string, index: number) => {
             const count = histogram.counts[index];
             if (!count) {
