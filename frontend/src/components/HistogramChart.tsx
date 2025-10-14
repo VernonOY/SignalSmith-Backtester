@@ -222,11 +222,20 @@ const HistogramChart = ({ data, loading, onReady, height = 320, compact = false 
         data: categories,
         axisLabel: {
           interval: 0,
-          rotate: 90,
+          rotate: 0,
           fontSize: compact ? 10 : 11,
-          margin: compact ? 14 : 20,
-          align: "right",
-          verticalAlign: "middle",
+          margin: compact ? 12 : 16,
+          lineHeight: compact ? 14 : 16,
+          formatter: (value: string, index: number) => {
+            const count = histogram.counts[index];
+            if (!count) {
+              return "";
+            }
+            return value.replace(" – ", "\n");
+          },
+        },
+        axisTick: {
+          alignWithLabel: true,
         },
       },
       yAxis: {
@@ -244,6 +253,13 @@ const HistogramChart = ({ data, loading, onReady, height = 320, compact = false 
           type: "bar",
           barMaxWidth: compact ? 18 : 24,
           data: histogram.counts,
+          label: {
+            show: true,
+            position: "top",
+            formatter: ({ value }: { value: number }) =>
+              typeof value === "number" && value > 0 ? formatNumber(value, 0) : "",
+            fontSize: compact ? 10 : 11,
+          },
           itemStyle: {
             color: "#4c6ef5",
             opacity: 0.82,
@@ -253,7 +269,7 @@ const HistogramChart = ({ data, loading, onReady, height = 320, compact = false 
       grid: {
         left: compact ? 48 : 56,
         right: compact ? 24 : 32,
-        bottom: compact ? 56 : 68,
+        bottom: compact ? 64 : 82,
         top: compact ? 32 : 44,
         containLabel: true,
       },

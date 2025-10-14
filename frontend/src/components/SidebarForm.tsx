@@ -172,19 +172,6 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
     }
   };
 
-  const maxHorizon = Form.useWatch("max_horizon", form);
-  useEffect(() => {
-    if (!maxHorizon) return;
-    const currentHold = form.getFieldValue("hold_days");
-    const next: Record<string, number> = {};
-    if (currentHold && currentHold > maxHorizon) {
-      next.hold_days = maxHorizon;
-    }
-    if (Object.keys(next).length) {
-      form.setFieldsValue(next);
-    }
-  }, [maxHorizon, form]);
-
   const enableRsi = Form.useWatch("enable_rsi", form) ?? true;
   const useMacd = Form.useWatch("use_macd", form) ?? false;
   const useObv = Form.useWatch("use_obv", form) ?? false;
@@ -228,7 +215,6 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
       policy: values.policy,
       atleast_k: values.k,
       max_horizon: values.max_horizon,
-      hold_days: values.hold_days,
       stop_loss_pct: stopLoss,
       take_profit_pct: takeProfit,
     };
@@ -310,7 +296,6 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
       filters: hasFilters ? filters : undefined,
       capital: values.capital,
       fee_bps: values.fee_bps,
-      hold_days: values.hold_days,
       stop_loss_pct: stopLoss,
       take_profit_pct: takeProfit,
       hist_bin_width: binWidth,
@@ -333,7 +318,6 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
           date: [defaultStart, today],
           capital: 100000,
           fee_bps: 1,
-          hold_days: 1,
           stop_loss_pct: undefined,
           take_profit_pct: undefined,
           rsi_rule: { mode: "oversold", threshold: 30 },
@@ -391,9 +375,6 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
           <div className="form-grid form-grid--four">
             <Form.Item label="Fee" name="fee_bps" className="form-grid__item">
               <InputNumber min={0} max={100} style={{ width: "100%" }} addonAfter="bp" />
-            </Form.Item>
-            <Form.Item label="Hold" name="hold_days" className="form-grid__item">
-              <InputNumber min={1} max={10} style={{ width: "100%" }} addonAfter="d" />
             </Form.Item>
             <Form.Item label="SL" name="stop_loss_pct" className="form-grid__item">
               <InputNumber min={0} max={100} style={{ width: "100%" }} addonAfter="%" placeholder="—" />

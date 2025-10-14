@@ -153,7 +153,6 @@ const App = () => {
       { label: "Range", value: `${lastRunConfig.start} → ${lastRunConfig.end}` },
       { label: "Capital", value: optionalCurrency(lastRunConfig.capital) },
       { label: "Fee", value: typeof lastRunConfig.fee_bps === "number" ? `${formatNumber(lastRunConfig.fee_bps, 1)} bp` : "—" },
-      { label: "Hold", value: typeof lastRunConfig.hold_days === "number" ? `${formatNumber(lastRunConfig.hold_days, 0)} d` : "—" },
       {
         label: "Max Hz",
         value: typeof indicators.max_horizon === "number" ? `${formatNumber(indicators.max_horizon, 0)} d` : "—",
