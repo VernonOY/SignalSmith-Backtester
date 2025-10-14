@@ -8,7 +8,7 @@ interface IndicatorRow {
 }
 
 interface Props {
-  stats?: Record<string, Record<string, number>>;
+  stats?: Record<string, Record<string, number | null>>;
   compact?: boolean;
 }
 

@@ -74,6 +74,16 @@ export interface HistogramPayload {
   bin_width: number;
 }
 
+export interface HorizonResult {
+  equity_curve: TimeSeries;
+  drawdown_curve: TimeSeries;
+  metrics: Metrics;
+  trades_count: number;
+  ending_equity: number;
+  total_return: number;
+  total_fees: number;
+}
+
 export interface BacktestResponse {
   equity_curve: TimeSeries;
   drawdown_curve: TimeSeries;
@@ -82,13 +92,15 @@ export interface BacktestResponse {
   trades?: Trade[];
   metrics: Metrics;
   histogram?: HistogramPayload;
-  indicator_statistics?: Record<string, Record<string, number>>;
+  indicator_statistics?: Record<string, Record<string, number | null>>;
+  horizon_results?: Record<string, HorizonResult>;
   universe_size: number;
   trades_count: number;
   initial_capital: number;
   ending_equity: number;
   total_return: number;
   total_fees: number;
+  hold_days: number;
 }
 
 export interface UniverseMeta {
