@@ -678,80 +678,92 @@ const SidebarForm = ({
           </section>
 
 
-          <section className="input-settings__section">
-            <div className="input-settings__header input-settings__header--toggle">
-              <Text strong>Universe Filters</Text>
-              <Button
-                type="link"
-                size="small"
-                className="sidebar-card__action"
-                onClick={() => setShowUniverseFilters((prev) => !prev)}
-              >
-                {showUniverseFilters ? "Hide" : "Show"}
-              </Button>
-            </div>
-            {showUniverseFilters && (
-              <div className="form-grid form-grid--universe">
-                <Form.Item label="Sector" name={["filters", "sectors"]} className="form-grid__item">
-                  <Select mode="multiple" allowClear options={sectorOptions} dropdownMatchSelectWidth={false} />
-                </Form.Item>
-                <Form.Item label="Cap Min" name={["filters", "mcap_min"]} className="form-grid__item">
-                  <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
-                </Form.Item>
-                <Form.Item label="Cap Max" name={["filters", "mcap_max"]} className="form-grid__item">
-                  <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
-                </Form.Item>
-                <Form.Item label="Exclude" name={["filters", "exclude_tickers"]} className="form-grid__item">
-                  <Select mode="tags" tokenSeparators={[",", " "]} placeholder="TSLA, NVDA" dropdownMatchSelectWidth={false} />
-                </Form.Item>
-              </div>
-            )}
-          </section>
-
-          <section className="input-settings__section">
-            <div className="input-settings__header input-settings__header--toggle">
-              <Text strong>Signal Rules</Text>
-              <Button
-                type="link"
-                size="small"
-                className="sidebar-card__action"
-                onClick={() => setShowSignalRules((prev) => !prev)}
-              >
-                {showSignalRules ? "Hide" : "Show"}
-              </Button>
-            </div>
-            {showSignalRules && (
-              <div className="form-grid form-grid--signals">
-                <Form.Item
-                  label="Policy"
-                  name="policy"
-                  className="form-grid__item form-grid__item--span-2"
+          <section className="input-settings__section input-settings__section--dual">
+            <div className="input-settings__column indicator-grid__item">
+              <div className="input-settings__header input-settings__header--toggle">
+                <Text strong>Universe Filters</Text>
+                <Button
+                  type="link"
+                  size="small"
+                  className="sidebar-card__action"
+                  onClick={() => setShowUniverseFilters((prev) => !prev)}
                 >
-                  <Select
-                    options={[
-                      { label: "Any", value: "any" },
-                      { label: "All", value: "all" },
-                      { label: "At least k", value: "atleast_k" },
-                    ]}
-                  />
-                </Form.Item>
-                <Form.Item label="k" name="k" className="form-grid__item">
-                  <InputNumber min={1} max={7} style={{ width: "100%" }} disabled={policyValue !== "atleast_k"} />
-                </Form.Item>
-                <Form.Item label="Max Hz" name="max_horizon" className="form-grid__item">
-                  <InputNumber min={1} max={10} style={{ width: "100%" }} addonAfter="d" />
-                </Form.Item>
-                <Form.Item label="Bin Width" name="hist_bin_width_pct" className="form-grid__item">
-                  <InputNumber
-                    min={0.1}
-                    max={20}
-                    step={0.1}
-                    style={{ width: "100%" }}
-                    addonAfter="%"
-                  />
-                </Form.Item>
+                  {showUniverseFilters ? "Hide" : "Show"}
+                </Button>
               </div>
-            )}
+              {showUniverseFilters && (
+                <div className="form-grid form-grid--universe">
+                  <Form.Item label="Sector" name={["filters", "sectors"]} className="form-grid__item">
+                    <Select mode="multiple" allowClear options={sectorOptions} dropdownMatchSelectWidth={false} />
+                  </Form.Item>
+                  <Form.Item label="Cap Min" name={["filters", "mcap_min"]} className="form-grid__item">
+                    <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
+                  </Form.Item>
+                  <Form.Item label="Cap Max" name={["filters", "mcap_max"]} className="form-grid__item">
+                    <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
+                  </Form.Item>
+                  <Form.Item label="Exclude" name={["filters", "exclude_tickers"]} className="form-grid__item">
+                    <Select
+                      mode="tags"
+                      tokenSeparators={[",", " "]}
+                      placeholder="TSLA, NVDA"
+                      dropdownMatchSelectWidth={false}
+                    />
+                  </Form.Item>
+                </div>
+              )}
+            </div>
+
+            <div className="input-settings__column indicator-grid__item">
+              <div className="input-settings__header input-settings__header--toggle">
+                <Text strong>Signal Rules</Text>
+                <Button
+                  type="link"
+                  size="small"
+                  className="sidebar-card__action"
+                  onClick={() => setShowSignalRules((prev) => !prev)}
+                >
+                  {showSignalRules ? "Hide" : "Show"}
+                </Button>
+              </div>
+              {showSignalRules && (
+                <div className="form-grid form-grid--signals">
+                  <Form.Item
+                    label="Policy"
+                    name="policy"
+                    className="form-grid__item form-grid__item--span-2"
+                  >
+                    <Select
+                      options={[
+                        { label: "Any", value: "any" },
+                        { label: "All", value: "all" },
+                        { label: "At least k", value: "atleast_k" },
+                      ]}
+                    />
+                  </Form.Item>
+                  <Form.Item label="k" name="k" className="form-grid__item">
+                    <InputNumber
+                      min={1}
+                      max={7}
+                      style={{ width: "100%" }}
+                      disabled={policyValue !== "atleast_k"}
+                    />
+                  </Form.Item>
+                  <Form.Item label="Max Hz" name="max_horizon" className="form-grid__item">
+                    <InputNumber min={1} max={10} style={{ width: "100%" }} addonAfter="d" />
+                  </Form.Item>
+                  <Form.Item label="Bin Width" name="hist_bin_width_pct" className="form-grid__item">
+                    <InputNumber
+                      min={0.1}
+                      max={20}
+                      step={0.1}
+                      style={{ width: "100%" }}
+                      addonAfter="%"
+                    />
+                  </Form.Item>
+                </div>
+              )}
+            </div>
           </section>
         </Card>
 

@@ -419,19 +419,23 @@ const App = () => {
     ? "panel-section panel-section--lower"
     : "panel-section panel-section--lower panel-section--single";
 
-  const sharedMinWidth = Math.max(inputNaturalSize.width, outputNaturalSize.width);
-  const sharedMinHeight = Math.max(inputNaturalSize.height, outputNaturalSize.height);
+  const controlsMinWidth = inputNaturalSize.width;
+  const resultsMinWidth = outputNaturalSize.width;
+  const frameMinHeight = Math.max(inputNaturalSize.height, outputNaturalSize.height);
 
   const dashboardStyle = useMemo(() => {
     const vars: Record<string, string> = {};
-    if (sharedMinWidth) {
-      vars["--frame-min-width"] = `${sharedMinWidth}px`;
+    if (controlsMinWidth) {
+      vars["--controls-min-width"] = `${controlsMinWidth}px`;
     }
-    if (sharedMinHeight) {
-      vars["--frame-min-height"] = `${sharedMinHeight}px`;
+    if (resultsMinWidth) {
+      vars["--results-min-width"] = `${resultsMinWidth}px`;
+    }
+    if (frameMinHeight) {
+      vars["--frame-min-height"] = `${frameMinHeight}px`;
     }
     return vars as CSSProperties;
-  }, [sharedMinWidth, sharedMinHeight]);
+  }, [controlsMinWidth, resultsMinWidth, frameMinHeight]);
 
   const measureResultsCard = useCallback(() => {
     const card = resultsCardRef.current;
@@ -444,16 +448,19 @@ const App = () => {
     card.style.height = "";
     const nextWidth = Math.ceil(card.scrollWidth);
     const nextHeight = Math.ceil(card.scrollHeight);
+    const indicatorTable = card.querySelector<HTMLElement>(".indicator-table");
+    const tableWidth = indicatorTable ? Math.ceil(indicatorTable.scrollWidth + 48) : 0;
+    const widthWithTable = Math.max(nextWidth, tableWidth);
     card.style.width = previousWidth;
     card.style.height = previousHeight;
-    if (!nextWidth || !nextHeight) {
+    if (!widthWithTable || !nextHeight) {
       return;
     }
     setOutputNaturalSize((current) => {
-      if (current.width === nextWidth && current.height === nextHeight) {
+      if (current.width === widthWithTable && current.height === nextHeight) {
         return current;
       }
-      return { width: nextWidth, height: nextHeight };
+      return { width: widthWithTable, height: nextHeight };
     });
   }, []);
 
@@ -511,8 +518,8 @@ const App = () => {
                     onSubmit={handleSubmit}
                     compact={compactMode}
                     onNaturalSizeChange={handleInputSizeChange}
-                    minWidth={sharedMinWidth}
-                    minHeight={sharedMinHeight}
+                    minWidth={controlsMinWidth}
+                    minHeight={frameMinHeight}
                   />
                 </div>
                 <div className="dashboard__results">
@@ -522,8 +529,8 @@ const App = () => {
                       size="small"
                       ref={resultsCardRef}
                       style={{
-                        minWidth: sharedMinWidth || undefined,
-                        minHeight: sharedMinHeight || undefined,
+                        minWidth: resultsMinWidth || undefined,
+                        minHeight: frameMinHeight || undefined,
                       }}
                     >
                       <div className="dashboard__panel-sections">

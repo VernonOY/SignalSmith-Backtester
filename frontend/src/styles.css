@@ -82,8 +82,8 @@ body {
 .dashboard__grid {
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(var(--frame-min-width, 420px), 4fr)
-    minmax(var(--frame-min-width, 420px), 8fr);
+  grid-template-columns: minmax(var(--controls-min-width, 420px), 4fr)
+    minmax(var(--results-min-width, 420px), 8fr);
   gap: var(--dashboard-gap);
   min-height: 0;
   align-items: stretch;
@@ -95,6 +95,7 @@ body {
   flex-direction: column;
   gap: var(--dashboard-gap);
   min-height: var(--frame-min-height, 0);
+  min-width: var(--controls-min-width, 420px);
 }
 
 .dashboard__controls .sidebar-form {
@@ -108,6 +109,7 @@ body {
   flex-direction: column;
   gap: var(--dashboard-gap);
   min-height: var(--frame-min-height, 0);
+  min-width: var(--results-min-width, 420px);
 }
 
 .dashboard__panel {
@@ -140,7 +142,7 @@ body {
 .panel-section--lower {
   flex: 1 1 auto;
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
+  grid-template-columns: minmax(680px, 1.1fr) minmax(460px, 1fr);
   gap: 12px;
   min-height: 0;
 }
@@ -737,6 +739,21 @@ body {
   flex-direction: column;
   gap: 6px;
   padding: 6px 0;
+}
+
+.input-settings__section--dual {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  align-items: stretch;
+}
+
+.input-settings__column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 8px;
+  min-width: 0;
 }
 
 .input-settings__section:first-of-type {
