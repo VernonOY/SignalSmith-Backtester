@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button, Card, ConfigProvider, Typography, message, theme } from "antd";
+import { Button, Card, ConfigProvider, Select, Typography, message, theme } from "antd";
 import html2canvas from "html2canvas";
 import SidebarForm from "./components/SidebarForm";
 import { BacktestRequest, BacktestResponse } from "./types";
@@ -26,29 +26,8 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<BacktestResponse | null>(null);
   const [lastRunConfig, setLastRunConfig] = useState<BacktestRequest | null>(null);
-  const [compactMode, setCompactMode] = useState(true);
+  const [selectedHorizon, setSelectedHorizon] = useState<number | null>(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty("--dashboard-compact", compactMode ? "1" : "0");
-    if (compactMode) {
-      root.setAttribute("data-compact", "true");
-    } else {
-      root.removeAttribute("data-compact");
-    }
-  }, [compactMode]);
-
-  const fitToSinglePage = useCallback((enable = true) => {
-    setCompactMode(enable);
-  }, []);
-
-  useEffect(() => {
-    (window as any).fitToSinglePage = fitToSinglePage;
-    return () => {
-      delete (window as any).fitToSinglePage;
-    };
-  }, [fitToSinglePage]);
 
   const handleSubmit = async (payload: BacktestRequest, _rawValues?: any) => {
     try {
@@ -68,8 +47,6 @@ const App = () => {
   const handleExportScreenshot = useCallback(async () => {
     const container = dashboardRef.current;
     if (!container) return;
-    const wasCompact = compactMode;
-    fitToSinglePage(true);
     await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
     const canvas = await html2canvas(
       container,
@@ -82,10 +59,7 @@ const App = () => {
     link.href = canvas.toDataURL("image/png");
     link.download = "signalsmith-dashboard.png";
     link.click();
-    if (!wasCompact) {
-      fitToSinglePage(false);
-    }
-  }, [compactMode, fitToSinglePage]);
+  }, []);
 
   const optionalCurrency = useCallback(
     (value?: number | null) => (typeof value === "number" ? formatCurrency(value, 0) : "—"),
@@ -95,6 +69,68 @@ const App = () => {
     (value?: number | null, digits = 1) =>
       typeof value === "number" ? formatPercent(value, digits) : "—",
     []
+  );
+
+  const horizonResults = response?.horizon_results ?? null;
+
+  const availableHorizons = useMemo(() => {
+    if (!horizonResults) {
+      return [] as number[];
+    }
+    return Object.keys(horizonResults)
+      .map((key) => Number(key))
+      .filter((value) => Number.isFinite(value))
+      .sort((a, b) => a - b);
+  }, [horizonResults]);
+
+  useEffect(() => {
+    if (!response) {
+      setSelectedHorizon(null);
+      return;
+    }
+    if (!availableHorizons.length) {
+      setSelectedHorizon(null);
+      return;
+    }
+    const preferred = response.hold_days;
+    if (preferred && availableHorizons.includes(preferred)) {
+      setSelectedHorizon(preferred);
+      return;
+    }
+    setSelectedHorizon((current) => {
+      if (current && availableHorizons.includes(current)) {
+        return current;
+      }
+      return availableHorizons[0] ?? null;
+    });
+  }, [response, availableHorizons]);
+
+  const activeHorizon = useMemo(() => {
+    if (!availableHorizons.length) {
+      return null;
+    }
+    if (selectedHorizon && availableHorizons.includes(selectedHorizon)) {
+      return selectedHorizon;
+    }
+    if (response?.hold_days && availableHorizons.includes(response.hold_days)) {
+      return response.hold_days;
+    }
+    return availableHorizons[0] ?? null;
+  }, [availableHorizons, selectedHorizon, response?.hold_days]);
+
+  const activeHorizonResult = useMemo(() => {
+    if (!horizonResults || activeHorizon == null) {
+      return null;
+    }
+    const key = String(activeHorizon);
+    return horizonResults[key] ?? null;
+  }, [horizonResults, activeHorizon]);
+
+  const equitySeries = activeHorizonResult?.equity_curve ?? response?.equity_curve;
+
+  const horizonOptions = useMemo(
+    () => availableHorizons.map((value) => ({ label: `${value}d`, value })),
+    [availableHorizons]
   );
 
   const equityMetricConfigs = useMemo(
@@ -135,281 +171,213 @@ const App = () => {
   );
 
   const equityMetrics = useMemo(() => {
-    if (!response?.metrics) return [] as EquityMetricDisplay[];
+    const metricSource = activeHorizonResult?.metrics ?? response?.metrics;
+    if (!metricSource) return [] as EquityMetricDisplay[];
     return equityMetricConfigs.reduce<EquityMetricDisplay[]>((acc, config) => {
-      const rawValue = response.metrics?.[config.key];
+      const rawValue = metricSource?.[config.key];
       if (typeof rawValue !== "number" || Number.isNaN(rawValue)) {
         return acc;
       }
       acc.push({ key: config.key, label: config.label, value: config.format(rawValue) });
       return acc;
     }, []);
-  }, [equityMetricConfigs, response?.metrics]);
+  }, [equityMetricConfigs, activeHorizonResult, response?.metrics]);
 
-  const runSettingsSummary = useMemo(() => {
+  const settingsSummary = useMemo(() => {
     if (!lastRunConfig) return [] as InfoTag[];
-    const indicators = lastRunConfig.indicators || {};
-    return [
-      { label: "Range", value: `${lastRunConfig.start} → ${lastRunConfig.end}` },
-      { label: "Capital", value: optionalCurrency(lastRunConfig.capital) },
-      { label: "Fee", value: typeof lastRunConfig.fee_bps === "number" ? `${formatNumber(lastRunConfig.fee_bps, 1)} bp` : "—" },
-      { label: "Hold", value: typeof lastRunConfig.hold_days === "number" ? `${formatNumber(lastRunConfig.hold_days, 0)} d` : "—" },
-      {
-        label: "Max Hz",
-        value: typeof indicators.max_horizon === "number" ? `${formatNumber(indicators.max_horizon, 0)} d` : "—",
-      },
-      {
-        label: "Stop",
-        value: optionalPercent(lastRunConfig.stop_loss_pct),
-      },
-      {
-        label: "Take",
-        value: optionalPercent(lastRunConfig.take_profit_pct),
-      },
-    ];
-  }, [lastRunConfig, optionalCurrency, optionalPercent]);
+    const entries: InfoTag[] = [];
+    const indicators = (lastRunConfig.indicators ?? {}) as Record<string, any>;
+    const filters = lastRunConfig.filters ?? {};
+    entries.push({ label: "Range", value: `${lastRunConfig.start} → ${lastRunConfig.end}` });
+    entries.push({ label: "Capital", value: optionalCurrency(lastRunConfig.capital) });
+    entries.push({
+      label: "Fee",
+      value:
+        typeof lastRunConfig.fee_bps === "number"
+          ? `${formatNumber(lastRunConfig.fee_bps, 1)} bp`
+          : "—",
+    });
+    entries.push({
+      label: "Hold",
+      value: response ? `${formatNumber(response.hold_days, 0)} d` : "—",
+    });
+    entries.push({
+      label: "Max Hz",
+      value:
+        typeof indicators.max_horizon === "number"
+          ? `${formatNumber(indicators.max_horizon, 0)} d`
+          : "—",
+    });
+    entries.push({ label: "Stop", value: optionalPercent(lastRunConfig.stop_loss_pct) });
+    entries.push({ label: "Take", value: optionalPercent(lastRunConfig.take_profit_pct) });
+    const sectors = Array.isArray(filters.sectors) && filters.sectors.length
+      ? filters.sectors.join(" · ")
+      : "—";
+    entries.push({ label: "Sectors", value: sectors });
+    const policyValue = indicators.policy ? String(indicators.policy).toLowerCase() : "—";
+    entries.push({ label: "Policy", value: policyValue });
+    entries.push({
+      label: "At Least",
+      value:
+        typeof indicators.atleast_k === "number"
+          ? formatNumber(indicators.atleast_k, 0)
+          : "—",
+    });
+    const binWidth =
+      typeof indicators.bin_width === "number"
+        ? indicators.bin_width
+        : typeof lastRunConfig.hist_bin_width === "number"
+        ? lastRunConfig.hist_bin_width
+        : undefined;
+    entries.push({
+      label: "Bin Width",
+      value: typeof binWidth === "number" ? formatPercent(binWidth, 1) : "—",
+    });
 
-  const universeSummary = useMemo(() => {
-    if (!lastRunConfig?.filters) {
-      return [{ label: "Filters", value: "None" }];
-    }
-    const { filters } = lastRunConfig;
-    const items: InfoTag[] = [];
-    if (filters.sectors && filters.sectors.length) {
-      items.push({ label: "Sectors", value: filters.sectors.join(" · ") });
-    }
-    if (typeof filters.mcap_min === "number") {
-      items.push({ label: "Cap ≥", value: optionalCurrency(filters.mcap_min) });
-    }
-    if (typeof filters.mcap_max === "number") {
-      items.push({ label: "Cap ≤", value: optionalCurrency(filters.mcap_max) });
-    }
-    if (filters.exclude_tickers && filters.exclude_tickers.length) {
-      items.push({ label: "Exclude", value: filters.exclude_tickers.join(", ") });
-    }
-    return items.length ? items : [{ label: "Filters", value: "None" }];
-  }, [lastRunConfig, optionalCurrency]);
-
-  const signalSummary = useMemo(() => {
-    if (!lastRunConfig?.indicators) {
-      return [{ label: "Signals", value: "None" }];
-    }
-
-    const indicators = lastRunConfig.indicators as Record<string, any>;
-    const items: InfoTag[] = [];
-
-    if (indicators.policy) {
-      const formatted = indicators.policy === "any" ? "Any" : String(indicators.policy);
-      items.push({ label: "Policy", value: formatted });
-    }
-
-    if (typeof indicators.atleast_k === "number") {
-      items.push({ label: "At Least", value: formatNumber(indicators.atleast_k, 0) });
-    }
-
-    if (typeof indicators.bin_width === "number") {
-      items.push({ label: "Bin Width", value: formatPercent(indicators.bin_width, 1) });
-    }
-
-    const addIndicator = (
-      name: string,
-      config: any,
-      formatter: (cfg: any) => string | undefined | null
-    ) => {
-      if (!config || config.use === false) return;
-      const value = formatter(config);
-      if (!value) return;
-      items.push({ label: name, value });
-    };
-
-    addIndicator("RSI", indicators.rsi, (cfg) => {
-      const pieces = [`n=${formatNumber(cfg.n, 0)}`];
-      if (cfg.rule === "oversold" && typeof cfg.oversold === "number") {
-        pieces.push(`OS≤${formatNumber(cfg.oversold, 0)}`);
+    const rsiConfig = indicators.rsi;
+    let rsiValue = "—";
+    if (rsiConfig && rsiConfig.use !== false) {
+      const rsiPieces = [`n=${formatNumber(rsiConfig.n, 0)}`];
+      if (rsiConfig.rule === "oversold" && typeof rsiConfig.oversold === "number") {
+        rsiPieces.push(`OS≤${formatNumber(rsiConfig.oversold, 0)}`);
       }
-      if (cfg.rule === "overbought" && typeof cfg.overbought === "number") {
-        pieces.push(`OB≥${formatNumber(cfg.overbought, 0)}`);
+      if (rsiConfig.rule === "overbought" && typeof rsiConfig.overbought === "number") {
+        rsiPieces.push(`OB≥${formatNumber(rsiConfig.overbought, 0)}`);
       }
-      return pieces.join(" · ");
-    });
+      rsiValue = rsiPieces.join(" · ");
+    }
+    entries.push({ label: "RSI", value: rsiValue });
 
-    addIndicator("MACD", indicators.macd, (cfg) => {
-      if (typeof cfg.fast !== "number" || typeof cfg.slow !== "number" || typeof cfg.signal !== "number") {
-        return undefined;
-      }
-      const rule = cfg.rule ? String(cfg.rule).toUpperCase() : "—";
-      return `${formatNumber(cfg.fast, 0)}/${formatNumber(cfg.slow, 0)}/${formatNumber(cfg.signal, 0)} · ${rule}`;
-    });
+    const macdConfig = indicators.macd;
+    let macdValue = "—";
+    if (
+      macdConfig &&
+      macdConfig.use !== false &&
+      typeof macdConfig.fast === "number" &&
+      typeof macdConfig.slow === "number" &&
+      typeof macdConfig.signal === "number"
+    ) {
+      const rule = macdConfig.rule ? String(macdConfig.rule).toUpperCase() : "—";
+      macdValue = `${formatNumber(macdConfig.fast, 0)}/${formatNumber(macdConfig.slow, 0)}/${formatNumber(macdConfig.signal, 0)} · ${rule}`;
+    }
+    entries.push({ label: "MACD", value: macdValue });
 
-    addIndicator("OBV", indicators.obv, (cfg) => (cfg.rule ? String(cfg.rule).toUpperCase() : "—"));
+    return entries;
+  }, [lastRunConfig, optionalCurrency, optionalPercent, response]);
 
-    addIndicator("EMA", indicators.ema, (cfg) => {
-      if (typeof cfg.short !== "number" || typeof cfg.long !== "number") return undefined;
-      return `${formatNumber(cfg.short, 0)}/${formatNumber(cfg.long, 0)}`;
-    });
-
-    addIndicator("ADX", indicators.adx, (cfg) => {
-      if (typeof cfg.n !== "number" || typeof cfg.min !== "number") return undefined;
-      return `n=${formatNumber(cfg.n, 0)} · ≥${formatNumber(cfg.min, 0)}`;
-    });
-
-    addIndicator("Aroon", indicators.aroon, (cfg) => {
-      if (
-        typeof cfg.n !== "number" ||
-        typeof cfg.up !== "number" ||
-        typeof cfg.down !== "number"
-      ) {
-        return undefined;
-      }
-      return `n=${formatNumber(cfg.n, 0)} · ↑${formatNumber(cfg.up, 0)} / ↓${formatNumber(cfg.down, 0)}`;
-    });
-
-    addIndicator("Stoch", indicators.stoch, (cfg) => {
-      if (typeof cfg.k !== "number" || typeof cfg.d !== "number") return undefined;
-      const base = `K${formatNumber(cfg.k, 0)}/D${formatNumber(cfg.d, 0)}`;
-      const rule = cfg.rule ? ` · ${String(cfg.rule).toUpperCase()}` : "";
-      const threshold = typeof cfg.threshold === "number" ? ` · ${formatNumber(cfg.threshold, 0)}` : "";
-      return `${base}${rule}${threshold}`;
-    });
-
-    return items.length ? items : [{ label: "Signals", value: "None" }];
-  }, [lastRunConfig]);
-
+  const hasIndicatorStats = Boolean(response?.indicator_statistics);
+  const hasSettingsSummary = settingsSummary.length > 0;
 
   return (
     <ConfigProvider
       theme={{
         algorithm: theme.compactAlgorithm,
         token: {
-          borderRadius: 8,
+          borderRadius: 16,
+          fontSize: 28,
+          fontSizeHeading3: 40,
+          fontSizeHeading4: 32,
         },
       }}
     >
-      <div className="dashboard" ref={dashboardRef} data-compact={compactMode}>
+      <div className="dashboard" ref={dashboardRef}>
         <header className="dashboard__header">
           <div className="dashboard__heading">
             <Title level={3}>SignalSmith Backtester</Title>
           </div>
           <div className="dashboard__actions">
-            <Button size="small" type="primary" onClick={handleExportScreenshot}>
+            <Button size="large" type="primary" onClick={handleExportScreenshot}>
               Export Screenshot
             </Button>
           </div>
         </header>
-
-        <div className="dashboard__body">
-          <aside className="dashboard__sidebar">
-            <div className="dashboard__sidebar-inner">
-              <SidebarForm
-                loading={loading}
-                onSubmit={handleSubmit}
-                compact={compactMode}
-              />
+        <div className="dashboard__layout">
+          <section className="dashboard__column dashboard__column--inputs">
+            <div className="dashboard__panel dashboard__panel--form">
+              <SidebarForm loading={loading} onSubmit={handleSubmit} />
             </div>
-          </aside>
+          </section>
 
-          <main className="dashboard__content">
-            <div className="dashboard__workspace">
-              {response ? (
-                <div className="dashboard__charts">
-                  {response.histogram && (
-                    <Card className="result-card histogram-card" size="small">
-                      <div className="card-header">
-                        <Title level={4}>Return Distribution</Title>
-                      </div>
-                      <HistogramChart
-                        data={response.histogram}
-                        loading={loading}
-                        compact
-                        height={compactMode ? 320 : 360}
-                      />
-                      {response.indicator_statistics && (
-                        <div className="run-summary">
-                          <div className="run-summary__section">
-                            <div className="run-summary__title">Indicator Statistics</div>
-                            <IndicatorStatsTable stats={response.indicator_statistics} compact />
-                          </div>
-                        </div>
-                      )}
-                    </Card>
-                  )}
-
-                  <Card className="result-card equity-card" size="small">
+          <section className="dashboard__column dashboard__column--results">
+            {response ? (
+              <div className="dashboard__results-grid">
+                {response.histogram && (
+                  <Card className="result-card histogram-card">
                     <div className="card-header">
-                      <Title level={4}>Equity Curve</Title>
+                      <Title level={4}>Return Distribution</Title>
                     </div>
-                    <EquityChart
-                      data={response.equity_curve}
+                    <HistogramChart
+                      data={response.histogram}
                       loading={loading}
-                      compact
-                      height={compactMode ? 320 : 360}
+                      height="45vh"
                     />
-                    {equityMetrics.length > 0 && (
-                      <div className="run-summary__grid run-summary__grid--metrics">
-                        {equityMetrics.map((metric) => (
-                          <div className="run-summary__item" key={metric.key}>
-                            <span className="run-summary__label">{metric.label}</span>
-                            <span className="run-summary__value">{metric.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {(runSettingsSummary.length > 0 ||
-                      (lastRunConfig && (universeSummary.length || signalSummary.length))) && (
-                      <div className="run-summary">
-                        {runSettingsSummary.length > 0 && (
-                          <div className="run-summary__section">
-                            <div className="run-summary__title">Run Settings</div>
-                            <div className="run-summary__grid">
-                              {runSettingsSummary.map((item) => (
-                                <div className="run-summary__item" key={`run-${item.label}`}>
-                                  <span className="run-summary__label">{item.label}</span>
-                                  <span className="run-summary__value">{item.value}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {lastRunConfig && (universeSummary.length || signalSummary.length) && (
-                          <>
-                            <div className="run-summary__section">
-                              <div className="run-summary__title">Universe Filters</div>
-                              <div className="run-summary__grid">
-                                {universeSummary.map((item) => (
-                                  <div className="run-summary__item" key={`filter-${item.label}-${item.value}`}>
-                                    <span className="run-summary__label">{item.label}</span>
-                                    <span className="run-summary__value">{item.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                            <div className="run-summary__section">
-                              <div className="run-summary__title">Signal Rules</div>
-                              <div className="run-summary__grid">
-                                {signalSummary.map((item) => (
-                                  <div className="run-summary__item" key={`signal-${item.label}-${item.value}`}>
-                                    <span className="run-summary__label">{item.label}</span>
-                                    <span className="run-summary__value">{item.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
                   </Card>
-                </div>
-              ) : (
-                <Card className="result-card intro-card" size="small">
-                  <Title level={4}>Configure &amp; Run</Title>
-                  <Text type="secondary">
-                    Adjust parameters on the left and run the engine to populate the dashboard.
-                  </Text>
+                )}
+
+                {hasIndicatorStats && (
+                  <Card className="result-card indicator-card">
+                    <div className="card-header">
+                      <Title level={4}>Indicator Statistics</Title>
+                    </div>
+                    <IndicatorStatsTable stats={response!.indicator_statistics!} />
+                  </Card>
+                )}
+
+                {hasSettingsSummary && (
+                  <Card className="result-card settings-card">
+                    <div className="card-header">
+                      <Title level={4}>Settings</Title>
+                    </div>
+                    <div className="settings-list">
+                      {settingsSummary.map((item) => (
+                        <div className="settings-list__item" key={`settings-${item.label}`}>
+                          <span className="settings-list__label">{item.label}</span>
+                          <span className="settings-list__value">{item.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+
+                <Card className="result-card equity-card">
+                  <div className="card-header">
+                    <Title level={4}>Equity Curve</Title>
+                    {horizonOptions.length > 0 && (
+                      <div className="card-header__actions">
+                        <span className="card-header__label">Holding period</span>
+                        <Select
+                          size="large"
+                          value={activeHorizon ?? undefined}
+                          onChange={(value: number) => setSelectedHorizon(value)}
+                          options={horizonOptions}
+                          style={{ minWidth: "8rem" }}
+                          disabled={loading}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <EquityChart data={equitySeries} loading={loading} height="42vh" />
+                  {equityMetrics.length > 0 && (
+                    <div className="run-summary__grid run-summary__grid--metrics">
+                      {equityMetrics.map((metric) => (
+                        <div className="run-summary__item" key={metric.key}>
+                          <span className="run-summary__label">{metric.label}</span>
+                          <span className="run-summary__value">{metric.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </Card>
-              )}
-            </div>
-          </main>
+              </div>
+            ) : (
+              <Card className="result-card intro-card">
+                <Title level={4}>Configure &amp; Run</Title>
+                <Text type="secondary">
+                  Adjust parameters on the left and run the engine to populate the dashboard.
+                </Text>
+              </Card>
+            )}
+          </section>
         </div>
 
         <footer className="app-footer">
