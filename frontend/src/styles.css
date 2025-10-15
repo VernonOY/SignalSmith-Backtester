@@ -3,8 +3,9 @@
   color: #0f172a;
   background-color: #eef1ff;
   --dashboard-gap: 8px;
-  --dashboard-width: 1280px;
-  --dashboard-min-height: 820px;
+  --dashboard-width: 1680px;
+  --dashboard-height: calc(var(--dashboard-width) * 0.625);
+  --dashboard-min-height: var(--dashboard-height);
   --card-padding: 8px;
   --card-radius: 10px;
   --compact-font: 12px;
@@ -43,6 +44,7 @@ body {
 
 .dashboard {
   width: var(--dashboard-width);
+  height: var(--dashboard-height);
   min-height: var(--dashboard-min-height);
   margin: 0 auto;
   padding: 18px 20px;
@@ -82,8 +84,8 @@ body {
 .dashboard__grid {
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(var(--controls-min-width, 420px), 4fr)
-    minmax(var(--results-min-width, 420px), 8fr);
+  grid-template-columns: minmax(var(--controls-min-width, 520px), 5fr)
+    minmax(var(--results-min-width, 720px), 11fr);
   gap: var(--dashboard-gap);
   min-height: 0;
   align-items: stretch;
@@ -142,7 +144,7 @@ body {
 .panel-section--lower {
   flex: 1 1 auto;
   display: grid;
-  grid-template-columns: minmax(680px, 1.1fr) minmax(460px, 1fr);
+  grid-template-columns: minmax(820px, 1.1fr) minmax(520px, 1fr);
   gap: 12px;
   min-height: 0;
 }
