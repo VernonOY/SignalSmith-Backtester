@@ -11,7 +11,7 @@ interface Props {
   loading?: boolean;
   onReady?: (instance: ECharts) => void;
   compact?: boolean;
-  height?: number;
+  height?: number | string;
 }
 
 const EquityChart = ({ data, loading, onReady, compact = false, height }: Props) => {
@@ -22,6 +22,14 @@ const EquityChart = ({ data, loading, onReady, compact = false, height }: Props)
   if (!data || data.dates.length === 0) {
     return <Empty description="No equity data" />;
   }
+
+  const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1440;
+  const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 900;
+  const axisFont = Math.max(12, Math.min(viewportWidth, viewportHeight) * 0.011);
+  const axisMargin = axisFont * 0.8;
+  const gridPadding = axisFont * 3;
+  const sliderHeight = Math.max(24, axisFont * 2.4);
+  const handleSize = Math.max(10, axisFont * 0.9);
 
   const seriesData = useMemo(
     () => data.dates.map((date, idx) => [date, data.values[idx]] as [string, number]),
@@ -55,12 +63,12 @@ const EquityChart = ({ data, loading, onReady, compact = false, height }: Props)
           {
             type: "slider",
             showDetail: false,
-            height: 22,
+            height: sliderHeight,
             fillerColor: "rgba(76, 110, 245, 0.18)",
             borderColor: "rgba(76, 110, 245, 0.3)",
-            handleSize: 12,
+            handleSize: handleSize,
             handleStyle: { color: "#4c6ef5" },
-            moveHandleSize: 9,
+            moveHandleSize: handleSize * 0.75,
           },
         ],
     xAxis: {
@@ -84,8 +92,8 @@ const EquityChart = ({ data, loading, onReady, compact = false, height }: Props)
         hideOverlap: true,
         showMinLabel: true,
         showMaxLabel: true,
-        margin: compact ? 8 : 14,
-        fontSize: compact ? 10 : 11,
+        margin: axisMargin,
+        fontSize: axisFont,
       },
       axisTick: {
         show: false,
@@ -97,16 +105,16 @@ const EquityChart = ({ data, loading, onReady, compact = false, height }: Props)
       scale: true,
       axisLabel: {
         formatter: (value: number) => formatCurrency(value, 0),
-        fontSize: compact ? 10 : 11,
-        margin: compact ? 6 : 8,
+        fontSize: axisFont,
+        margin: axisMargin,
       },
       splitLine: { show: true, lineStyle: { color: "#e2e8f0" } },
     },
     grid: {
-      top: compact ? 24 : 32,
-      left: compact ? 56 : 68,
-      right: compact ? 18 : 24,
-      bottom: compact ? 36 : 52,
+      top: gridPadding,
+      left: gridPadding * 1.2,
+      right: gridPadding * 0.6,
+      bottom: compact ? gridPadding : gridPadding * 1.4,
     },
     series: [
       {
@@ -114,7 +122,7 @@ const EquityChart = ({ data, loading, onReady, compact = false, height }: Props)
         name: "Equity",
         showSymbol: false,
         smooth: true,
-        lineStyle: { width: compact ? 1.5 : 2 },
+        lineStyle: { width: compact ? 1.5 : Math.max(2, axisFont * 0.12) },
         data: seriesData,
       },
     ],
@@ -124,7 +132,7 @@ const EquityChart = ({ data, loading, onReady, compact = false, height }: Props)
     onReady?.(instance);
   };
 
-  const chartHeight = height ?? (compact ? 220 : 288);
+  const chartHeight = height ?? "40vh";
 
   return <ReactECharts option={option} style={{ height: chartHeight }} onChartReady={handleReady} />;
 };
