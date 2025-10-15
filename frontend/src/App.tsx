@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Button, Card, ConfigProvider, Select, Typography, message, theme } from "antd";
 import html2canvas from "html2canvas";
 import SidebarForm from "./components/SidebarForm";
@@ -22,6 +30,9 @@ interface EquityMetricDisplay {
   value: string;
 }
 
+const DASHBOARD_BASE_WIDTH = 1440;
+const DASHBOARD_BASE_HEIGHT = 900;
+
 const App = () => {
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<BacktestResponse | null>(null);
@@ -29,6 +40,8 @@ const App = () => {
   const [compactMode, setCompactMode] = useState(true);
   const [selectedHorizon, setSelectedHorizon] = useState<number | null>(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [viewportScale, setViewportScale] = useState(1);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -43,6 +56,44 @@ const App = () => {
   const fitToSinglePage = useCallback((enable = true) => {
     setCompactMode(enable);
   }, []);
+
+  const updateViewportScale = useCallback(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const width = viewport.clientWidth;
+    const height = viewport.clientHeight;
+    if (width === 0 || height === 0) {
+      return;
+    }
+    const scale = Math.min(width / DASHBOARD_BASE_WIDTH, height / DASHBOARD_BASE_HEIGHT);
+    setViewportScale((current) => {
+      if (!Number.isFinite(scale) || scale <= 0) {
+        return current;
+      }
+      const rounded = Number(scale.toFixed(6));
+      return Math.abs(rounded - current) > 0.0001 ? rounded : current;
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    updateViewportScale();
+    const viewport = viewportRef.current;
+    if (!viewport) {
+      return;
+    }
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(() => updateViewportScale());
+      observer.observe(viewport);
+      return () => {
+        observer.disconnect();
+      };
+    }
+    const handleResize = () => updateViewportScale();
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [updateViewportScale]);
 
   useEffect(() => {
     (window as any).fitToSinglePage = fitToSinglePage;
@@ -359,154 +410,172 @@ const App = () => {
         },
       }}
     >
-      <div className="dashboard" ref={dashboardRef} data-compact={compactMode}>
-        <header className="dashboard__header">
-          <div className="dashboard__heading">
-            <Title level={3}>SignalSmith Backtester</Title>
-          </div>
-          <div className="dashboard__actions">
-            <Button size="small" type="primary" onClick={handleExportScreenshot}>
-              Export Screenshot
-            </Button>
-          </div>
-        </header>
-
-        <div className="dashboard__body">
-          <aside className="dashboard__sidebar">
-            <div className="dashboard__sidebar-inner">
-              <SidebarForm
-                loading={loading}
-                onSubmit={handleSubmit}
-                compact={compactMode}
-              />
-            </div>
-          </aside>
-
-          <main className="dashboard__content">
-            <div className="dashboard__workspace">
-              {response ? (
-                <div className="dashboard__charts">
-                  {response.histogram && (
-                    <Card className="result-card histogram-card" size="small">
-                      <div className="card-header">
-                        <Title level={4}>Return Distribution</Title>
-                      </div>
-                      <HistogramChart
-                        data={response.histogram}
-                        loading={loading}
-                        compact
-                        height={compactMode ? 360 : 440}
-                      />
-                    </Card>
-                  )}
-
-                  {showDetailsCard && (
-                    <Card className="result-card details-card" size="small">
-                      {hasIndicatorStats && (
-                        <>
-                          <div className="card-header">
-                            <Title level={4}>Indicator Statistics</Title>
-                          </div>
-                          <IndicatorStatsTable stats={response!.indicator_statistics!} compact />
-                        </>
-                      )}
-                      {(hasRunSettings || hasUniverseDetails || hasSignalDetails) && (
-                        <div className="run-summary">
-                          {hasRunSettings && (
-                            <div className="run-summary__section">
-                              <div className="run-summary__title">Run Settings</div>
-                              <div className="run-summary__grid">
-                                {runSettingsSummary.map((item) => (
-                                  <div className="run-summary__item" key={`run-${item.label}`}>
-                                    <span className="run-summary__label">{item.label}</span>
-                                    <span className="run-summary__value">{item.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {hasUniverseDetails && (
-                            <div className="run-summary__section">
-                              <div className="run-summary__title">Universe Filters</div>
-                              <div className="run-summary__grid">
-                                {universeSummary.map((item) => (
-                                  <div className="run-summary__item" key={`filter-${item.label}-${item.value}`}>
-                                    <span className="run-summary__label">{item.label}</span>
-                                    <span className="run-summary__value">{item.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {hasSignalDetails && (
-                            <div className="run-summary__section">
-                              <div className="run-summary__title">Signal Rules</div>
-                              <div className="run-summary__grid">
-                                {signalSummary.map((item) => (
-                                  <div className="run-summary__item" key={`signal-${item.label}-${item.value}`}>
-                                    <span className="run-summary__label">{item.label}</span>
-                                    <span className="run-summary__value">{item.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </Card>
-                  )}
-
-                  <Card className="result-card equity-card" size="small">
-                    <div className="card-header">
-                      <Title level={4}>Equity Curve</Title>
-                      {horizonOptions.length > 0 && (
-                        <div className="card-header__actions">
-                          <span className="card-header__label">Holding period</span>
-                          <Select
-                            size="small"
-                            value={activeHorizon ?? undefined}
-                            onChange={(value: number) => setSelectedHorizon(value)}
-                            options={horizonOptions}
-                            style={{ minWidth: 96 }}
-                            disabled={loading}
-                          />
-                        </div>
-                      )}
-                    </div>
-                    <EquityChart
-                      data={equitySeries}
-                      loading={loading}
-                      compact
-                      height={compactMode ? 320 : 360}
-                    />
-                    {equityMetrics.length > 0 && (
-                      <div className="run-summary__grid run-summary__grid--metrics">
-                        {equityMetrics.map((metric) => (
-                          <div className="run-summary__item" key={metric.key}>
-                            <span className="run-summary__label">{metric.label}</span>
-                            <span className="run-summary__value">{metric.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </Card>
+      <div className="app-shell">
+        <div className="dashboard-viewport" ref={viewportRef}>
+          <div
+            className="dashboard-scaler"
+            style={{ "--viewport-scale": viewportScale } as CSSProperties}
+          >
+            <div className="dashboard" ref={dashboardRef} data-compact={compactMode}>
+              <header className="dashboard__header">
+                <div className="dashboard__heading">
+                  <Title level={3}>SignalSmith Backtester</Title>
                 </div>
-              ) : (
-                <Card className="result-card intro-card" size="small">
-                  <Title level={4}>Configure &amp; Run</Title>
-                  <Text type="secondary">
-                    Adjust parameters on the left and run the engine to populate the dashboard.
-                  </Text>
-                </Card>
-              )}
-            </div>
-          </main>
-        </div>
+                <div className="dashboard__actions">
+                  <Button size="small" type="primary" onClick={handleExportScreenshot}>
+                    Export Screenshot
+                  </Button>
+                </div>
+              </header>
 
-        <footer className="app-footer">
-          <p>By Wendi OUYANG – Chinese University of Hong Kong, Shenzhen</p>
-          <p>Contact: vernonouyang@gmail.com</p>
-        </footer>
+              <div className="dashboard__body">
+                <aside className="dashboard__sidebar">
+                  <div className="dashboard__sidebar-inner">
+                    <SidebarForm
+                      loading={loading}
+                      onSubmit={handleSubmit}
+                      compact={compactMode}
+                    />
+                  </div>
+                </aside>
+
+                <main className="dashboard__content">
+                  <div className="dashboard__workspace">
+                    {response ? (
+                      <div className="dashboard__charts">
+                        {response.histogram && (
+                          <Card className="result-card histogram-card" size="small">
+                            <div className="card-header">
+                              <Title level={4}>Return Distribution</Title>
+                            </div>
+                            <HistogramChart
+                              data={response.histogram}
+                              loading={loading}
+                              compact
+                              height={compactMode ? 360 : 440}
+                            />
+                          </Card>
+                        )}
+
+                        {showDetailsCard && (
+                          <Card className="result-card details-card" size="small">
+                            {hasIndicatorStats && (
+                              <>
+                                <div className="card-header">
+                                  <Title level={4}>Indicator Statistics</Title>
+                                </div>
+                                <IndicatorStatsTable
+                                  stats={response!.indicator_statistics!}
+                                  compact
+                                />
+                              </>
+                            )}
+                            {(hasRunSettings || hasUniverseDetails || hasSignalDetails) && (
+                              <div className="run-summary">
+                                {hasRunSettings && (
+                                  <div className="run-summary__section">
+                                    <div className="run-summary__title">Run Settings</div>
+                                    <div className="run-summary__grid">
+                                      {runSettingsSummary.map((item) => (
+                                        <div className="run-summary__item" key={`run-${item.label}`}>
+                                          <span className="run-summary__label">{item.label}</span>
+                                          <span className="run-summary__value">{item.value}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {hasUniverseDetails && (
+                                  <div className="run-summary__section">
+                                    <div className="run-summary__title">Universe Filters</div>
+                                    <div className="run-summary__grid">
+                                      {universeSummary.map((item) => (
+                                        <div
+                                          className="run-summary__item"
+                                          key={`filter-${item.label}-${item.value}`}
+                                        >
+                                          <span className="run-summary__label">{item.label}</span>
+                                          <span className="run-summary__value">{item.value}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {hasSignalDetails && (
+                                  <div className="run-summary__section">
+                                    <div className="run-summary__title">Signal Rules</div>
+                                    <div className="run-summary__grid">
+                                      {signalSummary.map((item) => (
+                                        <div
+                                          className="run-summary__item"
+                                          key={`signal-${item.label}-${item.value}`}
+                                        >
+                                          <span className="run-summary__label">{item.label}</span>
+                                          <span className="run-summary__value">{item.value}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </Card>
+                        )}
+
+                        <Card className="result-card equity-card" size="small">
+                          <div className="card-header">
+                            <Title level={4}>Equity Curve</Title>
+                            {horizonOptions.length > 0 && (
+                              <div className="card-header__actions">
+                                <span className="card-header__label">Holding period</span>
+                                <Select
+                                  size="small"
+                                  value={activeHorizon ?? undefined}
+                                  onChange={(value: number) => setSelectedHorizon(value)}
+                                  options={horizonOptions}
+                                  style={{ minWidth: 96 }}
+                                  disabled={loading}
+                                />
+                              </div>
+                            )}
+                          </div>
+                          <EquityChart
+                            data={equitySeries}
+                            loading={loading}
+                            compact
+                            height={compactMode ? 320 : 360}
+                          />
+                          {equityMetrics.length > 0 && (
+                            <div className="run-summary__grid run-summary__grid--metrics">
+                              {equityMetrics.map((metric) => (
+                                <div className="run-summary__item" key={metric.key}>
+                                  <span className="run-summary__label">{metric.label}</span>
+                                  <span className="run-summary__value">{metric.value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </Card>
+                      </div>
+                    ) : (
+                      <Card className="result-card intro-card" size="small">
+                        <Title level={4}>Configure &amp; Run</Title>
+                        <Text type="secondary">
+                          Adjust parameters on the left and run the engine to populate the dashboard.
+                        </Text>
+                      </Card>
+                    )}
+                  </div>
+                </main>
+              </div>
+
+              <footer className="app-footer">
+                <p>By Wendi OUYANG – Chinese University of Hong Kong, Shenzhen</p>
+                <p>Contact: vernonouyang@gmail.com</p>
+              </footer>
+            </div>
+          </div>
+        </div>
       </div>
     </ConfigProvider>
   );
