@@ -2,16 +2,16 @@
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #0f172a;
   background-color: #eef1ff;
-  --dashboard-gap: 8px;
-  --dashboard-width: 1680px;
+  --dashboard-gap: 1px;
+  --dashboard-width: 5000px;
   --dashboard-height: calc(var(--dashboard-width) * 0.625);
   --dashboard-min-height: var(--dashboard-height);
   --card-padding: 8px;
   --card-radius: 10px;
   --compact-font: 12px;
   --compact-line: 1.2;
-  --viewport-scale: 1;
-  --compact-scale: 1;
+  --viewport-scale: 0.9;
+  --compact-scale: 0.9;
 }
 
 body {
