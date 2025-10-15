@@ -10,7 +10,7 @@ interface Props {
   data?: HistogramPayload | null;
   loading?: boolean;
   onReady?: (instance: ECharts) => void;
-  height?: number;
+  height?: string;
   compact?: boolean;
 }
 
@@ -135,7 +135,7 @@ const computeStats = (values: number[]): HistogramStats | null => {
   return { mean, median, std, skew, kurt, sampleSize: n };
 };
 
-const HistogramChart = ({ data, loading, onReady, height = 360, compact = false }: Props) => {
+const HistogramChart = ({ data, loading, onReady, height = "40vh", compact = false }: Props) => {
   const [selectedHorizons, setSelectedHorizons] = useState<number[]>([]);
 
   const seriesMap = useMemo(() => {

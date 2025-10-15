@@ -210,145 +210,85 @@ const App = () => {
     }, []);
   }, [equityMetricConfigs, activeHorizonResult, response?.metrics]);
 
-  const runSettingsSummary = useMemo(() => {
+  const settingsSummary = useMemo(() => {
     if (!lastRunConfig) return [] as InfoTag[];
-    const indicators = lastRunConfig.indicators || {};
+    const indicators = (lastRunConfig.indicators ?? {}) as Record<string, any>;
+    const filters = (lastRunConfig.filters ?? {}) as Record<string, any>;
+
+    const formatRsi = () => {
+      const config = indicators.rsi;
+      if (!config || config.use === false) return "—";
+      const pieces = [`n=${formatNumber(config.n, 0)}`];
+      if (config.rule === "oversold" && typeof config.oversold === "number") {
+        pieces.push(`OS≤${formatNumber(config.oversold, 0)}`);
+      }
+      if (config.rule === "overbought" && typeof config.overbought === "number") {
+        pieces.push(`OB≥${formatNumber(config.overbought, 0)}`);
+      }
+      return pieces.join(" · ");
+    };
+
+    const formatMacd = () => {
+      const config = indicators.macd;
+      if (!config || config.use === false) return "—";
+      if (
+        typeof config.fast !== "number" ||
+        typeof config.slow !== "number" ||
+        typeof config.signal !== "number"
+      ) {
+        return "—";
+      }
+      const rule = config.rule ? String(config.rule).toUpperCase() : "—";
+      return `${formatNumber(config.fast, 0)}/${formatNumber(config.slow, 0)}/${formatNumber(config.signal, 0)} · ${rule}`;
+    };
+
+    const sectorsValue = filters.sectors && filters.sectors.length ? filters.sectors.join(" · ") : "None";
+
+    const holdValue = (() => {
+      if (typeof response?.hold_days === "number") {
+        return `${formatNumber(response.hold_days, 0)} d`;
+      }
+      if (typeof lastRunConfig.hold_days === "number") {
+        return `${formatNumber(lastRunConfig.hold_days, 0)} d`;
+      }
+      return "—";
+    })();
+
+    const maxHzValue =
+      typeof indicators.max_horizon === "number"
+        ? `${formatNumber(indicators.max_horizon, 0)} d`
+        : "—";
+
+    const policyValue = indicators.policy ? String(indicators.policy).toUpperCase() : "ALL";
+    const atleastValue =
+      typeof indicators.atleast_k === "number" ? formatNumber(indicators.atleast_k, 0) : "—";
+    const binWidthValue = optionalPercent(indicators.bin_width);
+
     return [
       { label: "Range", value: `${lastRunConfig.start} → ${lastRunConfig.end}` },
       { label: "Capital", value: optionalCurrency(lastRunConfig.capital) },
-      { label: "Fee", value: typeof lastRunConfig.fee_bps === "number" ? `${formatNumber(lastRunConfig.fee_bps, 1)} bp` : "—" },
       {
-        label: "Hold",
-        value: response ? `${formatNumber(response.hold_days, 0)} d` : "—",
+        label: "Fee",
+        value:
+          typeof lastRunConfig.fee_bps === "number"
+            ? `${formatNumber(lastRunConfig.fee_bps, 1)} bp`
+            : "—",
       },
-      {
-        label: "Max Hz",
-        value: typeof indicators.max_horizon === "number" ? `${formatNumber(indicators.max_horizon, 0)} d` : "—",
-      },
-      {
-        label: "Stop",
-        value: optionalPercent(lastRunConfig.stop_loss_pct),
-      },
-      {
-        label: "Take",
-        value: optionalPercent(lastRunConfig.take_profit_pct),
-      },
+      { label: "Hold", value: holdValue },
+      { label: "Max Hz", value: maxHzValue },
+      { label: "Stop", value: optionalPercent(lastRunConfig.stop_loss_pct ?? indicators.stop_loss_pct) },
+      { label: "Take", value: optionalPercent(lastRunConfig.take_profit_pct ?? indicators.take_profit_pct) },
+      { label: "Sectors", value: sectorsValue },
+      { label: "Policy", value: policyValue },
+      { label: "At Least", value: atleastValue },
+      { label: "Bin Width", value: binWidthValue },
+      { label: "RSI", value: formatRsi() },
+      { label: "MACD", value: formatMacd() },
     ];
-  }, [lastRunConfig, optionalCurrency, optionalPercent, response]);
-
-  const universeSummary = useMemo(() => {
-    if (!lastRunConfig?.filters) {
-      return [{ label: "Filters", value: "None" }];
-    }
-    const { filters } = lastRunConfig;
-    const items: InfoTag[] = [];
-    if (filters.sectors && filters.sectors.length) {
-      items.push({ label: "Sectors", value: filters.sectors.join(" · ") });
-    }
-    if (typeof filters.mcap_min === "number") {
-      items.push({ label: "Cap ≥", value: optionalCurrency(filters.mcap_min) });
-    }
-    if (typeof filters.mcap_max === "number") {
-      items.push({ label: "Cap ≤", value: optionalCurrency(filters.mcap_max) });
-    }
-    if (filters.exclude_tickers && filters.exclude_tickers.length) {
-      items.push({ label: "Exclude", value: filters.exclude_tickers.join(", ") });
-    }
-    return items.length ? items : [{ label: "Filters", value: "None" }];
-  }, [lastRunConfig, optionalCurrency]);
-
-  const signalSummary = useMemo(() => {
-    if (!lastRunConfig?.indicators) {
-      return [{ label: "Signals", value: "None" }];
-    }
-
-    const indicators = lastRunConfig.indicators as Record<string, any>;
-    const items: InfoTag[] = [];
-
-    if (indicators.policy) {
-      const formatted = indicators.policy === "any" ? "Any" : String(indicators.policy);
-      items.push({ label: "Policy", value: formatted });
-    }
-
-    if (typeof indicators.atleast_k === "number") {
-      items.push({ label: "At Least", value: formatNumber(indicators.atleast_k, 0) });
-    }
-
-    if (typeof indicators.bin_width === "number") {
-      items.push({ label: "Bin Width", value: formatPercent(indicators.bin_width, 1) });
-    }
-
-    const addIndicator = (
-      name: string,
-      config: any,
-      formatter: (cfg: any) => string | undefined | null
-    ) => {
-      if (!config || config.use === false) return;
-      const value = formatter(config);
-      if (!value) return;
-      items.push({ label: name, value });
-    };
-
-    addIndicator("RSI", indicators.rsi, (cfg) => {
-      const pieces = [`n=${formatNumber(cfg.n, 0)}`];
-      if (cfg.rule === "oversold" && typeof cfg.oversold === "number") {
-        pieces.push(`OS≤${formatNumber(cfg.oversold, 0)}`);
-      }
-      if (cfg.rule === "overbought" && typeof cfg.overbought === "number") {
-        pieces.push(`OB≥${formatNumber(cfg.overbought, 0)}`);
-      }
-      return pieces.join(" · ");
-    });
-
-    addIndicator("MACD", indicators.macd, (cfg) => {
-      if (typeof cfg.fast !== "number" || typeof cfg.slow !== "number" || typeof cfg.signal !== "number") {
-        return undefined;
-      }
-      const rule = cfg.rule ? String(cfg.rule).toUpperCase() : "—";
-      return `${formatNumber(cfg.fast, 0)}/${formatNumber(cfg.slow, 0)}/${formatNumber(cfg.signal, 0)} · ${rule}`;
-    });
-
-    addIndicator("OBV", indicators.obv, (cfg) => (cfg.rule ? String(cfg.rule).toUpperCase() : "—"));
-
-    addIndicator("EMA", indicators.ema, (cfg) => {
-      if (typeof cfg.short !== "number" || typeof cfg.long !== "number") return undefined;
-      return `${formatNumber(cfg.short, 0)}/${formatNumber(cfg.long, 0)}`;
-    });
-
-    addIndicator("ADX", indicators.adx, (cfg) => {
-      if (typeof cfg.n !== "number" || typeof cfg.min !== "number") return undefined;
-      return `n=${formatNumber(cfg.n, 0)} · ≥${formatNumber(cfg.min, 0)}`;
-    });
-
-    addIndicator("Aroon", indicators.aroon, (cfg) => {
-      if (
-        typeof cfg.n !== "number" ||
-        typeof cfg.up !== "number" ||
-        typeof cfg.down !== "number"
-      ) {
-        return undefined;
-      }
-      return `n=${formatNumber(cfg.n, 0)} · ↑${formatNumber(cfg.up, 0)} / ↓${formatNumber(cfg.down, 0)}`;
-    });
-
-    addIndicator("Stoch", indicators.stoch, (cfg) => {
-      if (typeof cfg.k !== "number" || typeof cfg.d !== "number") return undefined;
-      const base = `K${formatNumber(cfg.k, 0)}/D${formatNumber(cfg.d, 0)}`;
-      const rule = cfg.rule ? ` · ${String(cfg.rule).toUpperCase()}` : "";
-      const threshold = typeof cfg.threshold === "number" ? ` · ${formatNumber(cfg.threshold, 0)}` : "";
-      return `${base}${rule}${threshold}`;
-    });
-
-    return items.length ? items : [{ label: "Signals", value: "None" }];
-  }, [lastRunConfig]);
-
+  }, [lastRunConfig, optionalCurrency, optionalPercent, response?.hold_days]);
 
   const hasIndicatorStats = Boolean(response?.indicator_statistics);
-  const hasRunSettings = runSettingsSummary.length > 0;
-  const hasUniverseDetails = Boolean(lastRunConfig) && universeSummary.length > 0;
-  const hasSignalDetails = Boolean(lastRunConfig) && signalSummary.length > 0;
-  const showDetailsCard =
-    hasIndicatorStats || hasRunSettings || hasUniverseDetails || hasSignalDetails;
+  const hasSettings = settingsSummary.length > 0;
 
   return (
     <ConfigProvider
@@ -386,6 +326,31 @@ const App = () => {
             <div className="dashboard__workspace">
               {response ? (
                 <div className="dashboard__charts">
+                  {hasSettings && (
+                    <Card className="result-card settings-card" size="small">
+                      <div className="card-header">
+                        <Title level={4}>Settings</Title>
+                      </div>
+                      <div className="settings-grid">
+                        {settingsSummary.map((item) => (
+                          <div className="settings-grid__item" key={`setting-${item.label}`}>
+                            <span className="settings-grid__label">{item.label}</span>
+                            <span className="settings-grid__value">{item.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
+                  )}
+
+                  {hasIndicatorStats && (
+                    <Card className="result-card stats-card" size="small">
+                      <div className="card-header">
+                        <Title level={4}>Indicator Statistics</Title>
+                      </div>
+                      <IndicatorStatsTable stats={response!.indicator_statistics!} compact />
+                    </Card>
+                  )}
+
                   {response.histogram && (
                     <Card className="result-card histogram-card" size="small">
                       <div className="card-header">
@@ -395,64 +360,8 @@ const App = () => {
                         data={response.histogram}
                         loading={loading}
                         compact
-                        height={compactMode ? 360 : 440}
+                        height={compactMode ? '38vh' : '46vh'}
                       />
-                    </Card>
-                  )}
-
-                  {showDetailsCard && (
-                    <Card className="result-card details-card" size="small">
-                      {hasIndicatorStats && (
-                        <>
-                          <div className="card-header">
-                            <Title level={4}>Indicator Statistics</Title>
-                          </div>
-                          <IndicatorStatsTable stats={response!.indicator_statistics!} compact />
-                        </>
-                      )}
-                      {(hasRunSettings || hasUniverseDetails || hasSignalDetails) && (
-                        <div className="run-summary">
-                          {hasRunSettings && (
-                            <div className="run-summary__section">
-                              <div className="run-summary__title">Run Settings</div>
-                              <div className="run-summary__grid">
-                                {runSettingsSummary.map((item) => (
-                                  <div className="run-summary__item" key={`run-${item.label}`}>
-                                    <span className="run-summary__label">{item.label}</span>
-                                    <span className="run-summary__value">{item.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {hasUniverseDetails && (
-                            <div className="run-summary__section">
-                              <div className="run-summary__title">Universe Filters</div>
-                              <div className="run-summary__grid">
-                                {universeSummary.map((item) => (
-                                  <div className="run-summary__item" key={`filter-${item.label}-${item.value}`}>
-                                    <span className="run-summary__label">{item.label}</span>
-                                    <span className="run-summary__value">{item.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {hasSignalDetails && (
-                            <div className="run-summary__section">
-                              <div className="run-summary__title">Signal Rules</div>
-                              <div className="run-summary__grid">
-                                {signalSummary.map((item) => (
-                                  <div className="run-summary__item" key={`signal-${item.label}-${item.value}`}>
-                                    <span className="run-summary__label">{item.label}</span>
-                                    <span className="run-summary__value">{item.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </Card>
                   )}
 
@@ -467,7 +376,7 @@ const App = () => {
                             value={activeHorizon ?? undefined}
                             onChange={(value: number) => setSelectedHorizon(value)}
                             options={horizonOptions}
-                            style={{ minWidth: 96 }}
+                            style={{ minWidth: '8rem' }}
                             disabled={loading}
                           />
                         </div>
@@ -477,14 +386,14 @@ const App = () => {
                       data={equitySeries}
                       loading={loading}
                       compact
-                      height={compactMode ? 320 : 360}
+                      height={compactMode ? '32vh' : '40vh'}
                     />
                     {equityMetrics.length > 0 && (
-                      <div className="run-summary__grid run-summary__grid--metrics">
+                      <div className="metrics-grid">
                         {equityMetrics.map((metric) => (
-                          <div className="run-summary__item" key={metric.key}>
-                            <span className="run-summary__label">{metric.label}</span>
-                            <span className="run-summary__value">{metric.value}</span>
+                          <div className="metrics-grid__item" key={metric.key}>
+                            <span className="metrics-grid__label">{metric.label}</span>
+                            <span className="metrics-grid__value">{metric.value}</span>
                           </div>
                         ))}
                       </div>
