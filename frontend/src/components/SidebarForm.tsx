@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   Card,
@@ -29,6 +29,9 @@ interface SidebarFormProps {
   loading: boolean;
   onSubmit: (payload: BacktestRequest, rawValues: any) => Promise<void> | void;
   compact?: boolean;
+  onNaturalSizeChange?: (size: { width: number; height: number }) => void;
+  minWidth?: number;
+  minHeight?: number;
 }
 
 const ABBREVIATIONS: { term: string; definition: string }[] = [
@@ -71,12 +74,21 @@ const DEFAULT_STRATEGY_VALUES: Record<string, unknown> = {
   rsi_rule: { mode: "oversold", threshold: 30 },
 };
 
-const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) => {
+const SidebarForm = ({
+  loading,
+  onSubmit,
+  compact = false,
+  onNaturalSizeChange,
+  minWidth,
+  minHeight,
+}: SidebarFormProps) => {
   const [form] = Form.useForm();
   const [meta, setMeta] = useState<UniverseMeta>({ sectors: [], mcap_buckets: [] });
   const [showUniverseFilters, setShowUniverseFilters] = useState(true);
   const [showSignalRules, setShowSignalRules] = useState(true);
   const [describeOpen, setDescribeOpen] = useState(false);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const [minSize, setMinSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const storage = useMemo(() => {
     if (typeof window === "undefined") {
       return null;
@@ -171,6 +183,62 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
       message.error("Unable to save preset");
     }
   };
+
+  const measureNaturalCardSize = useCallback(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const card = cardRef.current;
+    if (!card) {
+      return;
+    }
+
+    const previousWidth = card.style.width;
+    const previousHeight = card.style.height;
+
+    card.style.width = "";
+    card.style.height = "";
+
+    const nextWidth = Math.ceil(card.scrollWidth);
+    const nextHeight = Math.ceil(card.scrollHeight);
+
+    card.style.width = previousWidth;
+    card.style.height = previousHeight;
+
+    if (!nextWidth || !nextHeight) {
+      return;
+    }
+
+    const nextSize = { width: nextWidth, height: nextHeight };
+
+    setMinSize((current) => {
+      if (current.width === nextSize.width && current.height === nextSize.height) {
+        return current;
+      }
+      return nextSize;
+    });
+
+    onNaturalSizeChange?.(nextSize);
+  }, []);
+
+  const metaSectorsCount = meta.sectors.length;
+  const metaBucketCount = meta.mcap_buckets.length;
+
+  useLayoutEffect(() => {
+    measureNaturalCardSize();
+    if (typeof window === "undefined") {
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => measureNaturalCardSize());
+    return () => window.cancelAnimationFrame(frame);
+  }, [
+    measureNaturalCardSize,
+    showUniverseFilters,
+    showSignalRules,
+    compact,
+    metaSectorsCount,
+    metaBucketCount,
+  ]);
 
   const enableRsi = Form.useWatch("enable_rsi", form) ?? true;
   const useMacd = Form.useWatch("use_macd", form) ?? false;
@@ -346,344 +414,357 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
         }}
       >
         <Card
-          title="Run Settings"
+          title="Input Settings"
           size="small"
           bordered={false}
-          className="sidebar-card sidebar-card--compact sidebar-card--full"
+          className="sidebar-card resizable-card sidebar-card--single"
           extra={renderDescribeButton()}
+          ref={cardRef}
+          style={{
+            minWidth: Math.max(minSize.width, minWidth ?? 0) || undefined,
+            minHeight: Math.max(minSize.height, minHeight ?? 0) || undefined,
+          }}
         >
           <Form.Item name="strategy" hidden initialValue="mean_reversion">
             <Input />
           </Form.Item>
-          <div className="form-grid form-grid--two">
-            <Form.Item
-              name="date"
-              label="Range"
-              rules={[{ required: true }]}
-              className="form-grid__item form-grid__item--range"
-            >
-              <RangePicker allowClear={false} style={{ width: "100%" }} disabledDate={disabledDate} />
-            </Form.Item>
-            <Form.Item
-              label="Capital"
-              name="capital"
-              className="form-grid__item form-grid__item--capital"
-            >
-              <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
-            </Form.Item>
-          </div>
-          <div className="form-grid form-grid--four">
-            <Form.Item label="Fee" name="fee_bps" className="form-grid__item">
-              <InputNumber min={0} max={100} style={{ width: "100%" }} addonAfter="bp" />
-            </Form.Item>
-            <Form.Item label="SL" name="stop_loss_pct" className="form-grid__item">
-              <InputNumber min={0} max={100} style={{ width: "100%" }} addonAfter="%" placeholder="—" />
-            </Form.Item>
-            <Form.Item label="TP" name="take_profit_pct" className="form-grid__item">
-              <InputNumber min={0} max={200} style={{ width: "100%" }} addonAfter="%" placeholder="—" />
-            </Form.Item>
-          </div>
-        </Card>
 
-        <Card
-          title="Indicators"
-          size="small"
-          bordered={false}
-          className="sidebar-card sidebar-card--indicators sidebar-card--full"
-          extra={renderDescribeButton()}
-        >
-          <div className="indicator-grid">
-            <div className="indicator-grid__item">
-              <div className="indicator-header">
-                <Tooltip title="Relative Strength Index">
-                  <Text strong>RSI</Text>
-                </Tooltip>
-                <Space size={6} align="center" className="indicator-header__actions">
-                  <Form.Item name="enable_rsi" valuePropName="checked" noStyle>
-                    <Switch size="small" aria-label="Toggle RSI" />
-                  </Form.Item>
-                </Space>
-              </div>
-              <div className="indicator-fields">
-                <Form.Item
-                  label="Mode"
-                  name={["rsi_rule", "mode"]}
-                  className="indicator-field indicator-field--full"
-                >
-                  <Select
-                    options={[
-                      { label: "Oversold", value: "oversold" },
-                      { label: "Overbought", value: "overbought" },
-                    ]}
-                    dropdownMatchSelectWidth={false}
-                    disabled={!enableRsi}
-                  />
-                </Form.Item>
-                <Form.Item label="Lkb" name="rsi_n" className="indicator-field">
-                  <InputNumber min={2} max={100} style={{ width: "100%" }} disabled={!enableRsi} />
-                </Form.Item>
-                <Form.Item label="Th" name={["rsi_rule", "threshold"]} className="indicator-field">
-                  <InputNumber min={0} max={100} style={{ width: "100%" }} disabled={!enableRsi} />
-                </Form.Item>
-              </div>
+          <section className="input-settings__section">
+            <div className="input-settings__header">
+              <Text strong>Run Settings</Text>
             </div>
-
-            <div className="indicator-grid__item">
-              <div className="indicator-header">
-                <Tooltip title="Moving Average Convergence Divergence">
-                  <Text strong>MACD</Text>
-                </Tooltip>
-                <Space size={6} align="center" className="indicator-header__actions">
-                  <Form.Item name="use_macd" valuePropName="checked" noStyle>
-                    <Switch size="small" aria-label="Toggle MACD" />
-                  </Form.Item>
-                </Space>
-              </div>
-              <div className="indicator-fields">
-                <Form.Item label="Rule" name="macd_rule" className="indicator-field">
-                  <Select
-                    options={[
-                      { label: "Signal", value: "signal" },
-                      { label: "> 0", value: "positive" },
-                    ]}
-                    dropdownMatchSelectWidth={false}
-                    disabled={!useMacd}
-                  />
-                </Form.Item>
-                <Form.Item label="Fast" name="macd_fast" className="indicator-field">
-                  <InputNumber min={1} max={20} style={{ width: "100%" }} disabled={!useMacd} />
-                </Form.Item>
-                <Form.Item label="Slow" name="macd_slow" className="indicator-field">
-                  <InputNumber min={1} max={40} style={{ width: "100%" }} disabled={!useMacd} />
-                </Form.Item>
-                <Form.Item label="Sig" name="macd_signal" className="indicator-field">
-                  <InputNumber min={1} max={20} style={{ width: "100%" }} disabled={!useMacd} />
-                </Form.Item>
-              </div>
-            </div>
-
-            <div className="indicator-grid__item">
-              <div className="indicator-header">
-                <Tooltip title="On-Balance Volume">
-                  <Text strong>OBV</Text>
-                </Tooltip>
-                <Space size={6} align="center" className="indicator-header__actions">
-                  <Form.Item name="use_obv" valuePropName="checked" noStyle>
-                    <Switch size="small" aria-label="Toggle OBV" />
-                  </Form.Item>
-                </Space>
-              </div>
-              <div className="indicator-fields">
-                <Form.Item
-                  label="Rule"
-                  name="obv_rule"
-                  className="indicator-field indicator-field--full"
-                >
-                  <Select
-                    options={[
-                      { label: "MA Rise", value: "rise" },
-                      { label: "> 0", value: "positive" },
-                    ]}
-                    dropdownMatchSelectWidth={false}
-                    disabled={!useObv}
-                  />
-                </Form.Item>
-              </div>
-            </div>
-
-            <div className="indicator-grid__item">
-              <div className="indicator-header">
-                <Tooltip title="Aroon Oscillator">
-                  <Text strong>AROON</Text>
-                </Tooltip>
-                <Space size={6} align="center" className="indicator-header__actions">
-                  <Form.Item name="use_aroon" valuePropName="checked" noStyle>
-                    <Switch size="small" aria-label="Toggle Aroon" />
-                  </Form.Item>
-                </Space>
-              </div>
-              <div className="indicator-fields">
-                <Form.Item label="Lkb" name="aroon_n" className="indicator-field">
-                  <InputNumber min={5} max={50} style={{ width: "100%" }} disabled={!useAroon} />
-                </Form.Item>
-                <Form.Item label="Up" name="aroon_up" className="indicator-field">
-                  <InputNumber min={0} max={100} style={{ width: "100%" }} disabled={!useAroon} />
-                </Form.Item>
-                <Form.Item label="Dn" name="aroon_down" className="indicator-field">
-                  <InputNumber min={0} max={100} style={{ width: "100%" }} disabled={!useAroon} />
-                </Form.Item>
-              </div>
-            </div>
-
-            <div className="indicator-grid__item">
-              <div className="indicator-stack">
-                <div className="indicator-stack__section">
-                  <div className="indicator-header indicator-header--stacked">
-                    <Tooltip title="EMA crossover">
-                      <Text strong>EMA</Text>
-                    </Tooltip>
-                    <Space size={6} align="center" className="indicator-header__actions">
-                      <Form.Item name="use_ema" valuePropName="checked" noStyle>
-                        <Switch size="small" aria-label="Toggle EMA" />
-                      </Form.Item>
-                    </Space>
-                  </div>
-                  <div className="indicator-fields indicator-fields--compact">
-                    <Form.Item label="Short" name="ema_short" className="indicator-field">
-                      <InputNumber min={2} max={50} style={{ width: "100%" }} disabled={!useEma} />
-                    </Form.Item>
-                    <Form.Item label="Long" name="ema_long" className="indicator-field">
-                      <InputNumber min={5} max={200} style={{ width: "100%" }} disabled={!useEma} />
-                    </Form.Item>
-                  </div>
-                </div>
-                <div className="indicator-stack__divider" aria-hidden />
-                <div className="indicator-stack__section">
-                  <div className="indicator-header indicator-header--stacked">
-                    <Tooltip title="Average Directional Index">
-                      <Text strong>ADX</Text>
-                    </Tooltip>
-                    <Space size={6} align="center" className="indicator-header__actions">
-                      <Form.Item name="use_adx" valuePropName="checked" noStyle>
-                        <Switch size="small" aria-label="Toggle ADX" />
-                      </Form.Item>
-                    </Space>
-                  </div>
-                  <div className="indicator-fields indicator-fields--compact">
-                    <Form.Item label="Lkb" name="adx_n" className="indicator-field">
-                      <InputNumber min={5} max={50} style={{ width: "100%" }} disabled={!useAdx} />
-                    </Form.Item>
-                    <Form.Item label="Min" name="adx_min" className="indicator-field">
-                      <InputNumber min={5} max={60} style={{ width: "100%" }} disabled={!useAdx} />
-                    </Form.Item>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="indicator-grid__item">
-              <div className="indicator-header">
-                <Tooltip title="Stochastic Oscillator">
-                  <Text strong>STOCH</Text>
-                </Tooltip>
-                <Space size={6} align="center" className="indicator-header__actions">
-                  <Form.Item name="use_stoch" valuePropName="checked" noStyle>
-                    <Switch size="small" aria-label="Toggle Stochastic" />
-                  </Form.Item>
-                </Space>
-              </div>
-              <div className="indicator-fields indicator-fields--triple">
-                <Form.Item label="Rule" name="stoch_rule" className="indicator-field indicator-field--full">
-                  <Select
-                    options={[
-                      { label: "Signal", value: "signal" },
-                      { label: "OS", value: "oversold" },
-                      { label: "OB", value: "overbought" },
-                    ]}
-                    dropdownMatchSelectWidth={false}
-                    disabled={!useStoch}
-                  />
-                </Form.Item>
-                <Form.Item label="%K" name="stoch_k" className="indicator-field">
-                  <InputNumber min={5} max={50} style={{ width: "100%" }} disabled={!useStoch} />
-                </Form.Item>
-                <Form.Item label="%D" name="stoch_d" className="indicator-field">
-                  <InputNumber min={1} max={20} style={{ width: "100%" }} disabled={!useStoch} />
-                </Form.Item>
-                <Form.Item
-                  label="Th"
-                  name="stoch_threshold"
-                  className="indicator-field indicator-field--full"
-                >
-                  <InputNumber min={1} max={50} style={{ width: "100%" }} disabled={!useStoch} />
-                </Form.Item>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card
-          title="Universe Filters"
-          size="small"
-          bordered={false}
-          className="sidebar-card sidebar-card--half"
-          extra={
-            <Button
-              type="link"
-              size="small"
-              className="sidebar-card__action"
-              onClick={() => setShowUniverseFilters((prev) => !prev)}
-            >
-              {showUniverseFilters ? "Hide" : "Show"}
-            </Button>
-          }
-        >
-          {showUniverseFilters && (
-            <div className="form-grid form-grid--universe">
-              <Form.Item label="Sector" name={["filters", "sectors"]} className="form-grid__item">
-                <Select mode="multiple" allowClear options={sectorOptions} dropdownMatchSelectWidth={false} />
-              </Form.Item>
-              <Form.Item label="Cap Min" name={["filters", "mcap_min"]} className="form-grid__item">
-                <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
-              </Form.Item>
-              <Form.Item label="Cap Max" name={["filters", "mcap_max"]} className="form-grid__item">
-                <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
-              </Form.Item>
-              <Form.Item label="Exclude" name={["filters", "exclude_tickers"]} className="form-grid__item">
-                <Select mode="tags" tokenSeparators={[",", " "]} placeholder="TSLA, NVDA" dropdownMatchSelectWidth={false} />
-              </Form.Item>
-            </div>
-          )}
-        </Card>
-
-        <Card
-          title="Signal Rules"
-          size="small"
-          bordered={false}
-          className="sidebar-card sidebar-card--half"
-          extra={
-            <Button
-              type="link"
-              size="small"
-              className="sidebar-card__action"
-              onClick={() => setShowSignalRules((prev) => !prev)}
-            >
-              {showSignalRules ? "Hide" : "Show"}
-            </Button>
-          }
-        >
-          {showSignalRules && (
-            <div className="form-grid form-grid--signals">
+            <div className="form-grid form-grid--two">
               <Form.Item
-                label="Policy"
-                name="policy"
-                className="form-grid__item form-grid__item--span-2"
+                name="date"
+                label="Range"
+                rules={[{ required: true }]}
+                className="form-grid__item form-grid__item--range"
               >
-                <Select
-                  options={[
-                    { label: "Any", value: "any" },
-                    { label: "All", value: "all" },
-                    { label: "At least k", value: "atleast_k" },
-                  ]}
-                />
+                <RangePicker allowClear={false} style={{ width: "100%" }} disabledDate={disabledDate} />
               </Form.Item>
-              <Form.Item label="k" name="k" className="form-grid__item">
-                <InputNumber min={1} max={7} style={{ width: "100%" }} disabled={policyValue !== "atleast_k"} />
-              </Form.Item>
-              <Form.Item label="Max Hz" name="max_horizon" className="form-grid__item">
-                <InputNumber min={1} max={10} style={{ width: "100%" }} addonAfter="d" />
-              </Form.Item>
-              <Form.Item label="Bin Width" name="hist_bin_width_pct" className="form-grid__item">
-                <InputNumber
-                  min={0.1}
-                  max={20}
-                  step={0.1}
-                  style={{ width: "100%" }}
-                  addonAfter="%"
-                />
+              <Form.Item
+                label="Capital"
+                name="capital"
+                className="form-grid__item form-grid__item--capital"
+              >
+                <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
               </Form.Item>
             </div>
-          )}
+            <div className="form-grid form-grid--four">
+              <Form.Item label="Fee" name="fee_bps" className="form-grid__item">
+                <InputNumber min={0} max={100} style={{ width: "100%" }} addonAfter="bp" />
+              </Form.Item>
+              <Form.Item label="SL" name="stop_loss_pct" className="form-grid__item">
+                <InputNumber min={0} max={100} style={{ width: "100%" }} addonAfter="%" placeholder="—" />
+              </Form.Item>
+              <Form.Item label="TP" name="take_profit_pct" className="form-grid__item">
+                <InputNumber min={0} max={200} style={{ width: "100%" }} addonAfter="%" placeholder="—" />
+              </Form.Item>
+            </div>
+          </section>
+
+          <section className="input-settings__section">
+            <div className="input-settings__header">
+              <Text strong>Indicators</Text>
+            </div>
+            <div className="indicator-grid">
+              <div className="indicator-grid__item">
+                <div className="indicator-header">
+                  <Tooltip title="Relative Strength Index">
+                    <Text strong>RSI</Text>
+                  </Tooltip>
+                  <Space size={6} align="center" className="indicator-header__actions">
+                    <Form.Item name="enable_rsi" valuePropName="checked" noStyle>
+                      <Switch size="small" aria-label="Toggle RSI" />
+                    </Form.Item>
+                  </Space>
+                </div>
+                <div className="indicator-fields">
+                  <Form.Item
+                    label="Mode"
+                    name={["rsi_rule", "mode"]}
+                    className="indicator-field indicator-field--full"
+                  >
+                    <Select
+                      options={[
+                        { label: "Oversold", value: "oversold" },
+                        { label: "Overbought", value: "overbought" },
+                      ]}
+                      dropdownMatchSelectWidth={false}
+                      disabled={!enableRsi}
+                    />
+                  </Form.Item>
+                  <Form.Item label="Lkb" name="rsi_n" className="indicator-field">
+                    <InputNumber min={2} max={100} style={{ width: "100%" }} disabled={!enableRsi} />
+                  </Form.Item>
+                  <Form.Item label="Th" name={["rsi_rule", "threshold"]} className="indicator-field">
+                    <InputNumber min={0} max={100} style={{ width: "100%" }} disabled={!enableRsi} />
+                  </Form.Item>
+                </div>
+              </div>
+
+              <div className="indicator-grid__item">
+                <div className="indicator-header">
+                  <Tooltip title="Moving Average Convergence Divergence">
+                    <Text strong>MACD</Text>
+                  </Tooltip>
+                  <Space size={6} align="center" className="indicator-header__actions">
+                    <Form.Item name="use_macd" valuePropName="checked" noStyle>
+                      <Switch size="small" aria-label="Toggle MACD" />
+                    </Form.Item>
+                  </Space>
+                </div>
+                <div className="indicator-fields">
+                  <Form.Item label="Rule" name="macd_rule" className="indicator-field">
+                    <Select
+                      options={[
+                        { label: "Signal", value: "signal" },
+                        { label: "> 0", value: "positive" },
+                      ]}
+                      dropdownMatchSelectWidth={false}
+                      disabled={!useMacd}
+                    />
+                  </Form.Item>
+                  <Form.Item label="Fast" name="macd_fast" className="indicator-field">
+                    <InputNumber min={1} max={20} style={{ width: "100%" }} disabled={!useMacd} />
+                  </Form.Item>
+                  <Form.Item label="Slow" name="macd_slow" className="indicator-field">
+                    <InputNumber min={1} max={40} style={{ width: "100%" }} disabled={!useMacd} />
+                  </Form.Item>
+                  <Form.Item label="Sig" name="macd_signal" className="indicator-field">
+                    <InputNumber min={1} max={20} style={{ width: "100%" }} disabled={!useMacd} />
+                  </Form.Item>
+                </div>
+              </div>
+
+              <div className="indicator-grid__item">
+                <div className="indicator-header">
+                  <Tooltip title="On-Balance Volume">
+                    <Text strong>OBV</Text>
+                  </Tooltip>
+                  <Space size={6} align="center" className="indicator-header__actions">
+                    <Form.Item name="use_obv" valuePropName="checked" noStyle>
+                      <Switch size="small" aria-label="Toggle OBV" />
+                    </Form.Item>
+                  </Space>
+                </div>
+                <div className="indicator-fields">
+                  <Form.Item
+                    label="Rule"
+                    name="obv_rule"
+                    className="indicator-field indicator-field--full"
+                  >
+                    <Select
+                      options={[
+                        { label: "MA Rise", value: "rise" },
+                        { label: "> 0", value: "positive" },
+                      ]}
+                      dropdownMatchSelectWidth={false}
+                      disabled={!useObv}
+                    />
+                  </Form.Item>
+                </div>
+              </div>
+
+              <div className="indicator-grid__item">
+                <div className="indicator-header">
+                  <Tooltip title="Aroon Oscillator">
+                    <Text strong>AROON</Text>
+                  </Tooltip>
+                  <Space size={6} align="center" className="indicator-header__actions">
+                    <Form.Item name="use_aroon" valuePropName="checked" noStyle>
+                      <Switch size="small" aria-label="Toggle Aroon" />
+                    </Form.Item>
+                  </Space>
+                </div>
+                <div className="indicator-fields">
+                  <Form.Item label="Lkb" name="aroon_n" className="indicator-field">
+                    <InputNumber min={5} max={50} style={{ width: "100%" }} disabled={!useAroon} />
+                  </Form.Item>
+                  <Form.Item label="Up" name="aroon_up" className="indicator-field">
+                    <InputNumber min={0} max={100} style={{ width: "100%" }} disabled={!useAroon} />
+                  </Form.Item>
+                  <Form.Item label="Dn" name="aroon_down" className="indicator-field">
+                    <InputNumber min={0} max={100} style={{ width: "100%" }} disabled={!useAroon} />
+                  </Form.Item>
+                </div>
+              </div>
+
+              <div className="indicator-grid__item">
+                <div className="indicator-stack">
+                  <div className="indicator-stack__section">
+                    <div className="indicator-header indicator-header--stacked">
+                      <Tooltip title="EMA crossover">
+                        <Text strong>EMA</Text>
+                      </Tooltip>
+                      <Space size={6} align="center" className="indicator-header__actions">
+                        <Form.Item name="use_ema" valuePropName="checked" noStyle>
+                          <Switch size="small" aria-label="Toggle EMA" />
+                        </Form.Item>
+                      </Space>
+                    </div>
+                    <div className="indicator-fields indicator-fields--compact">
+                      <Form.Item label="Short" name="ema_short" className="indicator-field">
+                        <InputNumber min={2} max={50} style={{ width: "100%" }} disabled={!useEma} />
+                      </Form.Item>
+                      <Form.Item label="Long" name="ema_long" className="indicator-field">
+                        <InputNumber min={5} max={200} style={{ width: "100%" }} disabled={!useEma} />
+                      </Form.Item>
+                    </div>
+                  </div>
+                  <div className="indicator-stack__divider" aria-hidden />
+                  <div className="indicator-stack__section">
+                    <div className="indicator-header indicator-header--stacked">
+                      <Tooltip title="Average Directional Index">
+                        <Text strong>ADX</Text>
+                      </Tooltip>
+                      <Space size={6} align="center" className="indicator-header__actions">
+                        <Form.Item name="use_adx" valuePropName="checked" noStyle>
+                          <Switch size="small" aria-label="Toggle ADX" />
+                        </Form.Item>
+                      </Space>
+                    </div>
+                    <div className="indicator-fields indicator-fields--compact">
+                      <Form.Item label="Lkb" name="adx_n" className="indicator-field">
+                        <InputNumber min={5} max={50} style={{ width: "100%" }} disabled={!useAdx} />
+                      </Form.Item>
+                      <Form.Item label="Min" name="adx_min" className="indicator-field">
+                        <InputNumber min={5} max={60} style={{ width: "100%" }} disabled={!useAdx} />
+                      </Form.Item>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="indicator-grid__item">
+                <div className="indicator-header">
+                  <Tooltip title="Stochastic Oscillator">
+                    <Text strong>STOCH</Text>
+                  </Tooltip>
+                  <Space size={6} align="center" className="indicator-header__actions">
+                    <Form.Item name="use_stoch" valuePropName="checked" noStyle>
+                      <Switch size="small" aria-label="Toggle Stochastic" />
+                    </Form.Item>
+                  </Space>
+                </div>
+                <div className="indicator-fields indicator-fields--triple">
+                  <Form.Item label="Rule" name="stoch_rule" className="indicator-field indicator-field--full">
+                    <Select
+                      options={[
+                        { label: "Signal", value: "signal" },
+                        { label: "OS", value: "oversold" },
+                        { label: "OB", value: "overbought" },
+                      ]}
+                      dropdownMatchSelectWidth={false}
+                      disabled={!useStoch}
+                    />
+                  </Form.Item>
+                  <Form.Item label="%K" name="stoch_k" className="indicator-field">
+                    <InputNumber min={5} max={50} style={{ width: "100%" }} disabled={!useStoch} />
+                  </Form.Item>
+                  <Form.Item label="%D" name="stoch_d" className="indicator-field">
+                    <InputNumber min={1} max={20} style={{ width: "100%" }} disabled={!useStoch} />
+                  </Form.Item>
+                  <Form.Item
+                    label="Th"
+                    name="stoch_threshold"
+                    className="indicator-field indicator-field--full"
+                  >
+                    <InputNumber min={1} max={50} style={{ width: "100%" }} disabled={!useStoch} />
+                  </Form.Item>
+                </div>
+              </div>
+            </div>
+          </section>
+
+
+          <section className="input-settings__section input-settings__section--dual">
+            <div className="input-settings__column indicator-grid__item">
+              <div className="input-settings__header input-settings__header--toggle">
+                <Text strong>Universe Filters</Text>
+                <Button
+                  type="link"
+                  size="small"
+                  className="sidebar-card__action"
+                  onClick={() => setShowUniverseFilters((prev) => !prev)}
+                >
+                  {showUniverseFilters ? "Hide" : "Show"}
+                </Button>
+              </div>
+              {showUniverseFilters && (
+                <div className="form-grid form-grid--universe">
+                  <Form.Item label="Sector" name={["filters", "sectors"]} className="form-grid__item">
+                    <Select mode="multiple" allowClear options={sectorOptions} dropdownMatchSelectWidth={false} />
+                  </Form.Item>
+                  <Form.Item label="Cap Min" name={["filters", "mcap_min"]} className="form-grid__item">
+                    <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
+                  </Form.Item>
+                  <Form.Item label="Cap Max" name={["filters", "mcap_max"]} className="form-grid__item">
+                    <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
+                  </Form.Item>
+                  <Form.Item label="Exclude" name={["filters", "exclude_tickers"]} className="form-grid__item">
+                    <Select
+                      mode="tags"
+                      tokenSeparators={[",", " "]}
+                      placeholder="TSLA, NVDA"
+                      dropdownMatchSelectWidth={false}
+                    />
+                  </Form.Item>
+                </div>
+              )}
+            </div>
+
+            <div className="input-settings__column indicator-grid__item">
+              <div className="input-settings__header input-settings__header--toggle">
+                <Text strong>Signal Rules</Text>
+                <Button
+                  type="link"
+                  size="small"
+                  className="sidebar-card__action"
+                  onClick={() => setShowSignalRules((prev) => !prev)}
+                >
+                  {showSignalRules ? "Hide" : "Show"}
+                </Button>
+              </div>
+              {showSignalRules && (
+                <div className="form-grid form-grid--signals">
+                  <Form.Item
+                    label="Policy"
+                    name="policy"
+                    className="form-grid__item form-grid__item--span-2"
+                  >
+                    <Select
+                      options={[
+                        { label: "Any", value: "any" },
+                        { label: "All", value: "all" },
+                        { label: "At least k", value: "atleast_k" },
+                      ]}
+                    />
+                  </Form.Item>
+                  <Form.Item label="k" name="k" className="form-grid__item">
+                    <InputNumber
+                      min={1}
+                      max={7}
+                      style={{ width: "100%" }}
+                      disabled={policyValue !== "atleast_k"}
+                    />
+                  </Form.Item>
+                  <Form.Item label="Max Hz" name="max_horizon" className="form-grid__item">
+                    <InputNumber min={1} max={10} style={{ width: "100%" }} addonAfter="d" />
+                  </Form.Item>
+                  <Form.Item label="Bin Width" name="hist_bin_width_pct" className="form-grid__item">
+                    <InputNumber
+                      min={0.1}
+                      max={20}
+                      step={0.1}
+                      style={{ width: "100%" }}
+                      addonAfter="%"
+                    />
+                  </Form.Item>
+                </div>
+              )}
+            </div>
+          </section>
         </Card>
 
         <Space className="sidebar-form__actions">
