@@ -5,6 +5,7 @@ import { Checkbox, Empty } from "antd";
 import type { CheckboxChangeEvent } from "antd/es/checkbox";
 import { HistogramPayload } from "../types";
 import { formatNumber, formatPercent } from "../utils/format";
+import { getBaseRem } from "../utils/layout";
 
 interface Props {
   data?: HistogramPayload | null;
@@ -137,6 +138,18 @@ const computeStats = (values: number[]): HistogramStats | null => {
 
 const HistogramChart = ({ data, loading, onReady, height = "45vh", compact = false }: Props) => {
   const [selectedHorizons, setSelectedHorizons] = useState<number[]>([]);
+  const [baseRem, setBaseRem] = useState<number>(() => getBaseRem());
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleResize = () => {
+      setBaseRem(getBaseRem());
+    };
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   const seriesMap = useMemo(() => {
     if (!data?.series?.length) return new Map<number, number[]>();
@@ -181,12 +194,16 @@ const HistogramChart = ({ data, loading, onReady, height = "45vh", compact = fal
     if (!histogram.bins.length || !histogram.counts.length) {
       return null;
     }
-    const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1440;
-    const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 900;
-    const axisFont = Math.max(12, Math.min(viewportWidth, viewportHeight) * 0.012);
-    const labelMargin = axisFont * 1.1;
-    const labelLineHeight = axisFont * 1.2;
-    const nameGap = axisFont * 3;
+    const tickFont = baseRem * (compact ? 0.32 : 0.36);
+    const tickMargin = baseRem * (compact ? 0.7 : 0.9);
+    const tickLineHeight = baseRem * (compact ? 0.8 : 0.95);
+    const yLabelFont = baseRem * (compact ? 0.36 : 0.4);
+    const barWidth = baseRem * (compact ? 0.7 : 0.9);
+    const gridLeft = baseRem * (compact ? 2.6 : 3.1);
+    const gridRight = baseRem * (compact ? 1.2 : 1.5);
+    const gridBottom = baseRem * (compact ? 4 : 4.8);
+    const gridTop = baseRem * (compact ? 2 : 2.8);
+    const percentFont = baseRem * (compact ? 0.34 : 0.38);
     return {
       tooltip: {
         trigger: "item",
@@ -207,9 +224,9 @@ const HistogramChart = ({ data, loading, onReady, height = "45vh", compact = fal
         axisLabel: {
           interval: 0,
           rotate: 0,
-          fontSize: axisFont,
-          margin: labelMargin,
-          lineHeight: labelLineHeight,
+          fontSize: tickFont,
+          margin: tickMargin,
+          lineHeight: tickLineHeight,
           formatter: (_value: string, index: number) => {
             const count = histogram.counts[index];
             const bin = histogram.bins[index];
@@ -229,22 +246,23 @@ const HistogramChart = ({ data, loading, onReady, height = "45vh", compact = fal
         type: "value",
         name: "Trades",
         nameLocation: "middle",
-        nameGap,
+        nameGap: baseRem * (compact ? 1.8 : 2.2),
         axisLabel: {
-          fontSize: axisFont,
+          fontSize: yLabelFont,
         },
         splitLine: { show: true, lineStyle: { color: "#e2e8f0" } },
       },
       series: [
         {
           type: "bar",
+          barMaxWidth: barWidth,
           data: histogram.counts,
           label: {
             show: true,
             position: "top",
             formatter: ({ value }: { value: number }) =>
               typeof value === "number" && value > 0 ? formatNumber(value, 0) : "",
-            fontSize: axisFont,
+            fontSize: yLabelFont,
           },
           itemStyle: {
             color: "#4c6ef5",
@@ -253,26 +271,26 @@ const HistogramChart = ({ data, loading, onReady, height = "45vh", compact = fal
         },
       ],
       grid: {
-        left: "6%",
-        right: "4%",
-        bottom: "18%",
-        top: "12%",
+        left: gridLeft,
+        right: gridRight,
+        bottom: gridBottom,
+        top: gridTop,
         containLabel: true,
       },
       graphic: [
         {
           type: "text",
-          right: "4%",
-          bottom: "12%",
+          right: baseRem * (compact ? 0.6 : 1.1),
+          bottom: baseRem * (compact ? 1.1 : 1.5),
           style: {
             text: "%",
-            fontSize: axisFont,
+            fontSize: percentFont,
             fill: "#475569",
           },
         },
       ],
     };
-  }, [histogram, compact]);
+  }, [histogram, compact, baseRem]);
 
   const handleToggleHorizon = (horizon: number, event: CheckboxChangeEvent) => {
     const checked = event.target.checked;
@@ -331,7 +349,11 @@ const HistogramChart = ({ data, loading, onReady, height = "45vh", compact = fal
         </div>
       </div>
       {option ? (
-        <ReactECharts option={option} style={{ height, width: "100%" }} onChartReady={onReady} />
+        <ReactECharts
+          option={option}
+          style={{ height: typeof height === "number" ? `${height / baseRem}rem` : height, width: "100%" }}
+          onChartReady={onReady}
+        />
       ) : (
         <Empty description="No returns for selected ranges" />
       )}

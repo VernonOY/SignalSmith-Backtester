@@ -1,10 +1,11 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import type { ECharts } from "echarts";
 import { Spin, Empty } from "antd";
 import { TimeSeries } from "../types";
 import { formatCurrency } from "../utils/format";
 import dayjs from "dayjs";
+import { getBaseRem } from "../utils/layout";
 
 interface Props {
   data?: TimeSeries | null;
@@ -15,6 +16,16 @@ interface Props {
 }
 
 const EquityChart = ({ data, loading, onReady, compact = false, height }: Props) => {
+  const [baseRem, setBaseRem] = useState<number>(() => getBaseRem());
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleResize = () => setBaseRem(getBaseRem());
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   if (loading) {
     return <Spin />;
@@ -35,6 +46,18 @@ const EquityChart = ({ data, loading, onReady, compact = false, height }: Props)
     () => data.dates.map((date, idx) => [date, data.values[idx]] as [string, number]),
     [data.dates, data.values]
   );
+
+  const axisFont = baseRem * (compact ? 0.36 : 0.42);
+  const axisMargin = baseRem * (compact ? 0.55 : 0.75);
+  const yAxisMargin = baseRem * (compact ? 0.4 : 0.55);
+  const gridTop = baseRem * (compact ? 1.8 : 2.2);
+  const gridLeft = baseRem * (compact ? 3.4 : 4.1);
+  const gridRight = baseRem * (compact ? 1.2 : 1.6);
+  const gridBottom = baseRem * (compact ? 2.4 : 3.2);
+  const lineWidth = compact ? baseRem * 0.08 : baseRem * 0.1;
+  const sliderHeight = baseRem * 1.2;
+  const handleSize = baseRem * 0.75;
+  const moveHandleSize = baseRem * 0.55;
 
   const option = {
     tooltip: {
@@ -66,9 +89,9 @@ const EquityChart = ({ data, loading, onReady, compact = false, height }: Props)
             height: sliderHeight,
             fillerColor: "rgba(76, 110, 245, 0.18)",
             borderColor: "rgba(76, 110, 245, 0.3)",
-            handleSize: handleSize,
+            handleSize,
             handleStyle: { color: "#4c6ef5" },
-            moveHandleSize: handleSize * 0.75,
+            moveHandleSize,
           },
         ],
     xAxis: {
@@ -106,15 +129,15 @@ const EquityChart = ({ data, loading, onReady, compact = false, height }: Props)
       axisLabel: {
         formatter: (value: number) => formatCurrency(value, 0),
         fontSize: axisFont,
-        margin: axisMargin,
+        margin: yAxisMargin,
       },
       splitLine: { show: true, lineStyle: { color: "#e2e8f0" } },
     },
     grid: {
-      top: gridPadding,
-      left: gridPadding * 1.2,
-      right: gridPadding * 0.6,
-      bottom: compact ? gridPadding : gridPadding * 1.4,
+      top: gridTop,
+      left: gridLeft,
+      right: gridRight,
+      bottom: gridBottom,
     },
     series: [
       {
@@ -122,7 +145,7 @@ const EquityChart = ({ data, loading, onReady, compact = false, height }: Props)
         name: "Equity",
         showSymbol: false,
         smooth: true,
-        lineStyle: { width: compact ? 1.5 : Math.max(2, axisFont * 0.12) },
+        lineStyle: { width: lineWidth },
         data: seriesData,
       },
     ],
@@ -132,7 +155,7 @@ const EquityChart = ({ data, loading, onReady, compact = false, height }: Props)
     onReady?.(instance);
   };
 
-  const chartHeight = height ?? "40vh";
+  const chartHeight = typeof height === "number" ? `${height / baseRem}rem` : height ?? "42vh";
 
   return <ReactECharts option={option} style={{ height: chartHeight }} onChartReady={handleReady} />;
 };
