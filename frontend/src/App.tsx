@@ -335,12 +335,14 @@ const App = () => {
                             <Title level={4}>Settings</Title>
                           </div>
                           <div className="settings-panel__list">
-                            {settingsSummary.map((item) => (
-                              <div className="settings-panel__item" key={`setting-${item.label}`}>
-                                <span className="settings-panel__label">{item.label}:</span>
-                                <span className="settings-panel__value">{item.value}</span>
-                              </div>
-                            ))}
+                            {settingsSummary.map((item) => {
+                              return (
+                                <div className="settings-panel__item" key={`setting-${item.label}`}>
+                                  <span className="settings-panel__label">{item.label}:</span>
+                                  <span className="settings-panel__value">{item.value}</span>
+                                </div>
+                              );
+                            })}
                           </div>
                         </section>
                       )}
@@ -372,12 +374,14 @@ const App = () => {
                     />
                     {equityMetrics.length > 0 && (
                       <div className="run-summary__grid run-summary__grid--metrics">
-                        {equityMetrics.map((metric) => (
-                          <div className="run-summary__item" key={metric.key}>
-                            <span className="run-summary__label">{metric.label}</span>
-                            <span className="run-summary__value">{metric.value}</span>
-                          </div>
-                        ))}
+                        {equityMetrics.map((metric) => {
+                          return (
+                            <div className="run-summary__item" key={metric.key}>
+                              <span className="run-summary__label">{metric.label}</span>
+                              <span className="run-summary__value">{metric.value}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </Card>
