@@ -387,7 +387,7 @@ const App = () => {
               {response ? (
                 <div className="dashboard__charts">
                   {response.histogram && (
-                    <Card className="result-card histogram-card" size="small">
+                    <Card className="result-card resizable-card histogram-card" size="small">
                       <div className="card-header">
                         <Title level={4}>Return Distribution</Title>
                       </div>
@@ -401,7 +401,7 @@ const App = () => {
                   )}
 
                   {showDetailsCard && (
-                    <Card className="result-card details-card" size="small">
+                    <Card className="result-card resizable-card details-card" size="small">
                       {hasIndicatorStats && (
                         <>
                           <div className="card-header">
@@ -456,7 +456,7 @@ const App = () => {
                     </Card>
                   )}
 
-                  <Card className="result-card equity-card" size="small">
+                  <Card className="result-card resizable-card equity-card" size="small">
                     <div className="card-header">
                       <Title level={4}>Equity Curve</Title>
                       {horizonOptions.length > 0 && (
@@ -492,7 +492,7 @@ const App = () => {
                   </Card>
                 </div>
               ) : (
-                <Card className="result-card intro-card" size="small">
+                <Card className="result-card resizable-card intro-card" size="small">
                   <Title level={4}>Configure &amp; Run</Title>
                   <Text type="secondary">
                     Adjust parameters on the left and run the engine to populate the dashboard.
