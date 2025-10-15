@@ -176,11 +176,15 @@ const HistogramChart = ({ data, loading, onReady, height = 360, compact = false 
   const binWidth = data?.bin_width ?? 0.01;
   const histogram = useMemo(() => buildHistogram(selectedValues, binWidth), [selectedValues, binWidth]);
   const stats = useMemo(() => computeStats(selectedValues), [selectedValues]);
+  const totalCount = selectedValues.length;
 
   const option = useMemo(() => {
-    if (!histogram.bins.length || !histogram.counts.length) {
+    if (!histogram.bins.length || !histogram.counts.length || !totalCount) {
       return null;
     }
+    const percentSeries = histogram.counts.map((count) =>
+      totalCount ? (count / totalCount) * 100 : 0
+    );
     return {
       tooltip: {
         trigger: "item",
@@ -188,7 +192,9 @@ const HistogramChart = ({ data, loading, onReady, height = 360, compact = false 
           const bin = histogram.bins[params.dataIndex];
           const start = formatPercent(bin.start, 2);
           const end = formatPercent(bin.end, 2);
-          return `${start} to ${end}<br/>Count: ${params.value}`;
+          const percentValue = percentSeries[params.dataIndex] ?? 0;
+          const tradeCount = histogram.counts[params.dataIndex] ?? 0;
+          return `${start} to ${end}<br/>Trades: ${formatNumber(tradeCount, 0)}<br/>Frequency: ${formatNumber(percentValue, 1)}%`;
         },
       },
       xAxis: {
@@ -201,9 +207,9 @@ const HistogramChart = ({ data, loading, onReady, height = 360, compact = false 
         axisLabel: {
           interval: 0,
           rotate: 0,
-          fontSize: compact ? 8 : 9,
-          margin: compact ? 10 : 14,
-          lineHeight: compact ? 12 : 14,
+          fontSize: compact ? 11 : 13,
+          margin: compact ? 12 : 16,
+          lineHeight: compact ? 14 : 18,
           formatter: (_value: string, index: number) => {
             const count = histogram.counts[index];
             const bin = histogram.bins[index];
@@ -223,23 +229,24 @@ const HistogramChart = ({ data, loading, onReady, height = 360, compact = false 
         type: "value",
         name: "Trades",
         nameLocation: "middle",
-        nameGap: compact ? 28 : 34,
+        nameGap: compact ? 38 : 46,
         axisLabel: {
-          fontSize: compact ? 10 : 11,
+          fontSize: compact ? 11 : 13,
+          formatter: (value: number) => formatNumber(value, 0),
         },
         splitLine: { show: true, lineStyle: { color: "#e2e8f0" } },
       },
       series: [
         {
           type: "bar",
-          barMaxWidth: compact ? 22 : 28,
+          barMaxWidth: compact ? 24 : 30,
           data: histogram.counts,
           label: {
             show: true,
             position: "top",
             formatter: ({ value }: { value: number }) =>
               typeof value === "number" && value > 0 ? formatNumber(value, 0) : "",
-            fontSize: compact ? 10 : 11,
+            fontSize: compact ? 11 : 13,
           },
           itemStyle: {
             color: "#4c6ef5",
@@ -248,26 +255,14 @@ const HistogramChart = ({ data, loading, onReady, height = 360, compact = false 
         },
       ],
       grid: {
-        left: compact ? 40 : 48,
-        right: compact ? 16 : 24,
-        bottom: compact ? 72 : 90,
-        top: compact ? 32 : 44,
+        left: compact ? 44 : 56,
+        right: compact ? 18 : 26,
+        bottom: compact ? 74 : 92,
+        top: compact ? 36 : 48,
         containLabel: true,
       },
-      graphic: [
-        {
-          type: "text",
-          right: compact ? 10 : 18,
-          bottom: compact ? 18 : 24,
-          style: {
-            text: "%",
-            fontSize: compact ? 11 : 13,
-            fill: "#475569",
-          },
-        },
-      ],
     };
-  }, [histogram, compact]);
+  }, [histogram, compact, totalCount]);
 
   const handleToggleHorizon = (horizon: number, event: CheckboxChangeEvent) => {
     const checked = event.target.checked;
