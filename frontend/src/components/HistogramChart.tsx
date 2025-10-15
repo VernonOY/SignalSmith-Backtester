@@ -10,7 +10,7 @@ interface Props {
   data?: HistogramPayload | null;
   loading?: boolean;
   onReady?: (instance: ECharts) => void;
-  height?: number;
+  height?: number | string;
   compact?: boolean;
 }
 
@@ -135,7 +135,7 @@ const computeStats = (values: number[]): HistogramStats | null => {
   return { mean, median, std, skew, kurt, sampleSize: n };
 };
 
-const HistogramChart = ({ data, loading, onReady, height = 360, compact = false }: Props) => {
+const HistogramChart = ({ data, loading, onReady, height = "45vh", compact = false }: Props) => {
   const [selectedHorizons, setSelectedHorizons] = useState<number[]>([]);
 
   const seriesMap = useMemo(() => {
@@ -181,6 +181,12 @@ const HistogramChart = ({ data, loading, onReady, height = 360, compact = false 
     if (!histogram.bins.length || !histogram.counts.length) {
       return null;
     }
+    const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1440;
+    const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 900;
+    const axisFont = Math.max(12, Math.min(viewportWidth, viewportHeight) * 0.012);
+    const labelMargin = axisFont * 1.1;
+    const labelLineHeight = axisFont * 1.2;
+    const nameGap = axisFont * 3;
     return {
       tooltip: {
         trigger: "item",
@@ -201,9 +207,9 @@ const HistogramChart = ({ data, loading, onReady, height = 360, compact = false 
         axisLabel: {
           interval: 0,
           rotate: 0,
-          fontSize: compact ? 8 : 9,
-          margin: compact ? 10 : 14,
-          lineHeight: compact ? 12 : 14,
+          fontSize: axisFont,
+          margin: labelMargin,
+          lineHeight: labelLineHeight,
           formatter: (_value: string, index: number) => {
             const count = histogram.counts[index];
             const bin = histogram.bins[index];
@@ -223,23 +229,22 @@ const HistogramChart = ({ data, loading, onReady, height = 360, compact = false 
         type: "value",
         name: "Trades",
         nameLocation: "middle",
-        nameGap: compact ? 28 : 34,
+        nameGap,
         axisLabel: {
-          fontSize: compact ? 10 : 11,
+          fontSize: axisFont,
         },
         splitLine: { show: true, lineStyle: { color: "#e2e8f0" } },
       },
       series: [
         {
           type: "bar",
-          barMaxWidth: compact ? 22 : 28,
           data: histogram.counts,
           label: {
             show: true,
             position: "top",
             formatter: ({ value }: { value: number }) =>
               typeof value === "number" && value > 0 ? formatNumber(value, 0) : "",
-            fontSize: compact ? 10 : 11,
+            fontSize: axisFont,
           },
           itemStyle: {
             color: "#4c6ef5",
@@ -248,20 +253,20 @@ const HistogramChart = ({ data, loading, onReady, height = 360, compact = false 
         },
       ],
       grid: {
-        left: compact ? 40 : 48,
-        right: compact ? 16 : 24,
-        bottom: compact ? 72 : 90,
-        top: compact ? 32 : 44,
+        left: "6%",
+        right: "4%",
+        bottom: "18%",
+        top: "12%",
         containLabel: true,
       },
       graphic: [
         {
           type: "text",
-          right: compact ? 10 : 18,
-          bottom: compact ? 18 : 24,
+          right: "4%",
+          bottom: "12%",
           style: {
             text: "%",
-            fontSize: compact ? 11 : 13,
+            fontSize: axisFont,
             fill: "#475569",
           },
         },

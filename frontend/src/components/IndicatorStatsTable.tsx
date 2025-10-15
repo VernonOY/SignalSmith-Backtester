@@ -95,7 +95,6 @@ const IndicatorStatsTable = ({ stats, compact = false }: Props) => {
       title: "Stat",
       dataIndex: "stat",
       key: "stat",
-      width: 96,
       render: (value: string) => <span className="indicator-table__stat">{value}</span>,
     },
     ...horizonEntries.map(({ label, key }) => ({
@@ -109,7 +108,6 @@ const IndicatorStatsTable = ({ stats, compact = false }: Props) => {
 
   return (
     <Table
-      size="small"
       rowKey={(record) => record.key}
       columns={columns}
       dataSource={rows}
