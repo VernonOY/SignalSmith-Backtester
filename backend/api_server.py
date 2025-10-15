@@ -606,6 +606,7 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
         return float(value)
 
     histogram_payload: Optional[HistogramPayload] = None
+    expected_horizons = list(range(1, max_horizon + 1))
     if not hist_df.empty:
         horizon_cols = [col for col in hist_df.columns if col.startswith("fwd_ret_")]
         series_payload: List[HistogramSeries] = []

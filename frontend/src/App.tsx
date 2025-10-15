@@ -268,6 +268,13 @@ const App = () => {
   const hasIndicatorStats = Boolean(response?.indicator_statistics);
   const hasSettingsSummary = settingsSummary.length > 0;
 
+  const hasIndicatorStats = Boolean(response?.indicator_statistics);
+  const hasRunSettings = runSettingsSummary.length > 0;
+  const hasUniverseDetails = Boolean(lastRunConfig) && universeSummary.length > 0;
+  const hasSignalDetails = Boolean(lastRunConfig) && signalSummary.length > 0;
+  const showDetailsCard =
+    hasIndicatorStats || hasRunSettings || hasUniverseDetails || hasSignalDetails;
+
   return (
     <ConfigProvider
       theme={{

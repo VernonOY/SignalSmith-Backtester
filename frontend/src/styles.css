@@ -126,6 +126,14 @@ body {
   min-width: 0;
 }
 
+.details-card {
+  grid-column: span 6;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .equity-card {
   grid-column: span 5;
   grid-row: span 2;
