@@ -1,23 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import type { ECharts } from "echarts";
-import { Checkbox, Empty, Space, Tag } from "antd";
-import type { CheckboxValueType } from "antd/es/checkbox/Group";
+import { Checkbox, Empty } from "antd";
+import type { CheckboxChangeEvent } from "antd/es/checkbox";
 import { HistogramPayload } from "../types";
 import { formatNumber, formatPercent } from "../utils/format";
+import { getBaseRem } from "../utils/layout";
 
 interface Props {
   data?: HistogramPayload | null;
   loading?: boolean;
   onReady?: (instance: ECharts) => void;
-  height?: number;
+  height?: number | string;
   compact?: boolean;
-}
-
-interface RangeOption {
-  key: string;
-  label: string;
-  horizons: number[];
 }
 
 interface HistogramBin {
@@ -39,29 +34,6 @@ interface HistogramStats {
   kurt: number;
   sampleSize: number;
 }
-
-const buildRangeOptions = (horizons: number[]): RangeOption[] => {
-  if (!horizons.length) return [];
-  const sorted = [...new Set(horizons)].sort((a, b) => a - b);
-  const max = sorted[sorted.length - 1];
-  const ranges: RangeOption[] = [];
-  const step = 3;
-  let start = sorted[0];
-  while (start <= max) {
-    let end = Math.min(start + step - 1, max);
-    if (max - end === 1) {
-      end = max;
-    }
-    const horizonsInRange = sorted.filter((value) => value >= start && value <= end);
-    ranges.push({
-      key: `${start}-${end}`,
-      label: `${start}-${end}d`,
-      horizons: horizonsInRange,
-    });
-    start = end + 1;
-  }
-  return ranges;
-};
 
 const buildHistogram = (values: number[], binWidth: number): HistogramResult => {
   if (!values.length) {
@@ -113,7 +85,22 @@ const buildHistogram = (values: number[], binWidth: number): HistogramResult => 
 
   const trimmedBins = bins.slice(first, last + 1);
   const trimmedCounts = counts.slice(first, last + 1);
-  return { bins: trimmedBins, counts: trimmedCounts };
+
+  const filteredBins: HistogramBin[] = [];
+  const filteredCounts: number[] = [];
+  trimmedBins.forEach((bin, index) => {
+    const count = trimmedCounts[index];
+    if (count > 0) {
+      filteredBins.push(bin);
+      filteredCounts.push(count);
+    }
+  });
+
+  if (!filteredBins.length) {
+    return { bins: trimmedBins, counts: trimmedCounts };
+  }
+
+  return { bins: filteredBins, counts: filteredCounts };
 };
 
 const computeStats = (values: number[]): HistogramStats | null => {
@@ -149,8 +136,20 @@ const computeStats = (values: number[]): HistogramStats | null => {
   return { mean, median, std, skew, kurt, sampleSize: n };
 };
 
-const HistogramChart = ({ data, loading, onReady, height = 320, compact = false }: Props) => {
-  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+const HistogramChart = ({ data, loading, onReady, height = "45vh", compact = false }: Props) => {
+  const [selectedHorizons, setSelectedHorizons] = useState<number[]>([]);
+  const [baseRem, setBaseRem] = useState<number>(() => getBaseRem());
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleResize = () => {
+      setBaseRem(getBaseRem());
+    };
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   const seriesMap = useMemo(() => {
     if (!data?.series?.length) return new Map<number, number[]>();
@@ -158,55 +157,53 @@ const HistogramChart = ({ data, loading, onReady, height = 320, compact = false 
   }, [data?.series]);
 
   const horizons = useMemo(() => {
-    return data?.series?.map((item) => item.horizon).sort((a, b) => a - b) ?? [];
+    const unique = new Set<number>();
+    data?.series?.forEach((item) => unique.add(item.horizon));
+    return Array.from(unique).sort((a, b) => a - b);
   }, [data?.series]);
 
-  const rangeOptions = useMemo(() => buildRangeOptions(horizons), [horizons]);
-
   useEffect(() => {
-    if (rangeOptions.length) {
-      setSelectedKeys(rangeOptions.map((option) => option.key));
+    if (horizons.length) {
+      setSelectedHorizons(horizons);
     } else {
-      setSelectedKeys([]);
+      setSelectedHorizons([]);
     }
-  }, [rangeOptions]);
+  }, [horizons]);
 
-  const selectedHorizons = useMemo(() => {
-    const options = rangeOptions.filter((option) => selectedKeys.includes(option.key));
-    if (!options.length) {
-      return rangeOptions.flatMap((option) => option.horizons);
-    }
-    const unique = new Set<number>();
-    options.forEach((option) => option.horizons.forEach((value) => unique.add(value)));
-    return Array.from(unique).sort((a, b) => a - b);
-  }, [rangeOptions, selectedKeys]);
+  const activeHorizons = useMemo(() => {
+    return selectedHorizons.length ? selectedHorizons : horizons;
+  }, [selectedHorizons, horizons]);
 
   const selectedValues = useMemo(() => {
-    if (!selectedHorizons.length) return [];
+    if (!activeHorizons.length) return [];
     const combined: number[] = [];
-    selectedHorizons.forEach((horizon) => {
+    activeHorizons.forEach((horizon) => {
       const values = seriesMap.get(horizon);
       if (values && values.length) {
         combined.push(...values);
       }
     });
     return combined;
-  }, [selectedHorizons, seriesMap]);
+  }, [activeHorizons, seriesMap]);
 
   const binWidth = data?.bin_width ?? 0.01;
   const histogram = useMemo(() => buildHistogram(selectedValues, binWidth), [selectedValues, binWidth]);
   const stats = useMemo(() => computeStats(selectedValues), [selectedValues]);
 
-  const categories = histogram.bins.map((bin) => {
-    const start = formatPercent(bin.start, 1);
-    const end = formatPercent(bin.end, 1);
-    return `${start} – ${end}`;
-  });
-
   const option = useMemo(() => {
     if (!histogram.bins.length || !histogram.counts.length) {
       return null;
     }
+    const tickFont = baseRem * (compact ? 0.32 : 0.36);
+    const tickMargin = baseRem * (compact ? 0.7 : 0.9);
+    const tickLineHeight = baseRem * (compact ? 0.8 : 0.95);
+    const yLabelFont = baseRem * (compact ? 0.36 : 0.4);
+    const barWidth = baseRem * (compact ? 0.7 : 0.9);
+    const gridLeft = baseRem * (compact ? 2.6 : 3.1);
+    const gridRight = baseRem * (compact ? 1.2 : 1.5);
+    const gridBottom = baseRem * (compact ? 4 : 4.8);
+    const gridTop = baseRem * (compact ? 2 : 2.8);
+    const percentFont = baseRem * (compact ? 0.34 : 0.38);
     return {
       tooltip: {
         trigger: "item",
@@ -219,31 +216,54 @@ const HistogramChart = ({ data, loading, onReady, height = 320, compact = false 
       },
       xAxis: {
         type: "category",
-        data: categories,
+        data: histogram.bins.map((bin) => {
+          const start = formatNumber(bin.start * 100, 1);
+          const end = formatNumber(bin.end * 100, 1);
+          return `${start} - ${end}`;
+        }),
         axisLabel: {
           interval: 0,
-          rotate: 90,
-          fontSize: compact ? 10 : 11,
-          margin: compact ? 14 : 20,
-          align: "right",
-          verticalAlign: "middle",
+          rotate: 0,
+          fontSize: tickFont,
+          margin: tickMargin,
+          lineHeight: tickLineHeight,
+          formatter: (_value: string, index: number) => {
+            const count = histogram.counts[index];
+            const bin = histogram.bins[index];
+            if (!count || !bin) {
+              return "";
+            }
+            const start = formatNumber(bin.start * 100, 1);
+            const end = formatNumber(bin.end * 100, 1);
+            return `${start}\n-\n${end}`;
+          },
+        },
+        axisTick: {
+          alignWithLabel: true,
         },
       },
       yAxis: {
         type: "value",
         name: "Trades",
         nameLocation: "middle",
-        nameGap: compact ? 28 : 34,
+        nameGap: baseRem * (compact ? 1.8 : 2.2),
         axisLabel: {
-          fontSize: compact ? 10 : 11,
+          fontSize: yLabelFont,
         },
         splitLine: { show: true, lineStyle: { color: "#e2e8f0" } },
       },
       series: [
         {
           type: "bar",
-          barMaxWidth: compact ? 18 : 24,
+          barMaxWidth: barWidth,
           data: histogram.counts,
+          label: {
+            show: true,
+            position: "top",
+            formatter: ({ value }: { value: number }) =>
+              typeof value === "number" && value > 0 ? formatNumber(value, 0) : "",
+            fontSize: yLabelFont,
+          },
           itemStyle: {
             color: "#4c6ef5",
             opacity: 0.82,
@@ -251,17 +271,42 @@ const HistogramChart = ({ data, loading, onReady, height = 320, compact = false 
         },
       ],
       grid: {
-        left: compact ? 48 : 56,
-        right: compact ? 24 : 32,
-        bottom: compact ? 56 : 68,
-        top: compact ? 32 : 44,
+        left: gridLeft,
+        right: gridRight,
+        bottom: gridBottom,
+        top: gridTop,
         containLabel: true,
       },
+      graphic: [
+        {
+          type: "text",
+          right: baseRem * (compact ? 0.6 : 1.1),
+          bottom: baseRem * (compact ? 1.1 : 1.5),
+          style: {
+            text: "%",
+            fontSize: percentFont,
+            fill: "#475569",
+          },
+        },
+      ],
     };
-  }, [histogram, categories, compact]);
+  }, [histogram, compact, baseRem]);
 
-  const handleRangeChange = (values: CheckboxValueType[]) => {
-    setSelectedKeys(values.map(String));
+  const handleToggleHorizon = (horizon: number, event: CheckboxChangeEvent) => {
+    const checked = event.target.checked;
+    setSelectedHorizons((prev) => {
+      const base = prev.length ? prev : horizons;
+      if (checked) {
+        const set = new Set(base);
+        set.add(horizon);
+        return Array.from(set).sort((a, b) => a - b);
+      }
+      const next = base.filter((value) => value !== horizon);
+      if (!next.length) {
+        return horizons;
+      }
+      return next;
+    });
   };
 
   if (loading) {
@@ -286,24 +331,29 @@ const HistogramChart = ({ data, loading, onReady, height = 320, compact = false 
   return (
     <div className="histogram-explorer">
       <div className="histogram-explorer__controls">
-        <span className="histogram-explorer__label">Holding period ranges</span>
-        <Checkbox.Group
-          options={rangeOptions.map((option) => ({ label: option.label, value: option.key }))}
-          value={selectedKeys.length ? selectedKeys : rangeOptions.map((option) => option.key)}
-          onChange={handleRangeChange}
-        />
-        {selectedHorizons.length > 0 && (
-          <Space size={4} wrap className="histogram-explorer__tags">
-            {selectedHorizons.map((horizon) => (
-              <Tag key={horizon} color="blue">
+        <span className="histogram-explorer__label">Holding periods</span>
+        <div className="histogram-explorer__choices">
+          {horizons.map((horizon) => {
+            const isSelected = activeHorizons.includes(horizon);
+            return (
+              <Checkbox
+                key={horizon}
+                className="histogram-explorer__choice"
+                checked={isSelected}
+                onChange={(event) => handleToggleHorizon(horizon, event)}
+              >
                 {horizon}d
-              </Tag>
-            ))}
-          </Space>
-        )}
+              </Checkbox>
+            );
+          })}
+        </div>
       </div>
       {option ? (
-        <ReactECharts option={option} style={{ height }} onChartReady={onReady} />
+        <ReactECharts
+          option={option}
+          style={{ height: typeof height === "number" ? `${height / baseRem}rem` : height, width: "100%" }}
+          onChartReady={onReady}
+        />
       ) : (
         <Empty description="No returns for selected ranges" />
       )}
