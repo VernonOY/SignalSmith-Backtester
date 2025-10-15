@@ -167,6 +167,16 @@ class HistogramPayload(BaseModel):
     bin_width: float = 0.01
 
 
+class HorizonResult(BaseModel):
+    equity_curve: TimeSeries
+    drawdown_curve: TimeSeries
+    metrics: Dict[str, float] = Field(default_factory=dict)
+    trades_count: int = 0
+    ending_equity: float = 0.0
+    total_return: float = 0.0
+    total_fees: float = 0.0
+
+
 class BacktestResponse(BaseModel):
     equity_curve: TimeSeries
     drawdown_curve: TimeSeries
@@ -175,13 +185,15 @@ class BacktestResponse(BaseModel):
     trades: List[Trade] = Field(default_factory=list)
     metrics: Dict[str, float] = Field(default_factory=dict)
     histogram: Optional[HistogramPayload] = None
-    indicator_statistics: Dict[str, Dict[str, float]] = Field(default_factory=dict)
+    indicator_statistics: Dict[str, Dict[str, Optional[float]]] = Field(default_factory=dict)
+    horizon_results: Dict[int, HorizonResult] = Field(default_factory=dict)
     universe_size: int
     trades_count: int
     initial_capital: float
     ending_equity: float
     total_return: float
     total_fees: float
+    hold_days: int
 
 
 def _load_metadata() -> Optional[pd.DataFrame]:
@@ -439,21 +451,116 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
         if not np.issubdtype(picks["date"].dtype, np.datetime64):
             picks["date"] = pd.to_datetime(picks["date"])
         picks = picks[(picks["date"] >= start_ts) & (picks["date"] <= end_ts)]
+
     initial_capital = float(payload.capital or 1.0)
     fee_model = FeeModel(payload.fee_bps or 0.0)
-    trade_config = TradeBuilderConfig(
-        hold_days=hold_days,
-        fee_model=fee_model,
-        initial_capital=initial_capital,
-        stop_loss_pct=payload.stop_loss_pct or payload.indicators.get("stop_loss_pct"),
-        take_profit_pct=payload.take_profit_pct or payload.indicators.get("take_profit_pct"),
-        compound=True,
-    )
-    execution_result = build_trades_from_picks(picks, trade_config)
-    realised_trades = execution_result.trades
+    stop_loss_pct = payload.stop_loss_pct or payload.indicators.get("stop_loss_pct")
+    take_profit_pct = payload.take_profit_pct or payload.indicators.get("take_profit_pct")
+    expected_horizons = list(range(1, max_horizon + 1))
+
+    def _to_timeseries(series: pd.Series) -> TimeSeries:
+        if series is None or series.empty:
+            return TimeSeries(dates=[], values=[])
+        cleaned = series.replace([np.inf, -np.inf], np.nan).dropna()
+        if cleaned.empty:
+            return TimeSeries(dates=[], values=[])
+        cleaned = cleaned.sort_index()
+        return TimeSeries(
+            dates=[d.strftime("%Y-%m-%d") for d in cleaned.index],
+            values=[float(round(val, 6)) for val in cleaned],
+        )
+
+    horizon_results: Dict[int, HorizonResult] = {}
+    selected_trades = pd.DataFrame()
+    selected_metrics: Dict[str, float] = {}
+    selected_equity = pd.Series(dtype=float)
+    selected_drawdown = pd.Series(dtype=float)
+    selected_execution = None
+    ending_equity = float(initial_capital)
+    total_return = 0.0
+
+    for horizon in expected_horizons:
+        trade_config = TradeBuilderConfig(
+            hold_days=horizon,
+            fee_model=fee_model,
+            initial_capital=initial_capital,
+            stop_loss_pct=stop_loss_pct,
+            take_profit_pct=take_profit_pct,
+            compound=True,
+        )
+        execution_result = build_trades_from_picks(picks, trade_config)
+        trades_df = execution_result.trades
+        equity_series = build_equity_curve(trades_df, initial_capital=initial_capital, column="net_pnl")
+        drawdown_series = compute_drawdown(equity_series)
+        metrics = compute_performance_metrics(equity_series, drawdown_series)
+        ending_value = float(metrics.get("ending_equity", initial_capital))
+        total_return_value = float(ending_value / initial_capital - 1.0) if initial_capital else 0.0
+        total_fees_value = float(trades_df["fees"].sum()) if not trades_df.empty else 0.0
+
+        horizon_results[horizon] = HorizonResult(
+            equity_curve=_to_timeseries(equity_series),
+            drawdown_curve=_to_timeseries(drawdown_series),
+            metrics={k: float(v) for k, v in metrics.items()},
+            trades_count=int(trades_df.shape[0]),
+            ending_equity=ending_value,
+            total_return=total_return_value,
+            total_fees=total_fees_value,
+        )
+
+        if horizon == hold_days:
+            selected_execution = execution_result
+            selected_trades = trades_df
+            selected_metrics = metrics
+            selected_equity = equity_series
+            selected_drawdown = drawdown_series
+            ending_equity = ending_value
+            total_return = total_return_value
+
+    selected_result = horizon_results.get(hold_days)
+    if selected_result is None:
+        selected_result = HorizonResult(
+            equity_curve=TimeSeries(dates=[], values=[]),
+            drawdown_curve=TimeSeries(dates=[], values=[]),
+            metrics={},
+            trades_count=0,
+            ending_equity=float(initial_capital),
+            total_return=0.0,
+            total_fees=0.0,
+        )
+
+    if selected_execution is None:
+        selected_execution = build_trades_from_picks(
+            picks,
+            TradeBuilderConfig(
+                hold_days=hold_days,
+                fee_model=fee_model,
+                initial_capital=initial_capital,
+                stop_loss_pct=stop_loss_pct,
+                take_profit_pct=take_profit_pct,
+                compound=True,
+            ),
+        )
+        selected_trades = selected_execution.trades
+        selected_equity = build_equity_curve(selected_trades, initial_capital=initial_capital, column="net_pnl")
+        selected_drawdown = compute_drawdown(selected_equity)
+        selected_metrics = compute_performance_metrics(selected_equity, selected_drawdown)
+        ending_equity = float(selected_metrics.get("ending_equity", initial_capital))
+        total_return = float(ending_equity / initial_capital - 1.0) if initial_capital else 0.0
+        fallback_total_fees = float(selected_trades["fees"].sum()) if not selected_trades.empty else 0.0
+        horizon_results[hold_days] = HorizonResult(
+            equity_curve=_to_timeseries(selected_equity),
+            drawdown_curve=_to_timeseries(selected_drawdown),
+            metrics={k: float(v) for k, v in selected_metrics.items()},
+            trades_count=int(selected_trades.shape[0]),
+            ending_equity=float(ending_equity),
+            total_return=total_return,
+            total_fees=fallback_total_fees,
+        )
+
+    realised_trades = selected_trades
     warn_if_returns_constant(realised_trades)
 
-    ledger = execution_result.ledger
+    ledger = selected_execution.ledger if selected_execution is not None else pd.DataFrame()
     signals: List[Signal] = []
     if not ledger.empty:
         ledger = ledger.sort_values("ts")
@@ -476,24 +583,12 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
     trades = [Trade(**item) for item in trades_payload]
     trades.sort(key=lambda t: (t.enter_date, t.symbol or ""))
 
-    equity = build_equity_curve(realised_trades, initial_capital=initial_capital, column="net_pnl")
-    drawdown = compute_drawdown(equity)
-
-    equity_ts = (
-        TimeSeries(dates=[d.strftime("%Y-%m-%d") for d in equity.index], values=equity.round(6).tolist())
-        if not equity.empty
-        else TimeSeries(dates=[], values=[])
-    )
-    drawdown_ts = (
-        TimeSeries(dates=[d.strftime("%Y-%m-%d") for d in drawdown.index], values=drawdown.round(6).tolist())
-        if not drawdown.empty
-        else TimeSeries(dates=[], values=[])
-    )
-
-    metrics = compute_performance_metrics(equity, drawdown)
-    ending_equity = metrics.get("ending_equity", initial_capital)
-    total_return = float(ending_equity / initial_capital - 1.0) if initial_capital else 0.0
-    total_fees = float(realised_trades["fees"].sum()) if not realised_trades.empty else 0.0
+    equity_ts = selected_result.equity_curve
+    drawdown_ts = selected_result.drawdown_curve
+    metrics = dict(selected_result.metrics)
+    ending_equity = float(selected_result.ending_equity)
+    total_return = float(selected_result.total_return)
+    total_fees = float(selected_result.total_fees)
     stats_df = result.get("statistics", pd.DataFrame())
     hist_df = result.get("hist_data", pd.DataFrame())
 
@@ -545,6 +640,17 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
                 )
             )
         if series_payload:
+            observed = {series.horizon for series in series_payload}
+            for horizon in expected_horizons:
+                if horizon not in observed:
+                    series_payload.append(
+                        HistogramSeries(
+                            horizon=horizon,
+                            returns=[],
+                            sample_size=0,
+                            stats={},
+                        )
+                    )
             series_payload.sort(key=lambda item: item.horizon)
             requested_width = payload.hist_bin_width or 0.01
             safe_width = float(max(0.0005, min(requested_width, 1.0)))
@@ -552,9 +658,11 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
                 series=series_payload, bin_width=round(safe_width, 6)
             )
 
-    indicator_stats: Dict[str, Dict[str, float]] = {}
+    indicator_stats: Dict[str, Dict[str, Optional[float]]] = {}
+    combined_returns: List[pd.Series] = []
     if not picks.empty:
-        for col in [c for c in picks.columns if c.startswith("fwd_ret_")]:
+        horizon_columns = [c for c in picks.columns if c.startswith("fwd_ret_")]
+        for col in horizon_columns:
             series = picks[col].dropna()
             if series.empty:
                 continue
@@ -570,6 +678,29 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
                 "skew": _safe(converted.skew()),
                 "kurt": _safe(converted.kurt()),
             }
+            combined_returns.append(converted)
+
+        if combined_returns:
+            combined_series = pd.concat(combined_returns, ignore_index=True)
+            combined_series.replace([np.inf, -np.inf], np.nan, inplace=True)
+            combined_series.dropna(inplace=True)
+            if not combined_series.empty:
+                indicator_stats = {
+                    "combined": {
+                        "mean": _safe(combined_series.mean()),
+                        "median": _safe(combined_series.median()),
+                        "std": _safe(combined_series.std(ddof=0)),
+                        "skew": _safe(combined_series.skew()),
+                        "kurt": _safe(combined_series.kurt()),
+                    },
+                    **indicator_stats,
+                }
+
+    if indicator_stats:
+        empty_stats = {"mean": None, "median": None, "std": None, "skew": None, "kurt": None}
+        for horizon in expected_horizons:
+            key = f"fwd_ret_{horizon}d"
+            indicator_stats.setdefault(key, empty_stats.copy())
 
     return BacktestResponse(
         equity_curve=equity_ts,
@@ -580,10 +711,12 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
         metrics=metrics,
         histogram=histogram_payload,
         indicator_statistics=indicator_stats,
+        horizon_results=horizon_results,
         universe_size=len(tickers),
         trades_count=len(trades),
         initial_capital=initial_capital,
         ending_equity=ending_equity,
         total_return=total_return,
         total_fees=total_fees,
+        hold_days=hold_days,
     )
