@@ -2,26 +2,48 @@
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #0f172a;
   background-color: #eef1ff;
-  --dashboard-gap: 5px;
-  --sidebar-max: 325px;
-  --sidebar-width: 325px;
-  --card-padding: 8px;
-  --card-radius: 10px;
-  --compact-font: 12px;
+  --background-color: #eef1ff;
+  font-size: 62.5%;
+  --space-xs: 0.4rem;
+  --space-sm: 0.8rem;
+  --space-md: 1.2rem;
+  --space-lg: 1.6rem;
+  --space-xl: 2.4rem;
+  --panel-radius: 1rem;
+  --card-padding: 1.2rem;
   --compact-line: 1.2;
-  --layout-scale: 1.4;
-  --sidebar-scale: 0.98;
-  --workspace-scale: 1.0;
-  --workspace-max-width: 3000px;
-  --workspace-padding-right: 0px;
+  --shadow-soft: 0 0.6rem 1.6rem rgba(46, 92, 255, 0.12);
 }
 
 body {
   margin: 0;
-  background-color: inherit;
+  background-color: var(--background-color);
   color: inherit;
   min-height: 100vh;
-  overflow: hidden;
+  font-size: 3.2rem;
+  line-height: 1.4;
+  overflow-y: auto;
+}
+
+
+.ant-typography,
+.ant-btn,
+.ant-select-selector,
+.ant-select-selection-item,
+.ant-select-selection-placeholder,
+.ant-input,
+.ant-input-number,
+.ant-input-number-input,
+.ant-picker,
+.ant-table,
+.ant-form,
+.ant-form-item-label > label,
+.ant-checkbox-wrapper,
+.ant-radio-wrapper,
+.ant-tooltip,
+.ant-statistic,
+.ant-descriptions {
+  font-size: 0.7em;
 }
 
 #root {
@@ -29,34 +51,24 @@ body {
 }
 
 .dashboard {
-  min-height: calc(100vh / var(--layout-scale));
-  height: calc(100vh / var(--layout-scale));
-  width: calc(100% / var(--layout-scale));
-  max-width: calc(1440px / var(--layout-scale));
-  margin: 0 auto;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--dashboard-gap);
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: var(--space-lg);
+  padding: clamp(1.2rem, 3vw, 2.4rem);
   box-sizing: border-box;
-  transform: scale(var(--layout-scale));
-  transform-origin: top left;
 }
 
 .dashboard__header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
 }
 
 .dashboard__heading > .ant-typography {
   margin: 0;
-}
-
-.dashboard__heading .ant-typography + .ant-typography {
-  font-size: 13px;
-  margin-top: 4px;
 }
 
 .dashboard__actions {
@@ -65,58 +77,43 @@ body {
 
 .dashboard__body {
   display: grid;
-  grid-template-columns: var(--sidebar-width, 370px) minmax(0, 1fr);
-  column-gap: var(--dashboard-gap);
-  row-gap: var(--dashboard-gap);
-  flex: 1;
-  min-height: 0;
+  grid-template-columns: minmax(24rem, 32vw) minmax(0, 1fr);
+  gap: var(--space-lg);
   align-items: stretch;
+  min-height: 0;
+}
+
+.dashboard__sidebar,
+.dashboard__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  min-width: 0;
 }
 
 .dashboard__sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dashboard-gap);
-  min-width: 0;
-  width: 100%;
-  min-height: 0;
   overflow-y: auto;
-  padding-right: 4px;
+  padding-right: clamp(0.4rem, 1vw, 0.8rem);
   scrollbar-gutter: stable;
 }
 
 .dashboard__sidebar-inner {
-  transform: scale(var(--sidebar-scale));
-  transform-origin: top left;
-  width: calc(100% / var(--sidebar-scale));
   display: flex;
   flex-direction: column;
-  gap: var(--dashboard-gap);
+  gap: var(--space-lg);
+  flex: 1;
 }
 
 .dashboard__content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dashboard-gap);
-  min-width: 0;
-  flex: 1;
-  align-items: flex-start;
-  justify-content: flex-start;
+  align-items: stretch;
 }
 
 .dashboard__workspace {
-  width: calc(100% / var(--workspace-scale));
-  max-width: calc(var(--workspace-max-width) / var(--workspace-scale));
-  transform: scale(var(--workspace-scale));
-  transform-origin: top left;
   display: flex;
   flex-direction: column;
-  gap: var(--dashboard-gap);
-  margin: 0;
+  gap: var(--space-lg);
   flex: 1;
-  justify-content: flex-start;
-  box-sizing: border-box;
-  padding-right: var(--workspace-padding-right);
+  min-height: 0;
 }
 
 .dashboard__workspace > * {
@@ -125,30 +122,30 @@ body {
 
 .dashboard__charts {
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--dashboard-gap);
+  grid-template-columns: repeat(auto-fit, minmax(28rem, 1fr));
+  gap: var(--space-lg);
   align-items: stretch;
-  justify-content: center;
-  grid-auto-rows: auto;
-  min-height: 0;
+  grid-auto-flow: dense;
 }
 
-.histogram-card {
-  grid-column: span 12;
+@media (max-width: 90rem) {
+  .dashboard__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.dashboard__charts > .result-card {
   min-width: 0;
 }
 
-.details-card {
-  grid-column: span 6;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
+.settings-card,
+.histogram-card,
 .equity-card {
-  grid-column: span 6;
-  min-width: 0;
+  grid-column: span 2;
+}
+
+.stats-card {
+  grid-column: span 1;
 }
 
 .table-card {
@@ -156,9 +153,18 @@ body {
   min-height: 0;
 }
 
+@media (max-width: 90rem) {
+  .settings-card,
+  .histogram-card,
+  .equity-card,
+  .stats-card {
+    grid-column: span 1;
+  }
+}
+
 .result-card {
-  border-radius: var(--card-radius) !important;
-  box-shadow: 0 6px 16px rgba(46, 92, 255, 0.08);
+  border-radius: var(--panel-radius) !important;
+  box-shadow: 0 0.6rem 1.6rem rgba(46, 92, 255, 0.08);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -168,12 +174,64 @@ body {
   padding: var(--card-padding);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.8rem;
 }
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-md) var(--space-lg);
+}
+
+.settings-grid__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.7em;
+  line-height: 1.25;
+}
+
+.settings-grid__label {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #334155;
+  text-transform: uppercase;
+}
+
+.settings-grid__value {
+  color: #111827;
+  word-break: break-word;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: var(--space-md);
+  margin-top: var(--space-sm);
+}
+
+.metrics-grid__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.7em;
+  line-height: 1.25;
+}
+
+.metrics-grid__label {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #334155;
+  text-transform: uppercase;
+}
+
+.metrics-grid__value {
+  color: #111827;
+}
+
 
 .intro-card {
   height: auto;
-  max-width: 640px;
+  max-width: 64rem;
   margin: 0 auto;
 }
 
@@ -187,7 +245,7 @@ body {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
+  gap: 0.6rem;
 }
 
 .card-header .ant-typography {
@@ -197,8 +255,8 @@ body {
 .card-header__actions {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 11px;
+  gap: 0.8rem;
+  font-size: 0.65em;
   color: #4b5563;
 }
 
@@ -209,18 +267,18 @@ body {
 
 .run-summary {
   display: grid;
-  gap: 6px;
-  padding-top: 4px;
+  gap: 0.6rem;
+  padding-top: 0.4rem;
 }
 
 .run-summary__section {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0.4rem;
 }
 
 .run-summary__title {
-  font-size: 11px;
+  font-size: 0.65em;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -229,20 +287,20 @@ body {
 
 .run-summary__grid {
   display: grid;
-  gap: 4px 8px;
-  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 0.4rem 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(9.6rem, 1fr));
 }
 
 .run-summary__grid--metrics {
-  padding-top: 6px;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  padding-top: 0.6rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
 }
 
 .run-summary__item {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  font-size: 11px;
+  gap: 0.2rem;
+  font-size: 0.65em;
   line-height: 1.25;
 }
 
@@ -274,26 +332,26 @@ body {
 .form-grid .ant-input-number-group-addon {
   display: flex;
   align-items: center;
-  padding: 0 6px;
+  padding: 0 0.6rem;
 }
 
 .kpi-bar {
   display: flex;
-  gap: 8px;
+  gap: 0.8rem;
   background: #dbe4ff;
-  border-radius: var(--card-radius);
-  padding: 6px 10px;
+  border-radius: var(--panel-radius);
+  padding: 0.6rem 1rem;
   align-items: stretch;
 }
 
 .kpi-bar__item {
   display: flex;
   flex-direction: column;
-  min-width: 80px;
+  min-width: 8rem;
 }
 
 .kpi-bar__label {
-  font-size: 11px;
+  font-size: 0.65em;
   color: #334155;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -301,20 +359,20 @@ body {
 
 .kpi-bar__value {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 0.8em;
   color: #111827;
 }
 
 .sidebar-form {
   display: grid;
   grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
-  column-gap: var(--dashboard-gap);
-  row-gap: 4px;
+  column-gap: var(--space-lg);
+  row-gap: 0.4rem;
   align-content: start;
 }
 
 .sidebar-form .ant-form-item {
-  margin-bottom: 6px;
+  margin-bottom: 0.6rem;
 }
 
 .sidebar-form .sidebar-card {
@@ -327,11 +385,11 @@ body {
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 0.8rem;
 }
 
 .sidebar-form__actions .ant-space {
-  gap: 6px !important;
+  gap: 0.6rem !important;
 }
 
 .sidebar-card--half {
@@ -343,23 +401,23 @@ body {
 }
 
 .sidebar-form .sidebar-card {
-  border-radius: var(--card-radius);
-  box-shadow: 0 4px 12px rgba(46, 92, 255, 0.06);
+  border-radius: var(--panel-radius);
+  box-shadow: 0 0.4rem 1.2rem rgba(46, 92, 255, 0.06);
 }
 
 .sidebar-form .ant-card-body {
-  padding: 8px;
+  padding: 0.8rem;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0.4rem;
 }
 
 .sidebar-form--compact .ant-form-item {
-  margin-bottom: 4px;
+  margin-bottom: 0.4rem;
 }
 
 .sidebar-form--compact .ant-form-item-label > label {
-  font-size: 12px;
+  font-size: 0.7em;
   color: #1f2937;
   line-height: var(--compact-line);
 }
@@ -370,8 +428,8 @@ body {
 .sidebar-form--compact .ant-input,
 .sidebar-form--compact .ant-select-single .ant-select-selector,
 .sidebar-form--compact .ant-select-multiple .ant-select-selector {
-  min-height: 28px;
-  font-size: 12px;
+  min-height: 2.8rem;
+  font-size: 0.7em;
 }
 
 .sidebar-form--compact .ant-input-number,
@@ -382,8 +440,8 @@ body {
 }
 
 .sidebar-form--compact .ant-input-number .ant-input-number-input {
-  height: 28px;
-  padding: 0 4px;
+  height: 2.8rem;
+  padding: 0 0.4rem;
 }
 
 .sidebar-form--compact .ant-input-number-handler-wrap {
@@ -391,17 +449,17 @@ body {
 }
 
 .sidebar-form--compact .ant-select-single .ant-select-selector {
-  padding: 0 4px;
+  padding: 0 0.4rem;
 }
 
 .sidebar-form--compact .ant-select-selection-item,
 .sidebar-form--compact .ant-select-selection-placeholder {
-  font-size: 12px;
+  font-size: 0.7em;
 }
 
 .sidebar-form--compact .ant-picker-input > input {
-  font-size: 12px;
-  padding: 0 4px;
+  font-size: 0.7em;
+  padding: 0 0.4rem;
 }
 
 .sidebar-form--compact .ant-switch {
@@ -410,7 +468,7 @@ body {
 
 .form-grid {
   display: grid;
-  gap: 3px;
+  gap: 0.3rem;
 }
 
 .form-grid > * {
@@ -424,7 +482,7 @@ body {
 .form-grid--two {
   grid-template-columns: 3fr 1fr;
   align-items: end;
-  gap: 6px;
+  gap: 0.6rem;
 }
 
 .form-grid--four {
@@ -450,17 +508,17 @@ body {
 .indicator-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 3px;
+  gap: 0.3rem;
 }
 
 .indicator-grid__item {
   background: #f8f9ff;
-  border: 1px solid #dbe4ff;
-  border-radius: 8px;
-  padding: 3px 4px;
+  border: 0.1rem solid #dbe4ff;
+  border-radius: 0.8rem;
+  padding: 0.3rem 0.4rem;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 0.3rem;
   min-width: 0;
 }
 
@@ -468,7 +526,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
+  gap: 0.6rem;
 }
 
 .indicator-header .ant-typography {
@@ -477,16 +535,16 @@ body {
 
 .indicator-fields {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
-  gap: 3px;
+  grid-template-columns: repeat(auto-fit, minmax(4.8rem, 1fr));
+  gap: 0.3rem;
 }
 
 .indicator-fields--compact {
-  grid-template-columns: repeat(2, minmax(48px, 1fr));
+  grid-template-columns: repeat(2, minmax(4.8rem, 1fr));
 }
 
 .indicator-fields--triple {
-  grid-template-columns: repeat(3, minmax(0, 56px));
+  grid-template-columns: repeat(3, minmax(0, 5.6rem));
   justify-content: start;
 }
 
@@ -503,17 +561,17 @@ body {
 .histogram-explorer {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.8rem;
 }
 
 .histogram-explorer__controls {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0.6rem;
 }
 
 .histogram-explorer__label {
-  font-size: 11px;
+  font-size: 0.65em;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -523,17 +581,17 @@ body {
 .histogram-explorer__choices {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 0.6rem;
 }
 
 .histogram-explorer__choice {
-  border: 1px solid #c7d2fe;
-  border-radius: 9999px;
-  padding: 2px 10px;
+  border: 0.1rem solid #c7d2fe;
+  border-radius: 999.9rem;
+  padding: 0.2rem 1rem;
   background: #eef2ff;
   color: #312e81;
-  font-size: 12px;
-  line-height: 20px;
+  font-size: 0.7em;
+  line-height: 2rem;
   display: inline-flex;
   align-items: center;
   transition: all 0.2s ease;
@@ -556,7 +614,7 @@ body {
   background: #4c6ef5;
   border-color: #3b5bdb;
   color: #fff;
-  box-shadow: 0 0 0 1px rgba(76, 110, 245, 0.24);
+  box-shadow: 0 0 0 0.1rem rgba(76, 110, 245, 0.24);
 }
 
 .histogram-explorer__choice.ant-checkbox-wrapper-checked:hover {
@@ -565,7 +623,7 @@ body {
 }
 
 .histogram-summary {
-  margin-top: 4px;
+  margin-top: 0.4rem;
 }
 
 .indicator-fields .ant-select,
@@ -578,31 +636,31 @@ body {
 
 .indicator-fields .ant-select-selector,
 .indicator-fields .ant-input-number-input {
-  padding-left: 6px;
-  padding-right: 6px;
+  padding-left: 0.6rem;
+  padding-right: 0.6rem;
 }
 
 .indicator-stack {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 5px;
+  gap: 0.5rem;
 }
 
 .indicator-stack__section {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 0.5rem;
 }
 
 .indicator-stack__divider {
-  height: 1px;
+  height: 0.1rem;
   background: #dbe4ff;
 }
 
 .sidebar-card__action {
   padding: 0;
   height: auto;
-  font-size: 11px;
+  font-size: 0.65em;
   font-weight: 600;
 }
 
@@ -612,15 +670,15 @@ body {
 
 .describe-modal__list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 8px 16px;
-  margin: 12px 0 0;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.8rem 1.6rem;
+  margin: 1.2rem 0 0;
 }
 
 .describe-modal__item {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0.2rem;
 }
 
 .describe-modal__term {
@@ -629,19 +687,19 @@ body {
 }
 
 .describe-modal__definition {
-  font-size: 12px;
+  font-size: 0.7em;
   color: #475569;
   line-height: 1.4;
 }
 
 .sidebar-form--compact .ant-btn {
-  height: 28px;
-  padding: 0 10px;
-  font-size: 12px;
+  height: 2.8rem;
+  padding: 0 1rem;
+  font-size: 0.7em;
 }
 
 .sidebar-form--compact .ant-space {
-  font-size: 12px;
+  font-size: 0.7em;
 }
 
 .sidebar-form--compact .ant-form-item-control-input-content {
@@ -661,25 +719,25 @@ body {
 }
 
 .sidebar-form--compact .ant-space-item .ant-btn {
-  height: 28px;
+  height: 2.8rem;
 }
 
 .sidebar-form--compact .ant-card-head {
-  min-height: 32px;
-  padding: 0 10px;
+  min-height: 3.2rem;
+  padding: 0 1rem;
 }
 
 .sidebar-form--compact .ant-card-head-title {
-  padding: 4px 0;
-  font-size: 13px;
+  padding: 0.4rem 0;
+  font-size: 0.75em;
 }
 
 .sidebar-form--compact .ant-card-body {
-  padding: 10px;
+  padding: 1rem;
 }
 
 .sidebar-form--compact .ant-select-selection-overflow {
-  row-gap: 2px;
+  row-gap: 0.2rem;
 }
 
 .sidebar-form--compact .ant-select-selection-overflow-item {
@@ -687,11 +745,11 @@ body {
 }
 
 .sidebar-form--compact .ant-select-selection-item {
-  padding-inline-end: 14px;
+  padding-inline-end: 1.4rem;
 }
 
 .sidebar-form--compact .ant-select-selection-item-remove {
-  right: 2px;
+  right: 0.2rem;
 }
 
 .sidebar-form--compact .ant-form-item-control-input {
@@ -707,27 +765,27 @@ body {
 }
 
 .sidebar-form--compact .ant-space {
-  gap: 6px !important;
+  gap: 0.6rem !important;
 }
 
 .dashboard__content .intro-card .ant-card-body {
   justify-content: center;
-  min-height: 240px;
+  min-height: 24rem;
 }
 
 .indicator-table {
-  font-size: 12px;
+  font-size: 0.7em;
 }
 
 .indicator-table .ant-table-thead > tr > th {
-  padding: 6px 8px;
-  font-size: 11px;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.65em;
   background: #eef2ff;
 }
 
 .indicator-table .ant-table-tbody > tr > td {
-  padding: 4px 8px;
-  font-size: 12px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.7em;
 }
 
 .indicator-table--compact .ant-table-cell {
@@ -742,8 +800,8 @@ body {
 .app-footer {
   display: flex;
   justify-content: center;
-  gap: 12px;
-  font-size: 12px;
+  gap: 1.2rem;
+  font-size: 0.7em;
   color: #475569;
 }
 
@@ -752,33 +810,29 @@ body {
 }
 
 [data-compact="true"] .dashboard__heading .ant-typography + .ant-typography {
-  font-size: 12px;
-}
-
-[data-compact="true"] {
-  --layout-scale: 0.89375;
+  font-size: 0.7em;
 }
 
 [data-compact="true"] .kpi-bar__value {
-  font-size: 13px;
+  font-size: 0.75em;
 }
 
 [data-compact="true"] .dashboard__header .ant-typography {
-  font-size: 20px;
+  font-size: 1.1em;
 }
 
 [data-compact="true"] .result-card .ant-card-body {
-  gap: 6px;
+  gap: 0.6rem;
 }
 
 [data-compact="true"] .dashboard__charts {
-  gap: 6px;
+  gap: 0.6rem;
 }
 
 [data-compact="true"] .sidebar-form {
-  gap: 6px;
+  gap: 0.6rem;
 }
 
 [data-compact="true"] .sidebar-form--compact .ant-card-body {
-  gap: 6px;
+  gap: 0.6rem;
 }

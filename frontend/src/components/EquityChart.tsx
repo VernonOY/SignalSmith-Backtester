@@ -11,7 +11,7 @@ interface Props {
   loading?: boolean;
   onReady?: (instance: ECharts) => void;
   compact?: boolean;
-  height?: number;
+  height?: string;
 }
 
 const EquityChart = ({ data, loading, onReady, compact = false, height }: Props) => {
@@ -124,7 +124,7 @@ const EquityChart = ({ data, loading, onReady, compact = false, height }: Props)
     onReady?.(instance);
   };
 
-  const chartHeight = height ?? (compact ? 220 : 288);
+  const chartHeight = height ?? (compact ? "30vh" : "38vh");
 
   return <ReactECharts option={option} style={{ height: chartHeight }} onChartReady={handleReady} />;
 };
