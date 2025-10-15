@@ -24,12 +24,11 @@ const TradesTable = ({ trades }: Props) => {
 
   return (
     <Table
-      size="small"
       rowKey={(record) => `${record.enter_date}-${record.symbol}`}
       columns={columns}
       dataSource={trades}
       pagination={{ pageSize: 20, showSizeChanger: false }}
-      scroll={{ y: 420 }}
+      scroll={{ y: "50vh" }}
     />
   );
 };

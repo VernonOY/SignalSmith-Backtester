@@ -34,6 +34,14 @@ const EquityChart = ({ data, loading, onReady, compact = false, height }: Props)
     return <Empty description="No equity data" />;
   }
 
+  const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1440;
+  const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 900;
+  const axisFont = Math.max(12, Math.min(viewportWidth, viewportHeight) * 0.011);
+  const axisMargin = axisFont * 0.8;
+  const gridPadding = axisFont * 3;
+  const sliderHeight = Math.max(24, axisFont * 2.4);
+  const handleSize = Math.max(10, axisFont * 0.9);
+
   const seriesData = useMemo(
     () => data.dates.map((date, idx) => [date, data.values[idx]] as [string, number]),
     [data.dates, data.values]

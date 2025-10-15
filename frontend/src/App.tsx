@@ -30,27 +30,6 @@ const App = () => {
   const [selectedHorizon, setSelectedHorizon] = useState<number | null>(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty("--dashboard-compact", compactMode ? "1" : "0");
-    if (compactMode) {
-      root.setAttribute("data-compact", "true");
-    } else {
-      root.removeAttribute("data-compact");
-    }
-  }, [compactMode]);
-
-  const fitToSinglePage = useCallback((enable = true) => {
-    setCompactMode(enable);
-  }, []);
-
-  useEffect(() => {
-    (window as any).fitToSinglePage = fitToSinglePage;
-    return () => {
-      delete (window as any).fitToSinglePage;
-    };
-  }, [fitToSinglePage]);
-
   const handleSubmit = async (payload: BacktestRequest, _rawValues?: any) => {
     try {
       setLoading(true);
@@ -69,8 +48,6 @@ const App = () => {
   const handleExportScreenshot = useCallback(async () => {
     const container = dashboardRef.current;
     if (!container) return;
-    const wasCompact = compactMode;
-    fitToSinglePage(true);
     await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
     const canvas = await html2canvas(
       container,
@@ -83,10 +60,7 @@ const App = () => {
     link.href = canvas.toDataURL("image/png");
     link.download = "signalsmith-dashboard.png";
     link.click();
-    if (!wasCompact) {
-      fitToSinglePage(false);
-    }
-  }, [compactMode, fitToSinglePage]);
+  }, []);
 
   const optionalCurrency = useCallback(
     (value?: number | null) => (typeof value === "number" ? formatCurrency(value, 0) : "—"),
@@ -302,32 +276,30 @@ const App = () => {
       theme={{
         algorithm: theme.compactAlgorithm,
         token: {
-          borderRadius: 8,
+          borderRadius: 16,
+          fontSize: 28,
+          fontSizeHeading3: 40,
+          fontSizeHeading4: 32,
         },
       }}
     >
-      <div className="dashboard" ref={dashboardRef} data-compact={compactMode}>
+      <div className="dashboard" ref={dashboardRef}>
         <header className="dashboard__header">
           <div className="dashboard__heading">
             <Title level={3}>SignalSmith Backtester</Title>
           </div>
           <div className="dashboard__actions">
-            <Button size="small" type="primary" onClick={handleExportScreenshot}>
+            <Button size="large" type="primary" onClick={handleExportScreenshot}>
               Export Screenshot
             </Button>
           </div>
         </header>
-
-        <div className="dashboard__body">
-          <aside className="dashboard__sidebar">
-            <div className="dashboard__sidebar-inner">
-              <SidebarForm
-                loading={loading}
-                onSubmit={handleSubmit}
-                compact={compactMode}
-              />
+        <div className="dashboard__layout">
+          <section className="dashboard__column dashboard__column--inputs">
+            <div className="dashboard__panel dashboard__panel--form">
+              <SidebarForm loading={loading} onSubmit={handleSubmit} />
             </div>
-          </aside>
+          </section>
 
           <main className="dashboard__content">
             <div className="dashboard__workspace">
@@ -417,9 +389,16 @@ const App = () => {
                     Adjust parameters on the left and run the engine to populate the dashboard.
                   </Text>
                 </Card>
-              )}
-            </div>
-          </main>
+              </div>
+            ) : (
+              <Card className="result-card intro-card">
+                <Title level={4}>Configure &amp; Run</Title>
+                <Text type="secondary">
+                  Adjust parameters on the left and run the engine to populate the dashboard.
+                </Text>
+              </Card>
+            )}
+          </section>
         </div>
 
         <footer className="app-footer">

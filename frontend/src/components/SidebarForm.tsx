@@ -150,7 +150,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
 
   const renderDescribeButton = useCallback(
     () => (
-      <Button type="link" size="small" className="sidebar-card__action" onClick={openDescribe}>
+      <Button type="link" className="sidebar-card__action" onClick={openDescribe}>
         Describe
       </Button>
     ),
@@ -309,7 +309,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
       <Form
         form={form}
         layout="vertical"
-        size="small"
+        size="large"
         className={`sidebar-form${compact ? " sidebar-form--compact" : ""}`}
         onFinish={submit}
         initialValues={{
@@ -347,7 +347,6 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
       >
         <Card
           title="Run Settings"
-          size="small"
           bordered={false}
           className="sidebar-card sidebar-card--compact sidebar-card--full"
           extra={renderDescribeButton()}
@@ -387,7 +386,6 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
 
         <Card
           title="Indicators"
-          size="small"
           bordered={false}
           className="sidebar-card sidebar-card--indicators sidebar-card--full"
           extra={renderDescribeButton()}
@@ -398,9 +396,9 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                 <Tooltip title="Relative Strength Index">
                   <Text strong>RSI</Text>
                 </Tooltip>
-                <Space size={6} align="center" className="indicator-header__actions">
+                <Space size="small" align="center" className="indicator-header__actions">
                   <Form.Item name="enable_rsi" valuePropName="checked" noStyle>
-                    <Switch size="small" aria-label="Toggle RSI" />
+                    <Switch aria-label="Toggle RSI" />
                   </Form.Item>
                 </Space>
               </div>
@@ -433,9 +431,9 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                 <Tooltip title="Moving Average Convergence Divergence">
                   <Text strong>MACD</Text>
                 </Tooltip>
-                <Space size={6} align="center" className="indicator-header__actions">
+                <Space size="small" align="center" className="indicator-header__actions">
                   <Form.Item name="use_macd" valuePropName="checked" noStyle>
-                    <Switch size="small" aria-label="Toggle MACD" />
+                    <Switch aria-label="Toggle MACD" />
                   </Form.Item>
                 </Space>
               </div>
@@ -467,9 +465,9 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                 <Tooltip title="On-Balance Volume">
                   <Text strong>OBV</Text>
                 </Tooltip>
-                <Space size={6} align="center" className="indicator-header__actions">
+                <Space size="small" align="center" className="indicator-header__actions">
                   <Form.Item name="use_obv" valuePropName="checked" noStyle>
-                    <Switch size="small" aria-label="Toggle OBV" />
+                    <Switch aria-label="Toggle OBV" />
                   </Form.Item>
                 </Space>
               </div>
@@ -496,9 +494,9 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                 <Tooltip title="Aroon Oscillator">
                   <Text strong>AROON</Text>
                 </Tooltip>
-                <Space size={6} align="center" className="indicator-header__actions">
+                <Space size="small" align="center" className="indicator-header__actions">
                   <Form.Item name="use_aroon" valuePropName="checked" noStyle>
-                    <Switch size="small" aria-label="Toggle Aroon" />
+                    <Switch aria-label="Toggle Aroon" />
                   </Form.Item>
                 </Space>
               </div>
@@ -522,11 +520,11 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                     <Tooltip title="EMA crossover">
                       <Text strong>EMA</Text>
                     </Tooltip>
-                    <Space size={6} align="center" className="indicator-header__actions">
-                      <Form.Item name="use_ema" valuePropName="checked" noStyle>
-                        <Switch size="small" aria-label="Toggle EMA" />
-                      </Form.Item>
-                    </Space>
+                <Space size="small" align="center" className="indicator-header__actions">
+                  <Form.Item name="use_ema" valuePropName="checked" noStyle>
+                    <Switch aria-label="Toggle EMA" />
+                  </Form.Item>
+                </Space>
                   </div>
                   <div className="indicator-fields indicator-fields--compact">
                     <Form.Item label="Short" name="ema_short" className="indicator-field">
@@ -543,11 +541,11 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                     <Tooltip title="Average Directional Index">
                       <Text strong>ADX</Text>
                     </Tooltip>
-                    <Space size={6} align="center" className="indicator-header__actions">
-                      <Form.Item name="use_adx" valuePropName="checked" noStyle>
-                        <Switch size="small" aria-label="Toggle ADX" />
-                      </Form.Item>
-                    </Space>
+                <Space size="small" align="center" className="indicator-header__actions">
+                  <Form.Item name="use_adx" valuePropName="checked" noStyle>
+                    <Switch aria-label="Toggle ADX" />
+                  </Form.Item>
+                </Space>
                   </div>
                   <div className="indicator-fields indicator-fields--compact">
                     <Form.Item label="Lkb" name="adx_n" className="indicator-field">
@@ -566,9 +564,9 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                 <Tooltip title="Stochastic Oscillator">
                   <Text strong>STOCH</Text>
                 </Tooltip>
-                <Space size={6} align="center" className="indicator-header__actions">
+                <Space size="small" align="center" className="indicator-header__actions">
                   <Form.Item name="use_stoch" valuePropName="checked" noStyle>
-                    <Switch size="small" aria-label="Toggle Stochastic" />
+                    <Switch aria-label="Toggle Stochastic" />
                   </Form.Item>
                 </Space>
               </div>
@@ -604,13 +602,11 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
 
         <Card
           title="Universe Filters"
-          size="small"
           bordered={false}
           className="sidebar-card sidebar-card--half"
           extra={
             <Button
               type="link"
-              size="small"
               className="sidebar-card__action"
               onClick={() => setShowUniverseFilters((prev) => !prev)}
             >
@@ -638,13 +634,11 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
 
         <Card
           title="Signal Rules"
-          size="small"
           bordered={false}
           className="sidebar-card sidebar-card--half"
           extra={
             <Button
               type="link"
-              size="small"
               className="sidebar-card__action"
               onClick={() => setShowSignalRules((prev) => !prev)}
             >

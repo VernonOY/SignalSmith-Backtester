@@ -96,7 +96,7 @@ body {
   min-width: 0;
 }
 
-.dashboard__charts {
+.dashboard__results-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: var(--space-lg);
@@ -127,6 +127,10 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+.result-card .ant-card-head {
+  border-bottom: none;
 }
 
 .result-card .ant-card-body {
@@ -180,7 +184,8 @@ body {
   text-transform: uppercase;
 }
 
-.run-summary__grid {
+.run-summary__grid,
+.histogram-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
   gap: var(--space-sm) var(--space-md);
@@ -195,14 +200,13 @@ body {
 }
 
 .run-summary__label {
-  color: #475569;
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
 
 .run-summary__value {
-  color: #111827;
+  color: #0f172a;
   word-break: break-word;
   font-variant-numeric: tabular-nums;
 }
@@ -341,16 +345,19 @@ body {
 }
 
 .form-grid--two {
-  grid-template-columns: 3fr 1fr;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--space-sm);
   align-items: end;
 }
 
 .form-grid--four {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-sm);
 }
 
 .form-grid--universe {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-sm);
 }
 
 .form-grid--signals {
