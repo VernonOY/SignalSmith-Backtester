@@ -349,7 +349,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
           title="Run Settings"
           size="small"
           bordered={false}
-          className="sidebar-card resizable-card sidebar-card--compact sidebar-card--full"
+          className="sidebar-card sidebar-card--compact sidebar-card--full"
           extra={renderDescribeButton()}
         >
           <Form.Item name="strategy" hidden initialValue="mean_reversion">
@@ -389,7 +389,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
           title="Indicators"
           size="small"
           bordered={false}
-          className="sidebar-card resizable-card sidebar-card--indicators sidebar-card--full"
+          className="sidebar-card sidebar-card--indicators sidebar-card--full"
           extra={renderDescribeButton()}
         >
           <div className="indicator-grid">
@@ -606,7 +606,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
           title="Universe Filters"
           size="small"
           bordered={false}
-          className="sidebar-card resizable-card sidebar-card--half"
+          className="sidebar-card sidebar-card--half"
           extra={
             <Button
               type="link"
@@ -640,7 +640,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
           title="Signal Rules"
           size="small"
           bordered={false}
-          className="sidebar-card resizable-card sidebar-card--half"
+          className="sidebar-card sidebar-card--half"
           extra={
             <Button
               type="link"
