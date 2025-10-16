@@ -30,15 +30,43 @@ const App = () => {
   const [selectedHorizon, setSelectedHorizon] = useState<number | null>(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
 
+  const calculateOptimalScale = useCallback(() => {
+    if (!dashboardRef.current) return 1;
+
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // 目标最小宽度和高度（基准值）
+    const minWidth = 1200;
+    const minHeight = response ? 800 : 600;
+
+    // 计算缩放比例
+    const scaleX = viewportWidth / minWidth;
+    const scaleY = viewportHeight / minHeight;
+
+    // 取较小的比例，确保内容完全可见
+    let scale = Math.min(scaleX, scaleY);
+
+    // 限制缩放范围
+    scale = Math.max(0.5, Math.min(scale, 1.5));
+
+    return scale;
+  }, [response]);
+
   useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty("--dashboard-compact", compactMode ? "1" : "0");
-    if (compactMode) {
-      root.setAttribute("data-compact", "true");
-    } else {
-      root.removeAttribute("data-compact");
-    }
-  }, [compactMode]);
+    const updateScale = () => {
+      const root = document.documentElement;
+      const scale = calculateOptimalScale();
+      root.style.setProperty("--layout-scale", scale.toString());
+    };
+
+    updateScale();
+    window.addEventListener("resize", updateScale);
+
+    return () => {
+      window.removeEventListener("resize", updateScale);
+    };
+  }, [calculateOptimalScale, response]);
 
   const fitToSinglePage = useCallback((enable = true) => {
     setCompactMode(enable);
@@ -397,7 +425,7 @@ const App = () => {
                           data={response.histogram}
                           loading={loading}
                           compact
-                          height={compactMode ? 360 : 440}
+                          height={280}
                         />
                       </section>
                     )}
@@ -454,7 +482,7 @@ const App = () => {
                             data={equitySeries}
                             loading={loading}
                             compact
-                            height={compactMode ? 250 : 310}
+                            height={220}
                           />
                         </div>
 
