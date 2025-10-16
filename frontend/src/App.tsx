@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, ConfigProvider, Select, Typography, message, theme } from "antd";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import html2canvas from "html2canvas";
 import SidebarForm from "./components/SidebarForm";
 import { BacktestRequest, BacktestResponse } from "./types";
@@ -374,142 +373,117 @@ const App = () => {
         </header>
 
         <div className="dashboard__body">
-          <div className="dashboard__surface">
-            <PanelGroup
-              direction="horizontal"
-              className="dashboard__panes"
-              autoSaveId="dashboard-main-split"
-            >
-              <Panel
-                className="dashboard__panel dashboard__panel--sidebar"
-                defaultSize={32}
-                minSize={26}
-                maxSize={44}
-              >
-                <aside className="dashboard__sidebar">
-                  <div className="dashboard__sidebar-inner">
-                    <SidebarForm
-                      loading={loading}
-                      onSubmit={handleSubmit}
-                      compact={compactMode}
-                    />
-                  </div>
-                </aside>
-              </Panel>
+          <aside className="dashboard__sidebar">
+            <div className="dashboard__sidebar-inner">
+              <SidebarForm
+                loading={loading}
+                onSubmit={handleSubmit}
+                compact={compactMode}
+              />
+            </div>
+          </aside>
 
-              <PanelResizeHandle className="dashboard__divider" />
+          <main className="dashboard__content">
+            <div className="dashboard__workspace">
+              {response ? (
+                <div className="dashboard__charts">
+                  <Card className="result-card mega-card" size="small">
+                    {response.histogram && (
+                      <section className="mega-card__section mega-card__section--histogram">
+                        <div className="card-header">
+                          <Title level={4}>Return Distribution</Title>
+                        </div>
+                        <HistogramChart
+                          data={response.histogram}
+                          loading={loading}
+                          compact
+                          height={compactMode ? 360 : 440}
+                        />
+                      </section>
+                    )}
 
-              <Panel
-                className="dashboard__panel dashboard__panel--workspace"
-                defaultSize={68}
-                minSize={42}
-              >
-                <main className="dashboard__content">
-                  <div className="dashboard__workspace">
-                    {response ? (
-                      <div className="dashboard__workspace-scroll">
-                        <Card className="result-card mega-card" size="small">
-                          {response.histogram && (
-                            <section className="mega-card__section mega-card__section--histogram">
-                              <div className="card-header">
-                                <Title level={4}>Return Distribution</Title>
+                    <div className="mega-card__split">
+                      <section className="mega-card__column mega-card__column--details">
+                        {hasIndicatorStats && (
+                          <div className="mega-card__section">
+                            <div className="card-header">
+                              <Title level={4}>Indicator Statistics</Title>
+                            </div>
+                            <IndicatorStatsTable stats={response!.indicator_statistics!} compact />
+                          </div>
+                        )}
+
+                        {settingsSummary.length > 0 && (
+                          <div className="mega-card__section">
+                            <div className="run-summary">
+                              <div className="run-summary__section run-summary__section--settings">
+                                <div className="run-summary__title">Settings</div>
+                                <div className="run-summary__grid run-summary__grid--dense">
+                                  {settingsSummary.map((item, index) => (
+                                    <div className="run-summary__item" key={`settings-${item.label}-${index}`}>
+                                      <span className="run-summary__label">{item.label}</span>
+                                      <span className="run-summary__value">{item.value}</span>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
-                              <HistogramChart
-                                data={response.histogram}
-                                loading={loading}
-                                compact
-                                height={compactMode ? 360 : 440}
-                              />
-                            </section>
-                          )}
+                            </div>
+                          </div>
+                        )}
+                      </section>
 
-                          <div className="mega-card__split">
-                            <section className="mega-card__column mega-card__column--details">
-                              {hasIndicatorStats && (
-                                <div className="mega-card__section">
-                                  <div className="card-header">
-                                    <Title level={4}>Indicator Statistics</Title>
-                                  </div>
-                                  <IndicatorStatsTable stats={response!.indicator_statistics!} compact />
-                                </div>
-                              )}
-
-                              {settingsSummary.length > 0 && (
-                                <div className="mega-card__section">
-                                  <div className="run-summary">
-                                    <div className="run-summary__section run-summary__section--settings">
-                                      <div className="run-summary__title">Settings</div>
-                                      <div className="run-summary__grid run-summary__grid--dense">
-                                        {settingsSummary.map((item, index) => (
-                                          <div className="run-summary__item" key={`settings-${item.label}-${index}`}>
-                                            <span className="run-summary__label">{item.label}</span>
-                                            <span className="run-summary__value">{item.value}</span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </section>
-
-                            <section className="mega-card__column mega-card__column--equity">
-                              <div className="mega-card__section">
-                                <div className="card-header">
-                                  <Title level={4}>Equity Curve</Title>
-                                  {horizonOptions.length > 0 && (
-                                    <div className="card-header__actions">
-                                      <span className="card-header__label">Holding period</span>
-                                      <Select
-                                        size="small"
-                                        value={activeHorizon ?? undefined}
-                                        onChange={(value: number) => setSelectedHorizon(value)}
-                                        options={horizonOptions}
-                                        style={{ minWidth: 96 }}
-                                        disabled={loading}
-                                      />
-                                    </div>
-                                  )}
-                                </div>
-                                <EquityChart
-                                  data={equitySeries}
-                                  loading={loading}
-                                  compact
-                                  height={compactMode ? 250 : 310}
+                      <section className="mega-card__column mega-card__column--equity">
+                        <div className="mega-card__section">
+                          <div className="card-header">
+                            <Title level={4}>Equity Curve</Title>
+                            {horizonOptions.length > 0 && (
+                              <div className="card-header__actions">
+                                <span className="card-header__label">Holding period</span>
+                                <Select
+                                  size="small"
+                                  value={activeHorizon ?? undefined}
+                                  onChange={(value: number) => setSelectedHorizon(value)}
+                                  options={horizonOptions}
+                                  style={{ minWidth: 96 }}
+                                  disabled={loading}
                                 />
                               </div>
-
-                              {equityMetrics.length > 0 && (
-                                <div className="mega-card__section">
-                                  <div className="run-summary__grid run-summary__grid--metrics">
-                                    {equityMetrics.map((metric) => (
-                                      <div className="run-summary__item" key={metric.key}>
-                                        <span className="run-summary__label">{metric.label}</span>
-                                        <span className="run-summary__value">{metric.value}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </section>
+                            )}
                           </div>
-                        </Card>
-                      </div>
-                    ) : (
-                      <div className="dashboard__placeholder">
-                        <div className="dashboard__placeholder-inner">
-                          <Title level={4}>Configure &amp; Run</Title>
-                          <Text type="secondary">
-                            Adjust parameters on the left and run the engine to populate the dashboard.
-                          </Text>
+                          <EquityChart
+                            data={equitySeries}
+                            loading={loading}
+                            compact
+                            height={compactMode ? 250 : 310}
+                          />
                         </div>
-                      </div>
-                    )}
-                  </div>
-                </main>
-              </Panel>
-            </PanelGroup>
-          </div>
+
+                        {equityMetrics.length > 0 && (
+                          <div className="mega-card__section">
+                            <div className="run-summary__grid run-summary__grid--metrics">
+                              {equityMetrics.map((metric) => (
+                                <div className="run-summary__item" key={metric.key}>
+                                  <span className="run-summary__label">{metric.label}</span>
+                                  <span className="run-summary__value">{metric.value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </section>
+                    </div>
+                  </Card>
+                </div>
+              ) : (
+                <Card className="result-card intro-card" size="small">
+                  <Title level={4}>Configure &amp; Run</Title>
+                  <Text type="secondary">
+                    Adjust parameters on the left and run the engine to populate the dashboard.
+                  </Text>
+                </Card>
+              )}
+            </div>
+          </main>
         </div>
 
         <footer className="app-footer">
