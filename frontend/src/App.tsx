@@ -342,13 +342,14 @@ const App = () => {
     return items.length ? items : [{ label: "Signals", value: "None" }];
   }, [lastRunConfig]);
 
+  const settingsSummary = useMemo(() => {
+    if (!lastRunConfig) {
+      return [] as InfoTag[];
+    }
+    return [...runSettingsSummary, ...universeSummary, ...signalSummary];
+  }, [lastRunConfig, runSettingsSummary, universeSummary, signalSummary]);
 
   const hasIndicatorStats = Boolean(response?.indicator_statistics);
-  const hasRunSettings = runSettingsSummary.length > 0;
-  const hasUniverseDetails = Boolean(lastRunConfig) && universeSummary.length > 0;
-  const hasSignalDetails = Boolean(lastRunConfig) && signalSummary.length > 0;
-  const showDetailsCard =
-    hasIndicatorStats || hasRunSettings || hasUniverseDetails || hasSignalDetails;
 
   return (
     <ConfigProvider
@@ -386,109 +387,91 @@ const App = () => {
             <div className="dashboard__workspace">
               {response ? (
                 <div className="dashboard__charts">
-                  {response.histogram && (
-                    <Card className="result-card histogram-card" size="small">
-                      <div className="card-header">
-                        <Title level={4}>Return Distribution</Title>
-                      </div>
-                      <HistogramChart
-                        data={response.histogram}
-                        loading={loading}
-                        compact
-                        height={compactMode ? 360 : 440}
-                      />
-                    </Card>
-                  )}
-
-                  {showDetailsCard && (
-                    <Card className="result-card details-card" size="small">
-                      {hasIndicatorStats && (
-                        <>
-                          <div className="card-header">
-                            <Title level={4}>Indicator Statistics</Title>
-                          </div>
-                          <IndicatorStatsTable stats={response!.indicator_statistics!} compact />
-                        </>
-                      )}
-                      {(hasRunSettings || hasUniverseDetails || hasSignalDetails) && (
-                        <div className="run-summary">
-                          {hasRunSettings && (
-                            <div className="run-summary__section">
-                              <div className="run-summary__title">Run Settings</div>
-                              <div className="run-summary__grid">
-                                {runSettingsSummary.map((item) => (
-                                  <div className="run-summary__item" key={`run-${item.label}`}>
-                                    <span className="run-summary__label">{item.label}</span>
-                                    <span className="run-summary__value">{item.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {hasUniverseDetails && (
-                            <div className="run-summary__section">
-                              <div className="run-summary__title">Universe Filters</div>
-                              <div className="run-summary__grid">
-                                {universeSummary.map((item) => (
-                                  <div className="run-summary__item" key={`filter-${item.label}-${item.value}`}>
-                                    <span className="run-summary__label">{item.label}</span>
-                                    <span className="run-summary__value">{item.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {hasSignalDetails && (
-                            <div className="run-summary__section">
-                              <div className="run-summary__title">Signal Rules</div>
-                              <div className="run-summary__grid">
-                                {signalSummary.map((item) => (
-                                  <div className="run-summary__item" key={`signal-${item.label}-${item.value}`}>
-                                    <span className="run-summary__label">{item.label}</span>
-                                    <span className="run-summary__value">{item.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
+                  <Card className="result-card mega-card" size="small">
+                    {response.histogram && (
+                      <section className="mega-card__section mega-card__section--histogram">
+                        <div className="card-header">
+                          <Title level={4}>Return Distribution</Title>
                         </div>
-                      )}
-                    </Card>
-                  )}
+                        <HistogramChart
+                          data={response.histogram}
+                          loading={loading}
+                          compact
+                          height={compactMode ? 360 : 440}
+                        />
+                      </section>
+                    )}
 
-                  <Card className="result-card equity-card" size="small">
-                    <div className="card-header">
-                      <Title level={4}>Equity Curve</Title>
-                      {horizonOptions.length > 0 && (
-                        <div className="card-header__actions">
-                          <span className="card-header__label">Holding period</span>
-                          <Select
-                            size="small"
-                            value={activeHorizon ?? undefined}
-                            onChange={(value: number) => setSelectedHorizon(value)}
-                            options={horizonOptions}
-                            style={{ minWidth: 96 }}
-                            disabled={loading}
+                    <div className="mega-card__split">
+                      <section className="mega-card__column mega-card__column--details">
+                        {hasIndicatorStats && (
+                          <div className="mega-card__section">
+                            <div className="card-header">
+                              <Title level={4}>Indicator Statistics</Title>
+                            </div>
+                            <IndicatorStatsTable stats={response!.indicator_statistics!} compact />
+                          </div>
+                        )}
+
+                        {settingsSummary.length > 0 && (
+                          <div className="mega-card__section">
+                            <div className="run-summary">
+                              <div className="run-summary__section run-summary__section--settings">
+                                <div className="run-summary__title">Settings</div>
+                                <div className="run-summary__grid run-summary__grid--dense">
+                                  {settingsSummary.map((item, index) => (
+                                    <div className="run-summary__item" key={`settings-${item.label}-${index}`}>
+                                      <span className="run-summary__label">{item.label}</span>
+                                      <span className="run-summary__value">{item.value}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </section>
+
+                      <section className="mega-card__column mega-card__column--equity">
+                        <div className="mega-card__section">
+                          <div className="card-header">
+                            <Title level={4}>Equity Curve</Title>
+                            {horizonOptions.length > 0 && (
+                              <div className="card-header__actions">
+                                <span className="card-header__label">Holding period</span>
+                                <Select
+                                  size="small"
+                                  value={activeHorizon ?? undefined}
+                                  onChange={(value: number) => setSelectedHorizon(value)}
+                                  options={horizonOptions}
+                                  style={{ minWidth: 96 }}
+                                  disabled={loading}
+                                />
+                              </div>
+                            )}
+                          </div>
+                          <EquityChart
+                            data={equitySeries}
+                            loading={loading}
+                            compact
+                            height={compactMode ? 280 : 320}
                           />
                         </div>
-                      )}
-                    </div>
-                    <EquityChart
-                      data={equitySeries}
-                      loading={loading}
-                      compact
-                      height={compactMode ? 320 : 360}
-                    />
-                    {equityMetrics.length > 0 && (
-                      <div className="run-summary__grid run-summary__grid--metrics">
-                        {equityMetrics.map((metric) => (
-                          <div className="run-summary__item" key={metric.key}>
-                            <span className="run-summary__label">{metric.label}</span>
-                            <span className="run-summary__value">{metric.value}</span>
+
+                        {equityMetrics.length > 0 && (
+                          <div className="mega-card__section">
+                            <div className="run-summary__grid run-summary__grid--metrics">
+                              {equityMetrics.map((metric) => (
+                                <div className="run-summary__item" key={metric.key}>
+                                  <span className="run-summary__label">{metric.label}</span>
+                                  <span className="run-summary__value">{metric.value}</span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
+                        )}
+                      </section>
+                    </div>
                   </Card>
                 </div>
               ) : (
