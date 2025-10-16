@@ -1,0 +1,109 @@
+export type RSIMode = "oversold" | "overbought";
+
+export interface RSIRule {
+  mode: RSIMode;
+  threshold: number;
+}
+
+export interface Filters {
+  sectors?: string[];
+  mcap_min?: number;
+  mcap_max?: number;
+  exclude_tickers?: string[];
+}
+
+export interface BacktestRequest {
+  strategy: string;
+  indicators: Record<string, any>;
+  rsi_rule?: RSIRule;
+  filters?: Filters;
+  universe?: string[];
+  start: string;
+  end: string;
+  capital?: number;
+  fee_bps?: number;
+  hold_days?: number;
+  stop_loss_pct?: number;
+  take_profit_pct?: number;
+  hist_bin_width?: number;
+}
+
+export interface TimeSeries {
+  dates: string[];
+  values: number[];
+}
+
+export interface Signal {
+  date: string;
+  type: "buy" | "sell";
+  price: number;
+  size?: number;
+  symbol?: string;
+}
+
+export interface Trade {
+  enter_date: string;
+  enter_price: number;
+  exit_date: string;
+  exit_price: number;
+  pnl: number;
+  ret: number;
+  symbol?: string;
+  gross_pnl: number;
+  fees: number;
+  side: "long" | "short";
+  quantity: number;
+  notional: number;
+  buy_fee: number;
+  sell_fee: number;
+}
+
+export interface Metrics {
+  [k: string]: number;
+}
+
+export interface HistogramSeries {
+  horizon: number;
+  returns: number[];
+  stats: Record<string, number>;
+  sample_size: number;
+}
+
+export interface HistogramPayload {
+  series: HistogramSeries[];
+  bin_width: number;
+}
+
+export interface HorizonResult {
+  equity_curve: TimeSeries;
+  drawdown_curve: TimeSeries;
+  metrics: Metrics;
+  trades_count: number;
+  ending_equity: number;
+  total_return: number;
+  total_fees: number;
+}
+
+export interface BacktestResponse {
+  equity_curve: TimeSeries;
+  drawdown_curve: TimeSeries;
+  price_series?: TimeSeries;
+  signals?: Signal[];
+  trades?: Trade[];
+  metrics: Metrics;
+  histogram?: HistogramPayload;
+  indicator_statistics?: Record<string, Record<string, number | null>>;
+  horizon_results?: Record<string, HorizonResult>;
+  universe_size: number;
+  trades_count: number;
+  initial_capital: number;
+  ending_equity: number;
+  total_return: number;
+  total_fees: number;
+  hold_days: number;
+}
+
+export interface UniverseMeta {
+  sectors: string[];
+  mcap_buckets: { label: string; min: number; max: number }[];
+}
