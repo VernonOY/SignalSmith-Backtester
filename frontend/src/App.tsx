@@ -454,7 +454,7 @@ const App = () => {
                             data={equitySeries}
                             loading={loading}
                             compact
-                            height={compactMode ? 280 : 320}
+                            height={compactMode ? 250 : 310}
                           />
                         </div>
 

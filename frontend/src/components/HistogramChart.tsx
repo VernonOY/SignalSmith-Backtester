@@ -196,6 +196,8 @@ const HistogramChart = ({ data, loading, onReady, height = 360, compact = false 
     const gridBottom = Math.max(compact ? 30 : 38, axisLabelMargin + axisLabelLineHeight + 6);
     const gridTop = compact ? 28 : 40;
     const axisNameGap = Math.max(6, axisLabelMargin - Math.round(labelFontSize * 0.35));
+    const axisNameWidth = Math.round(labelFontSize * 3.2);
+    const gridRight = Math.max(compact ? 22 : 28, axisNameWidth + 6);
     const yAxisLabelFont = compact ? 10 : 11;
     const yAxisNameGap = Math.max(compact ? 34 : 40, Math.round(yAxisLabelFont * 6));
 
@@ -285,7 +287,7 @@ const HistogramChart = ({ data, loading, onReady, height = 360, compact = false 
       ],
       grid: {
         left: compact ? 40 : 48,
-        right: compact ? 16 : 24,
+        right: gridRight,
         bottom: gridBottom,
         top: gridTop,
         containLabel: true,
