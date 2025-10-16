@@ -390,12 +390,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                   max="100"
                   style={{ width: "100%" }}
                   stringMode
-                  formatter={(value) => {
-                    if (value === undefined || value === null || value === "") {
-                      return "";
-                    }
-                    return `${value}%`;
-                  }}
+                  addonAfter="%"
                   parser={(value) => (value ? value.replace(/[^\d.-]/g, "") : "")}
                   placeholder="—"
                 />
@@ -406,12 +401,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                   max="200"
                   style={{ width: "100%" }}
                   stringMode
-                  formatter={(value) => {
-                    if (value === undefined || value === null || value === "") {
-                      return "";
-                    }
-                    return `${value}%`;
-                  }}
+                  addonAfter="%"
                   parser={(value) => (value ? value.replace(/[^\d.-]/g, "") : "")}
                   placeholder="—"
                 />

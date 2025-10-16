@@ -11,7 +11,7 @@
   --compact-line: 1.2;
   --layout-scale: 1.4;
   --sidebar-scale: 0.98;
-  --workspace-scale: 1.0;
+  --workspace-scale: 0.98;
   --workspace-max-width: 3000px;
   --workspace-padding-right: 0px;
 }
@@ -314,6 +314,28 @@ body {
   display: flex;
   align-items: center;
   padding: 0 6px;
+}
+
+.sidebar-form--compact .ant-input-number-group-addon {
+  padding: 0 6px;
+  min-width: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  background: #f8fafc;
+  color: #1e293b;
+  border-color: #c7d2fe;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-form--compact .ant-input-number-group-addon:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.sidebar-form--compact .ant-input-number-group-addon:last-child {
+  border-radius: 0 6px 6px 0;
 }
 
 .kpi-bar {

@@ -183,19 +183,21 @@ const HistogramChart = ({ data, loading, onReady, height = 360, compact = false 
     }
 
     const binCount = histogram.bins.length;
+    const minFontSize = compact ? 8 : 9;
+    const maxFontSize = compact ? 12 : 14;
     const labelFontSize = (() => {
-      if (binCount <= 4) return compact ? 12 : 14;
-      if (binCount <= 6) return compact ? 11 : 13;
-      if (binCount <= 10) return compact ? 10 : 12;
-      if (binCount <= 16) return compact ? 9 : 11;
-      if (binCount <= 22) return compact ? 8 : 10;
-      return compact ? 7 : 9;
+      if (binCount <= 1) return maxFontSize;
+      const density = binCount / 6;
+      const computed = Math.round(maxFontSize - Math.log2(Math.max(density, 1)) * (compact ? 1.4 : 1.7));
+      return Math.max(minFontSize, Math.min(maxFontSize, computed));
     })();
     const axisLabelMargin = Math.max(compact ? 8 : 10, Math.round(labelFontSize * 1.15));
     const axisLabelLineHeight = Math.round(labelFontSize * 1.3);
     const gridBottom = Math.max(compact ? 30 : 38, axisLabelMargin + axisLabelLineHeight + 6);
     const gridTop = compact ? 28 : 40;
-    const axisNameGap = axisLabelMargin + Math.round(labelFontSize * 0.65);
+    const axisNameGap = Math.max(6, axisLabelMargin - Math.round(labelFontSize * 0.35));
+    const yAxisLabelFont = compact ? 10 : 11;
+    const yAxisNameGap = Math.max(compact ? 34 : 40, Math.round(yAxisLabelFont * 6));
 
     return {
       tooltip: {
@@ -241,16 +243,25 @@ const HistogramChart = ({ data, loading, onReady, height = 360, compact = false 
           fontSize: labelFontSize,
           fontWeight: 600,
           color: "#475569",
-          padding: [0, 0, Math.max(0, axisLabelMargin - Math.round(labelFontSize * 0.9)), 6],
+          align: "left",
+          verticalAlign: "middle",
+          padding: [0, 0, 0, 6],
         },
       },
       yAxis: {
         type: "value",
         name: "Trades",
         nameLocation: "middle",
-        nameGap: compact ? 28 : 34,
+        nameGap: yAxisNameGap,
+        nameTextStyle: {
+          fontSize: yAxisLabelFont,
+          fontWeight: 600,
+          color: "#475569",
+          padding: [0, 8, 0, 0],
+        },
         axisLabel: {
-          fontSize: compact ? 10 : 11,
+          fontSize: yAxisLabelFont,
+          margin: Math.round(labelFontSize * 0.4) + 6,
         },
         splitLine: { show: true, lineStyle: { color: "#e2e8f0" } },
       },
