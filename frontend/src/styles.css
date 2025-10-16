@@ -11,7 +11,7 @@
   --compact-line: 1.2;
   --layout-scale: 1.4;
   --sidebar-scale: 0.98;
-  --workspace-scale: 1.0;
+  --workspace-scale: 0.98;
   --workspace-max-width: 3000px;
   --workspace-padding-right: 0px;
 }
@@ -133,6 +133,37 @@ body {
   min-height: 0;
 }
 
+.mega-card {
+  grid-column: span 12;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mega-card__section--histogram {
+  gap: 6px;
+}
+
+.mega-card__split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: var(--dashboard-gap);
+  align-items: start;
+}
+
+.mega-card__column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dashboard-gap);
+  min-width: 0;
+}
+
+.mega-card__section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .histogram-card {
   grid-column: span 12;
   min-width: 0;
@@ -209,14 +240,14 @@ body {
 
 .run-summary {
   display: grid;
-  gap: 6px;
-  padding-top: 4px;
+  gap: 4px;
+  padding-top: 2px;
 }
 
 .run-summary__section {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .run-summary__title {
@@ -229,13 +260,21 @@ body {
 
 .run-summary__grid {
   display: grid;
-  gap: 4px 8px;
+  gap: 4px 6px;
   grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
 }
 
+.run-summary__grid--dense {
+  gap: 3px 6px;
+}
+
 .run-summary__grid--metrics {
-  padding-top: 6px;
+  padding-top: 4px;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.run-summary__section--settings {
+  padding-top: 2px;
 }
 
 .run-summary__item {
@@ -277,6 +316,28 @@ body {
   padding: 0 6px;
 }
 
+.sidebar-form--compact .ant-input-number-group-addon {
+  padding: 0 6px;
+  min-width: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  background: #f8fafc;
+  color: #1e293b;
+  border-color: #c7d2fe;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-form--compact .ant-input-number-group-addon:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.sidebar-form--compact .ant-input-number-group-addon:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
 .kpi-bar {
   display: flex;
   gap: 8px;
@@ -306,56 +367,33 @@ body {
 }
 
 .sidebar-form {
-  display: grid;
-  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
-  column-gap: var(--dashboard-gap);
-  row-gap: 4px;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .sidebar-form .ant-form-item {
-  margin-bottom: 6px;
-}
-
-.sidebar-form .sidebar-card {
-  height: 100%;
+  margin-bottom: 4px;
 }
 
 .sidebar-form__actions {
-  grid-column: 1 / -1;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
+  padding-top: 4px;
 }
 
-.sidebar-form__actions .ant-space {
-  gap: 6px !important;
-}
-
-.sidebar-card--half {
-  grid-column: span 1;
-}
-
-.sidebar-card--full {
-  grid-column: 1 / -1;
-}
-
-.sidebar-form .sidebar-card {
-  border-radius: var(--card-radius);
-  box-shadow: 0 4px 12px rgba(46, 92, 255, 0.06);
-}
-
-.sidebar-form .ant-card-body {
-  padding: 8px;
+.sidebar-form__actions-group {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .sidebar-form--compact .ant-form-item {
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .sidebar-form--compact .ant-form-item-label > label {
@@ -427,6 +465,10 @@ body {
   gap: 6px;
 }
 
+.form-grid--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .form-grid--four {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -485,6 +527,11 @@ body {
   grid-template-columns: repeat(2, minmax(48px, 1fr));
 }
 
+.indicator-fields--aroon {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+}
+
 .indicator-fields--triple {
   grid-template-columns: repeat(3, minmax(0, 56px));
   justify-content: start;
@@ -503,13 +550,13 @@ body {
 .histogram-explorer {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .histogram-explorer__controls {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .histogram-explorer__label {
@@ -523,7 +570,7 @@ body {
 .histogram-explorer__choices {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
 }
 
 .histogram-explorer__choice {
@@ -565,7 +612,7 @@ body {
 }
 
 .histogram-summary {
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .indicator-fields .ant-select,
@@ -599,15 +646,93 @@ body {
   background: #dbe4ff;
 }
 
-.sidebar-card__action {
-  padding: 0;
+.input-panel {
+  border-radius: var(--card-radius);
+  box-shadow: 0 4px 12px rgba(46, 92, 255, 0.06);
+}
+
+.input-panel .ant-card-body {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.input-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #dbe4ff;
+}
+
+.input-panel__title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #312e81;
+}
+
+.input-panel__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.input-panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.input-panel__section + .input-panel__section {
+  border-top: 1px dashed #dbe4ff;
+  padding-top: 6px;
+  margin-top: 2px;
+}
+
+.input-panel__split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.input-panel__section--inline {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+  min-height: 0;
+}
+
+.input-panel__section--inline + .input-panel__section--inline {
+  border-top: none;
+}
+
+.input-panel__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #4338ca;
+}
+
+.input-panel__toggle {
+  padding: 0 4px;
   height: auto;
   font-size: 11px;
   font-weight: 600;
+  color: #4338ca;
 }
 
-.sidebar-card__action.ant-btn-link {
-  color: #4f46e5;
+.input-panel__toggle.ant-btn-text:hover {
+  color: #3730a3;
+  background: transparent;
 }
 
 .describe-modal__list {
@@ -717,6 +842,7 @@ body {
 
 .indicator-table {
   font-size: 12px;
+  width: 100%;
 }
 
 .indicator-table .ant-table-thead > tr > th {
@@ -728,6 +854,11 @@ body {
 .indicator-table .ant-table-tbody > tr > td {
   padding: 4px 8px;
   font-size: 12px;
+}
+
+.indicator-table .ant-table-container,
+.indicator-table .ant-table-body {
+  overflow: visible !important;
 }
 
 .indicator-table--compact .ant-table-cell {
