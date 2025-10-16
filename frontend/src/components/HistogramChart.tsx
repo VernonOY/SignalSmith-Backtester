@@ -181,6 +181,22 @@ const HistogramChart = ({ data, loading, onReady, height = 360, compact = false 
     if (!histogram.bins.length || !histogram.counts.length) {
       return null;
     }
+
+    const binCount = histogram.bins.length;
+    const labelFontSize = (() => {
+      if (binCount <= 4) return compact ? 12 : 14;
+      if (binCount <= 6) return compact ? 11 : 13;
+      if (binCount <= 10) return compact ? 10 : 12;
+      if (binCount <= 16) return compact ? 9 : 11;
+      if (binCount <= 22) return compact ? 8 : 10;
+      return compact ? 7 : 9;
+    })();
+    const axisLabelMargin = Math.max(compact ? 8 : 10, Math.round(labelFontSize * 1.15));
+    const axisLabelLineHeight = Math.round(labelFontSize * 1.3);
+    const gridBottom = Math.max(compact ? 30 : 38, axisLabelMargin + axisLabelLineHeight + 6);
+    const gridTop = compact ? 28 : 40;
+    const axisNameGap = axisLabelMargin + Math.round(labelFontSize * 0.65);
+
     return {
       tooltip: {
         trigger: "item",
@@ -201,9 +217,9 @@ const HistogramChart = ({ data, loading, onReady, height = 360, compact = false 
         axisLabel: {
           interval: 0,
           rotate: 0,
-          fontSize: compact ? 8 : 9,
-          margin: compact ? 10 : 14,
-          lineHeight: compact ? 12 : 14,
+          fontSize: labelFontSize,
+          margin: axisLabelMargin,
+          lineHeight: axisLabelLineHeight,
           formatter: (_value: string, index: number) => {
             const count = histogram.counts[index];
             const bin = histogram.bins[index];
@@ -217,6 +233,15 @@ const HistogramChart = ({ data, loading, onReady, height = 360, compact = false 
         },
         axisTick: {
           alignWithLabel: true,
+        },
+        name: "%",
+        nameLocation: "end",
+        nameGap: axisNameGap,
+        nameTextStyle: {
+          fontSize: labelFontSize,
+          fontWeight: 600,
+          color: "#475569",
+          padding: [0, 0, Math.max(0, axisLabelMargin - Math.round(labelFontSize * 0.9)), 6],
         },
       },
       yAxis: {
@@ -250,22 +275,10 @@ const HistogramChart = ({ data, loading, onReady, height = 360, compact = false 
       grid: {
         left: compact ? 40 : 48,
         right: compact ? 16 : 24,
-        bottom: compact ? 72 : 90,
-        top: compact ? 32 : 44,
+        bottom: gridBottom,
+        top: gridTop,
         containLabel: true,
       },
-      graphic: [
-        {
-          type: "text",
-          right: compact ? 10 : 18,
-          bottom: compact ? 18 : 24,
-          style: {
-            text: "%",
-            fontSize: compact ? 11 : 13,
-            fill: "#475569",
-          },
-        },
-      ],
     };
   }, [histogram, compact]);
 

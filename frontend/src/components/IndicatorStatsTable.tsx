@@ -115,7 +115,6 @@ const IndicatorStatsTable = ({ stats, compact = false }: Props) => {
       dataSource={rows}
       pagination={false}
       className={`indicator-table${compact ? " indicator-table--compact" : ""}`}
-      scroll={{ x: "max-content" }}
     />
   );
 };
