@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, ConfigProvider, Select, Typography, message, theme } from "antd";
 import html2canvas from "html2canvas";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import SidebarForm from "./components/SidebarForm";
 import { BacktestRequest, BacktestResponse } from "./types";
 import { api } from "./api/client";
@@ -373,21 +374,49 @@ const App = () => {
         </header>
 
         <div className="dashboard__body">
-          <aside className="dashboard__sidebar">
-            <div className="dashboard__sidebar-inner">
-              <SidebarForm
-                loading={loading}
-                onSubmit={handleSubmit}
-                compact={compactMode}
-              />
-            </div>
-          </aside>
+          {!response ? (
+            <Card className="combined-card" size="small">
+              <PanelGroup direction="horizontal">
+                <Panel defaultSize={20} minSize={20} maxSize={40}>
+                  <div className="dashboard__sidebar-content">
+                    <SidebarForm
+                      loading={loading}
+                      onSubmit={handleSubmit}
+                      compact={compactMode}
+                    />
+                  </div>
+                </Panel>
 
-          <main className="dashboard__content">
-            <div className="dashboard__workspace">
-              {response ? (
-                <div className="dashboard__charts">
-                  <Card className="result-card mega-card" size="small">
+                <PanelResizeHandle className="resize-handle" />
+
+                <Panel defaultSize={80} minSize={60} maxSize={80}>
+                  <div className="dashboard__placeholder">
+                    <div className="intro-content">
+                      <Title level={4}>Configure &amp; Run</Title>
+                      <Text type="secondary">
+                        Adjust parameters on the left and run the engine to populate the dashboard.
+                      </Text>
+                    </div>
+                  </div>
+                </Panel>
+              </PanelGroup>
+            </Card>
+          ) : (
+            <div className="dashboard__body-split">
+              <aside className="dashboard__sidebar">
+                <div className="dashboard__sidebar-inner">
+                  <SidebarForm
+                    loading={loading}
+                    onSubmit={handleSubmit}
+                    compact={compactMode}
+                  />
+                </div>
+              </aside>
+
+              <main className="dashboard__content">
+                <div className="dashboard__workspace">
+                  <div className="dashboard__charts">
+                    <Card className="result-card mega-card" size="small">
                     {response.histogram && (
                       <section className="mega-card__section mega-card__section--histogram">
                         <div className="card-header">
@@ -474,16 +503,10 @@ const App = () => {
                     </div>
                   </Card>
                 </div>
-              ) : (
-                <Card className="result-card intro-card" size="small">
-                  <Title level={4}>Configure &amp; Run</Title>
-                  <Text type="secondary">
-                    Adjust parameters on the left and run the engine to populate the dashboard.
-                  </Text>
-                </Card>
-              )}
-            </div>
-          </main>
+                  </div>
+                </main>
+              </div>
+            )}
         </div>
 
         <footer className="app-footer">
