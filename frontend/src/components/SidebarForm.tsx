@@ -64,7 +64,7 @@ const DEFAULT_STRATEGY_VALUES: Record<string, unknown> = {
   enable_rsi: true,
   use_macd: false,
   use_obv: false,
-  use_ema: true,
+  use_ema: false,
   use_adx: false,
   use_aroon: false,
   use_stoch: false,
@@ -342,7 +342,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
           policy: "all",
           k: 2,
           max_horizon: 10,
-          hist_bin_width_pct: 1,
+          hist_bin_width_pct: 2,
           filters: {},
         }}
       >
@@ -357,9 +357,6 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
           </div>
 
           <div className="input-panel__section">
-            <div className="input-panel__section-header">
-              <span>Core</span>
-            </div>
             <Form.Item name="strategy" hidden initialValue="mean_reversion">
               <Input />
             </Form.Item>
@@ -410,9 +407,6 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
           </div>
 
           <div className="input-panel__section">
-            <div className="input-panel__section-header">
-              <span>Indicators</span>
-            </div>
             <div className="indicator-grid">
             <div className="indicator-grid__item">
               <div className="indicator-header">
@@ -440,10 +434,10 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                     disabled={!enableRsi}
                   />
                 </Form.Item>
-                <Form.Item label="Lkb" name="rsi_n" className="indicator-field">
+                <Form.Item label="Lkb" name="rsi_n" className="indicator-field indicator-field--half">
                   <InputNumber min={2} max={100} style={{ width: "100%" }} disabled={!enableRsi} />
                 </Form.Item>
-                <Form.Item label="Th" name={["rsi_rule", "threshold"]} className="indicator-field">
+                <Form.Item label="Th" name={["rsi_rule", "threshold"]} className="indicator-field indicator-field--half">
                   <InputNumber min={0} max={100} style={{ width: "100%" }} disabled={!enableRsi} />
                 </Form.Item>
               </div>
@@ -461,7 +455,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                 </Space>
               </div>
               <div className="indicator-fields">
-                <Form.Item label="Rule" name="macd_rule" className="indicator-field">
+                <Form.Item label="Rule" name="macd_rule" className="indicator-field indicator-field--full">
                   <Select
                     options={[
                       { label: "Signal", value: "signal" },
@@ -471,15 +465,17 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                     disabled={!useMacd}
                   />
                 </Form.Item>
-                <Form.Item label="Fast" name="macd_fast" className="indicator-field">
-                  <InputNumber min={1} max={20} style={{ width: "100%" }} disabled={!useMacd} />
-                </Form.Item>
-                <Form.Item label="Slow" name="macd_slow" className="indicator-field">
-                  <InputNumber min={1} max={40} style={{ width: "100%" }} disabled={!useMacd} />
-                </Form.Item>
-                <Form.Item label="Sig" name="macd_signal" className="indicator-field">
-                  <InputNumber min={1} max={20} style={{ width: "100%" }} disabled={!useMacd} />
-                </Form.Item>
+                <div className="indicator-fields--macd-row">
+                  <Form.Item label="Fast" name="macd_fast" className="indicator-field">
+                    <InputNumber min={1} max={20} style={{ width: "100%" }} disabled={!useMacd} />
+                  </Form.Item>
+                  <Form.Item label="Slow" name="macd_slow" className="indicator-field">
+                    <InputNumber min={1} max={40} style={{ width: "100%" }} disabled={!useMacd} />
+                  </Form.Item>
+                  <Form.Item label="Sig" name="macd_signal" className="indicator-field">
+                    <InputNumber min={1} max={20} style={{ width: "100%" }} disabled={!useMacd} />
+                  </Form.Item>
+                </div>
               </div>
             </div>
 
@@ -593,7 +589,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                   </Form.Item>
                 </Space>
               </div>
-              <div className="indicator-fields indicator-fields--triple">
+              <div className="indicator-fields">
                 <Form.Item label="Rule" name="stoch_rule" className="indicator-field indicator-field--full">
                   <Select
                     options={[
@@ -623,55 +619,36 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
           </div>
           </div>
 
-          <div className="input-panel__split">
-            <div className="input-panel__section input-panel__section--inline">
-              <div className="input-panel__section-header">
-                <span>Universe</span>
-                <Button
-                  type="text"
-                  size="small"
-                  className="input-panel__toggle"
-                  onClick={() => setShowUniverseFilters((prev) => !prev)}
-                >
-                  {showUniverseFilters ? "Hide" : "Show"}
-                </Button>
-              </div>
-              {showUniverseFilters && (
-                <div className="form-grid form-grid--universe">
-                  <Form.Item label="Sector" name={["filters", "sectors"]} className="form-grid__item">
-                    <Select mode="multiple" allowClear options={sectorOptions} dropdownMatchSelectWidth={false} />
+          <div className="input-panel__section">
+                <div className="form-grid form-grid--four">
+                  <Form.Item label="Sector" name={["filters", "sectors"]} className="form-grid__item form-grid__item--span-2">
+                    <Select
+                      mode="multiple"
+                      allowClear
+                      options={sectorOptions}
+                      dropdownMatchSelectWidth={false}
+                      maxTagCount="responsive"
+                      maxTagTextLength={3}
+                    />
                   </Form.Item>
-                  <Form.Item label="Cap Min" name={["filters", "mcap_min"]} className="form-grid__item">
-                    <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
-                  </Form.Item>
-                  <Form.Item label="Cap Max" name={["filters", "mcap_max"]} className="form-grid__item">
-                    <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
-                  </Form.Item>
-                  <Form.Item label="Exclude" name={["filters", "exclude_tickers"]} className="form-grid__item">
+                  <Form.Item label="Exclude" name={["filters", "exclude_tickers"]} className="form-grid__item form-grid__item--span-2">
                     <Select mode="tags" tokenSeparators={[",", " "]} placeholder="TSLA, NVDA" dropdownMatchSelectWidth={false} />
                   </Form.Item>
+                  <Form.Item label="Cap Min" name={["filters", "mcap_min"]} className="form-grid__item form-grid__item--span-2">
+                    <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
+                  </Form.Item>
+                  <Form.Item label="Cap Max" name={["filters", "mcap_max"]} className="form-grid__item form-grid__item--span-2">
+                    <InputNumber min={0} style={{ width: "100%" }} addonBefore="$" />
+                  </Form.Item>
                 </div>
-              )}
-            </div>
+          </div>
 
-            <div className="input-panel__section input-panel__section--inline">
-              <div className="input-panel__section-header">
-                <span>Signals</span>
-                <Button
-                  type="text"
-                  size="small"
-                  className="input-panel__toggle"
-                  onClick={() => setShowSignalRules((prev) => !prev)}
-                >
-                  {showSignalRules ? "Hide" : "Show"}
-                </Button>
-              </div>
-              {showSignalRules && (
-                <div className="form-grid form-grid--signals">
+          <div className="input-panel__section">
+                <div className="form-grid form-grid--four">
                   <Form.Item
                     label="Policy"
                     name="policy"
-                    className="form-grid__item form-grid__item--span-2"
+                    className="form-grid__item"
                   >
                     <Select
                       options={[
@@ -697,8 +674,6 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
                     />
                   </Form.Item>
                 </div>
-              )}
-            </div>
           </div>
         </Card>
 

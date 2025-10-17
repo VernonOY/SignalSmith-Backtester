@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button, Card, ConfigProvider, Select, Typography, message, theme } from "antd";
+import { Button, Card, ConfigProvider, Select, Space, Typography, message, theme } from "antd";
 import html2canvas from "html2canvas";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { Panel, PanelGroup, PanelResizeHandle, ImperativePanelHandle } from "react-resizable-panels";
 import SidebarForm from "./components/SidebarForm";
 import { BacktestRequest, BacktestResponse } from "./types";
 import { api } from "./api/client";
@@ -28,8 +28,13 @@ const App = () => {
   const [response, setResponse] = useState<BacktestResponse | null>(null);
   const [lastRunConfig, setLastRunConfig] = useState<BacktestRequest | null>(null);
   const [compactMode, setCompactMode] = useState(true);
-  const [selectedHorizon, setSelectedHorizon] = useState<number | null>(null);
+  const [selectedHorizons, setSelectedHorizons] = useState<number[]>([]);
+  const [selectedEquityHorizon, setSelectedEquityHorizon] = useState<number | null>(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
+  const [dynamicScale, setDynamicScale] = useState(1);
+  const panelRef = useRef<ImperativePanelHandle>(null);
+  const isSnappingRef = useRef(false);
+  const dragStartSizeRef = useRef<number | null>(null);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -40,6 +45,43 @@ const App = () => {
       root.removeAttribute("data-compact");
     }
   }, [compactMode]);
+
+  // 动态计算缩放比例以适应窗口大小
+  useEffect(() => {
+    const calculateScale = () => {
+      // 固定的 dashboard 尺寸
+      const dashboardWidth = 1800;
+      const dashboardHeight = 1020;
+
+      const windowWidth = window.innerWidth;
+      const windowHeight = window.innerHeight;
+
+      // 计算宽度和高度的缩放比例，取较小值以确保完整显示
+      const scaleX = windowWidth / dashboardWidth;
+      const scaleY = windowHeight / dashboardHeight;
+      const scale = Math.min(scaleX, scaleY);
+
+      setDynamicScale(scale);
+
+      // 更新CSS变量
+      const root = document.documentElement;
+      root.style.setProperty("--layout-scale", scale.toString());
+    };
+
+    calculateScale();
+
+    // 延迟重新计算以确保DOM完全渲染
+    const timer = setTimeout(() => {
+      calculateScale();
+    }, 100);
+
+    window.addEventListener("resize", calculateScale);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", calculateScale);
+    };
+  }, []);
 
   const fitToSinglePage = useCallback((enable = true) => {
     setCompactMode(enable);
@@ -52,14 +94,53 @@ const App = () => {
     };
   }, [fitToSinglePage]);
 
+  // 磁吸效果：当接近20%时强制吸附，制造阻力感
+  const handlePanelLayout = useCallback((sizes: number[]) => {
+    const currentSize = sizes[0];
+    const snapPoint = 20;
+    const snapZone = 2; // 在18%-22%范围内触发吸附
+    const breakFreeDistance = 2.5; // 需要拖动超过这个距离才能脱离
+
+    const distanceFromSnap = Math.abs(currentSize - snapPoint);
+
+    // 如果在吸附区域内
+    if (distanceFromSnap < snapZone) {
+      // 如果还没开始吸附
+      if (!isSnappingRef.current) {
+        // 记录开始拖动时的位置
+        dragStartSizeRef.current = currentSize;
+        isSnappingRef.current = true;
+      }
+
+      // 检查是否用力拖动足够远
+      const dragDistance = dragStartSizeRef.current !== null
+        ? Math.abs(currentSize - dragStartSizeRef.current)
+        : 0;
+
+      // 如果拖动距离不够，强制回到20%
+      if (dragDistance < breakFreeDistance && panelRef.current) {
+        panelRef.current.resize(snapPoint);
+        return;
+      }
+    }
+
+    // 超出吸附区域或拖动足够远，允许自由移动
+    if (distanceFromSnap >= snapZone) {
+      isSnappingRef.current = false;
+      dragStartSizeRef.current = null;
+    }
+  }, []);
+
   const handleSubmit = async (payload: BacktestRequest, _rawValues?: any) => {
     try {
       setLoading(true);
       const { data } = await api.post<BacktestResponse>("/run_backtest", payload);
+      console.log("Backtest response:", data);
       setResponse(data);
       setLastRunConfig(payload);
       message.success("Backtest complete");
     } catch (error: any) {
+      console.error("Backtest error:", error);
       const detail = error?.response?.data?.detail || error.message;
       message.error(detail ?? "Backtest failed");
     } finally {
@@ -68,26 +149,62 @@ const App = () => {
   };
 
   const handleExportScreenshot = useCallback(async () => {
-    const container = dashboardRef.current;
-    if (!container) return;
-    const wasCompact = compactMode;
-    fitToSinglePage(true);
-    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
-    const canvas = await html2canvas(
-      container,
-      {
-        background: "#eef1ff",
-        scale: window.devicePixelRatio,
-      } as any
-    );
-    const link = document.createElement("a");
-    link.href = canvas.toDataURL("image/png");
-    link.download = "signalsmith-dashboard.png";
-    link.click();
-    if (!wasCompact) {
-      fitToSinglePage(false);
+    try {
+      const element = document.querySelector('.dashboard');
+      if (!element) {
+        message.error("Dashboard not found");
+        return;
+      }
+
+      message.info("Generating screenshot...");
+
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      const canvas = await html2canvas(element as HTMLElement, {
+        backgroundColor: "#eef1ff",
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        width: element.scrollWidth,
+        height: element.scrollHeight,
+        ignoreElements: (element) => {
+          // 忽略可能有问题的元素
+          return element.classList?.contains('ant-message') || false;
+        },
+        onclone: (clonedDoc) => {
+          // 在克隆的文档中移除可能导致问题的 CSS
+          const styles = clonedDoc.querySelectorAll('style');
+          styles.forEach((style) => {
+            if (style.textContent) {
+              // 移除 color() 函数
+              style.textContent = style.textContent.replace(/color\([^)]+\)/g, '#000000');
+            }
+          });
+        },
+      });
+
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          message.error("Failed to create image");
+          return;
+        }
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `signalsmith-dashboard-${new Date().toISOString().slice(0, 10)}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        message.success("Screenshot exported successfully");
+      }, "image/png");
+    } catch (error) {
+      console.error("Screenshot failed:", error);
+      message.error(`Failed to export screenshot: ${error}`);
     }
-  }, [compactMode, fitToSinglePage]);
+  }, []);
 
   const optionalCurrency = useCallback(
     (value?: number | null) => (typeof value === "number" ? formatCurrency(value, 0) : "—"),
@@ -113,46 +230,39 @@ const App = () => {
 
   useEffect(() => {
     if (!response) {
-      setSelectedHorizon(null);
+      setSelectedHorizons([]);
+      setSelectedEquityHorizon(null);
       return;
     }
     if (!availableHorizons.length) {
-      setSelectedHorizon(null);
+      setSelectedHorizons([]);
+      setSelectedEquityHorizon(null);
       return;
     }
-    const preferred = response.hold_days;
-    if (preferred && availableHorizons.includes(preferred)) {
-      setSelectedHorizon(preferred);
-      return;
-    }
-    setSelectedHorizon((current) => {
-      if (current && availableHorizons.includes(current)) {
-        return current;
-      }
-      return availableHorizons[0] ?? null;
-    });
+    // Default to all available horizons for histogram
+    setSelectedHorizons(availableHorizons);
+    // Default to first horizon for equity curve
+    setSelectedEquityHorizon(availableHorizons[0]);
   }, [response, availableHorizons]);
 
-  const activeHorizon = useMemo(() => {
+  const activeHorizons = useMemo(() => {
     if (!availableHorizons.length) {
-      return null;
+      return [];
     }
-    if (selectedHorizon && availableHorizons.includes(selectedHorizon)) {
-      return selectedHorizon;
+    if (selectedHorizons.length > 0) {
+      return selectedHorizons.filter(h => availableHorizons.includes(h));
     }
-    if (response?.hold_days && availableHorizons.includes(response.hold_days)) {
-      return response.hold_days;
-    }
-    return availableHorizons[0] ?? null;
-  }, [availableHorizons, selectedHorizon, response?.hold_days]);
+    return availableHorizons;
+  }, [availableHorizons, selectedHorizons]);
 
+  // For equity curve, use separate selected horizon
   const activeHorizonResult = useMemo(() => {
-    if (!horizonResults || activeHorizon == null) {
+    if (!horizonResults || selectedEquityHorizon == null) {
       return null;
     }
-    const key = String(activeHorizon);
+    const key = String(selectedEquityHorizon);
     return horizonResults[key] ?? null;
-  }, [horizonResults, activeHorizon]);
+  }, [horizonResults, selectedEquityHorizon]);
 
   const equitySeries = activeHorizonResult?.equity_curve ?? response?.equity_curve;
 
@@ -343,11 +453,20 @@ const App = () => {
     return items.length ? items : [{ label: "Signals", value: "None" }];
   }, [lastRunConfig]);
 
+  const sectorsSummary = useMemo(() => {
+    if (!lastRunConfig?.filters?.sectors || !lastRunConfig.filters.sectors.length) {
+      return { label: "Sectors", value: "None" };
+    }
+    return { label: "Sectors", value: lastRunConfig.filters.sectors.join(" · ") };
+  }, [lastRunConfig]);
+
   const settingsSummary = useMemo(() => {
     if (!lastRunConfig) {
       return [] as InfoTag[];
     }
-    return [...runSettingsSummary, ...universeSummary, ...signalSummary];
+    // Exclude Sectors from universeSummary
+    const universeSummaryWithoutSectors = universeSummary.filter(item => item.label !== "Sectors");
+    return [...runSettingsSummary, ...universeSummaryWithoutSectors, ...signalSummary];
   }, [lastRunConfig, runSettingsSummary, universeSummary, signalSummary]);
 
   const hasIndicatorStats = Boolean(response?.indicator_statistics);
@@ -366,30 +485,36 @@ const App = () => {
           <div className="dashboard__heading">
             <Title level={3}>SignalSmith Backtester</Title>
           </div>
-          <div className="dashboard__actions">
-            <Button size="small" type="primary" onClick={handleExportScreenshot}>
-              Export Screenshot
-            </Button>
-          </div>
         </header>
 
         <div className="dashboard__body">
-          {!response ? (
-            <Card className="combined-card" size="small">
-              <PanelGroup direction="horizontal">
-                <Panel defaultSize={20} minSize={20} maxSize={40}>
-                  <div className="dashboard__sidebar-content">
-                    <SidebarForm
-                      loading={loading}
-                      onSubmit={handleSubmit}
-                      compact={compactMode}
-                    />
-                  </div>
-                </Panel>
+          <Card className="combined-card" size="small">
+            <PanelGroup direction="horizontal" onLayout={handlePanelLayout}>
+              <Panel
+                ref={panelRef}
+                defaultSize={20}
+                minSize={15}
+                maxSize={40}
+                order={1}
+              >
+                <div className="dashboard__sidebar-content">
+                  <SidebarForm
+                    loading={loading}
+                    onSubmit={handleSubmit}
+                    compact={compactMode}
+                  />
+                </div>
+              </Panel>
 
-                <PanelResizeHandle className="resize-handle" />
+              <PanelResizeHandle className="resize-handle" />
 
-                <Panel defaultSize={80} minSize={60} maxSize={80}>
+              <Panel
+                defaultSize={80}
+                minSize={60}
+                maxSize={85}
+                order={2}
+              >
+                {!response ? (
                   <div className="dashboard__placeholder">
                     <div className="intro-content">
                       <Title level={4}>Configure &amp; Run</Title>
@@ -398,35 +523,47 @@ const App = () => {
                       </Text>
                     </div>
                   </div>
-                </Panel>
-              </PanelGroup>
-            </Card>
-          ) : (
-            <div className="dashboard__body-split">
-              <aside className="dashboard__sidebar">
-                <div className="dashboard__sidebar-inner">
-                  <SidebarForm
-                    loading={loading}
-                    onSubmit={handleSubmit}
-                    compact={compactMode}
-                  />
-                </div>
-              </aside>
-
-              <main className="dashboard__content">
-                <div className="dashboard__workspace">
-                  <div className="dashboard__charts">
+                ) : (
+                  <div className="dashboard__results-content">
                     <Card className="result-card mega-card" size="small">
                     {response.histogram && (
                       <section className="mega-card__section mega-card__section--histogram">
                         <div className="card-header">
                           <Title level={4}>Return Distribution</Title>
+                          {availableHorizons.length > 1 && (
+                            <div className="card-header__actions">
+                              <span className="histogram-explorer__label">Holding periods</span>
+                              <Space size={6}>
+                                {availableHorizons.map((horizon) => (
+                                  <Button
+                                    key={horizon}
+                                    size="small"
+                                    type={activeHorizons.includes(horizon) ? "primary" : "default"}
+                                    onClick={() => {
+                                      setSelectedHorizons(prev => {
+                                        if (prev.includes(horizon)) {
+                                          // If deselecting and it's the last one, keep it selected
+                                          if (prev.length === 1) return prev;
+                                          return prev.filter(h => h !== horizon);
+                                        } else {
+                                          return [...prev, horizon].sort((a, b) => a - b);
+                                        }
+                                      });
+                                    }}
+                                  >
+                                    {horizon}d
+                                  </Button>
+                                ))}
+                              </Space>
+                            </div>
+                          )}
                         </div>
                         <HistogramChart
                           data={response.histogram}
                           loading={loading}
                           compact
-                          height={compactMode ? 360 : 440}
+                          height={compactMode ? 380 : 460}
+                          selectedHorizons={activeHorizons}
                         />
                       </section>
                     )}
@@ -447,6 +584,10 @@ const App = () => {
                             <div className="run-summary">
                               <div className="run-summary__section run-summary__section--settings">
                                 <div className="run-summary__title">Settings</div>
+                                <div className="run-summary__sectors">
+                                  <span className="run-summary__label">{sectorsSummary.label}</span>
+                                  <span className="run-summary__value">{sectorsSummary.value}</span>
+                                </div>
                                 <div className="run-summary__grid run-summary__grid--dense">
                                   {settingsSummary.map((item, index) => (
                                     <div className="run-summary__item" key={`settings-${item.label}-${index}`}>
@@ -465,16 +606,15 @@ const App = () => {
                         <div className="mega-card__section">
                           <div className="card-header">
                             <Title level={4}>Equity Curve</Title>
-                            {horizonOptions.length > 0 && (
+                            {availableHorizons.length > 1 && (
                               <div className="card-header__actions">
-                                <span className="card-header__label">Holding period</span>
+                                <span className="histogram-explorer__label">Holding period</span>
                                 <Select
-                                  size="small"
-                                  value={activeHorizon ?? undefined}
-                                  onChange={(value: number) => setSelectedHorizon(value)}
+                                  value={selectedEquityHorizon}
+                                  onChange={(value) => setSelectedEquityHorizon(value)}
                                   options={horizonOptions}
-                                  style={{ minWidth: 96 }}
-                                  disabled={loading}
+                                  style={{ width: 80 }}
+                                  size="small"
                                 />
                               </div>
                             )}
@@ -483,7 +623,7 @@ const App = () => {
                             data={equitySeries}
                             loading={loading}
                             compact
-                            height={compactMode ? 250 : 310}
+                            height={compactMode ? 280 : 340}
                           />
                         </div>
 
@@ -502,11 +642,11 @@ const App = () => {
                       </section>
                     </div>
                   </Card>
-                </div>
                   </div>
-                </main>
-              </div>
-            )}
+                )}
+              </Panel>
+            </PanelGroup>
+          </Card>
         </div>
 
         <footer className="app-footer">
