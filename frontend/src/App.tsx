@@ -161,7 +161,7 @@ const App = () => {
       await new Promise((resolve) => setTimeout(resolve, 300));
 
       const canvas = await html2canvas(element as HTMLElement, {
-        background: "#eef1ff",
+        backgroundColor: "#eef1ff",
         scale: 2,
         useCORS: true,
         logging: false,
@@ -181,7 +181,7 @@ const App = () => {
             }
           });
         },
-      });
+      } as any);
 
       canvas.toBlob((blob) => {
         if (!blob) {
