@@ -161,20 +161,20 @@ const App = () => {
       await new Promise((resolve) => setTimeout(resolve, 300));
 
       const canvas = await html2canvas(element as HTMLElement, {
-        backgroundColor: "#eef1ff",
+        background: "#eef1ff",
         scale: 2,
         useCORS: true,
         logging: false,
         width: element.scrollWidth,
         height: element.scrollHeight,
-        ignoreElements: (element) => {
+        ignoreElements: (element: Element) => {
           // 忽略可能有问题的元素
           return element.classList?.contains('ant-message') || false;
         },
-        onclone: (clonedDoc) => {
+        onclone: (clonedDoc: Document) => {
           // 在克隆的文档中移除可能导致问题的 CSS
           const styles = clonedDoc.querySelectorAll('style');
-          styles.forEach((style) => {
+          styles.forEach((style: HTMLStyleElement) => {
             if (style.textContent) {
               // 移除 color() 函数
               style.textContent = style.textContent.replace(/color\([^)]+\)/g, '#000000');
