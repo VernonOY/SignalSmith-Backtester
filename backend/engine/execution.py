@@ -73,50 +73,86 @@ def _prepare_candidates(
             ]
         )
 
-    records: List[Dict[str, object]] = []
+    # Vectorized implementation - much faster than itertuples loop
+    candidates = picks[["date", "symbol", "adj_close", ret_col]].copy()
+    candidates.columns = ["enter_date", "symbol", "enter_price", "raw_ret"]
+
+    # Filter out invalid rows
+    valid_mask = (
+        ~pd.isna(candidates["raw_ret"]) &
+        ~pd.isna(candidates["enter_price"]) &
+        (candidates["enter_price"] > 0)
+    )
+    candidates = candidates[valid_mask].copy()
+
+    if candidates.empty:
+        return pd.DataFrame(
+            columns=[
+                "enter_date",
+                "exit_date",
+                "symbol",
+                "enter_price",
+                "exit_price",
+                "gross_return",
+            ]
+        )
+
+    # Ensure date is datetime
+    candidates["enter_date"] = pd.to_datetime(candidates["enter_date"])
+    candidates = candidates[~pd.isna(candidates["enter_date"])].copy()
+
+    if candidates.empty:
+        return pd.DataFrame(
+            columns=[
+                "enter_date",
+                "exit_date",
+                "symbol",
+                "enter_price",
+                "exit_price",
+                "gross_return",
+            ]
+        )
+
+    # Vectorized return calculation
+    candidates["gross_return"] = np.expm1(candidates["raw_ret"])
+
+    # Apply stop loss and take profit vectorized
     stop_loss = abs(stop_loss_pct) if stop_loss_pct is not None else None
     take_profit = take_profit_pct if take_profit_pct is not None else None
 
-    for row in picks.itertuples():
-        enter_price = float(getattr(row, "adj_close", np.nan))
-        enter_date = getattr(row, "date", None)
-        raw_ret = getattr(row, ret_col, np.nan)
-        symbol = getattr(row, "symbol", None)
-        if pd.isna(raw_ret) or pd.isna(enter_price) or enter_price <= 0:
-            continue
-        if not isinstance(enter_date, pd.Timestamp):
-            enter_date = pd.to_datetime(enter_date)
-        if pd.isna(enter_date):
-            continue
+    if stop_loss is not None:
+        candidates["gross_return"] = candidates["gross_return"].clip(lower=-stop_loss)
+    if take_profit is not None:
+        candidates["gross_return"] = candidates["gross_return"].clip(upper=take_profit)
 
-        gross_simple = float(np.expm1(raw_ret))
-        if stop_loss is not None:
-            gross_simple = max(gross_simple, -stop_loss)
-        if take_profit is not None:
-            gross_simple = min(gross_simple, take_profit)
+    # Vectorized exit price calculation
+    candidates["exit_price"] = candidates["enter_price"] * (1.0 + candidates["gross_return"])
 
-        exit_price = enter_price * (1.0 + gross_simple)
-        if exit_price <= 0:
-            continue
-        exit_date = (enter_date + offsets.BDay(hold_days)).normalize()
+    # Filter out invalid exit prices
+    candidates = candidates[candidates["exit_price"] > 0].copy()
 
-        records.append(
-            {
-                "enter_date": enter_date.normalize(),
-                "exit_date": exit_date,
-                "symbol": symbol,
-                "enter_price": enter_price,
-                "exit_price": float(exit_price),
-                "gross_return": float(gross_simple),
-            }
+    if candidates.empty:
+        return pd.DataFrame(
+            columns=[
+                "enter_date",
+                "exit_date",
+                "symbol",
+                "enter_price",
+                "exit_price",
+                "gross_return",
+            ]
         )
 
-    candidates = pd.DataFrame(records)
-    if candidates.empty:
-        return candidates
+    # Vectorized exit date calculation
+    candidates["enter_date"] = candidates["enter_date"].dt.normalize()
+    candidates["exit_date"] = (candidates["enter_date"] + offsets.BDay(hold_days)).dt.normalize()
+
+    # Select and order columns
+    candidates = candidates[["enter_date", "exit_date", "symbol", "enter_price", "exit_price", "gross_return"]]
 
     candidates.sort_values(by=["enter_date", "exit_date", "symbol"], inplace=True)
     candidates.reset_index(drop=True, inplace=True)
+
     return candidates
 
 

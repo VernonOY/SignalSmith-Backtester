@@ -738,6 +738,7 @@ def run_backtest_for_all(
                 continue
 
         signal_map: Dict[str, pd.Series] = {}
+        # Calculate indicators - signals are already aligned with data.index
         if cfg.use_rsi:
             _, sig = calculate_rsi(
                 data["adj"],
@@ -746,7 +747,7 @@ def run_backtest_for_all(
                 overbought=cfg.rsi_overbought,
                 rule=cfg.rsi_rule,
             )
-            signal_map["RSI"] = sig.reindex(data.index).fillna(False)
+            signal_map["RSI"] = sig.fillna(False)
         if cfg.use_adx:
             _, sig = calculate_adx(
                 data["high"],
@@ -755,7 +756,7 @@ def run_backtest_for_all(
                 n=cfg.adx_n,
                 min_adx=cfg.adx_min,
             )
-            signal_map["ADX"] = sig.reindex(data.index).fillna(False)
+            signal_map["ADX"] = sig.fillna(False)
         if cfg.use_aroon:
             _, sig = calculate_aroon(
                 data["high"],
@@ -764,7 +765,7 @@ def run_backtest_for_all(
                 up_ge=cfg.aroon_up,
                 dn_le=cfg.aroon_dn,
             )
-            signal_map["Aroon"] = sig.reindex(data.index).fillna(False)
+            signal_map["Aroon"] = sig.fillna(False)
         if cfg.use_stoch:
             _, sig = calculate_stochastic(
                 data["high"],
@@ -775,7 +776,7 @@ def run_backtest_for_all(
                 signal_rule=cfg.stoch_rule,
                 threshold=cfg.stoch_thresh,
             )
-            signal_map["Stochastic"] = sig.reindex(data.index).fillna(False)
+            signal_map["Stochastic"] = sig.fillna(False)
         if cfg.use_macd:
             _, sig = calculate_macd(
                 data["adj"],
@@ -784,21 +785,21 @@ def run_backtest_for_all(
                 signal_n=cfg.macd_signal,
                 rule=cfg.macd_rule,
             )
-            signal_map["MACD"] = sig.reindex(data.index).fillna(False)
+            signal_map["MACD"] = sig.fillna(False)
         if cfg.use_obv:
             _, sig = calculate_obv(
                 data["adj"],
                 data["volume"],
                 rule=cfg.obv_rule,
             )
-            signal_map["OBV"] = sig.reindex(data.index).fillna(False)
+            signal_map["OBV"] = sig.fillna(False)
         if cfg.use_ema:
             _, sig = calculate_ema_cross(
                 data["adj"],
                 short_n=cfg.ema_short,
                 long_n=cfg.ema_long,
             )
-            signal_map["EMA"] = sig.reindex(data.index).fillna(False)
+            signal_map["EMA"] = sig.fillna(False)
 
         if not signal_map:
             continue

@@ -4,6 +4,7 @@ import sys
 import pathlib
 import platform
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import lru_cache
 from typing import Any, Dict, Iterable, List, Literal, Optional, Sequence, Tuple
 
@@ -291,6 +292,57 @@ def _map_indicators(payload: BacktestParams) -> Dict[str, Any]:
     return indicators
 
 
+def _process_single_horizon(
+    horizon: int,
+    picks: pd.DataFrame,
+    initial_capital: float,
+    fee_model: FeeModel,
+    stop_loss_pct: Optional[float],
+    take_profit_pct: Optional[float],
+) -> Tuple[int, HorizonResult, Optional[Any], pd.DataFrame]:
+    """Process a single horizon and return results. Used for parallel processing."""
+    trade_config = TradeBuilderConfig(
+        hold_days=horizon,
+        fee_model=fee_model,
+        initial_capital=initial_capital,
+        stop_loss_pct=stop_loss_pct,
+        take_profit_pct=take_profit_pct,
+        compound=True,
+    )
+    execution_result = build_trades_from_picks(picks, trade_config)
+    trades_df = execution_result.trades
+    equity_series = build_equity_curve(trades_df, initial_capital=initial_capital, column="net_pnl")
+    drawdown_series = compute_drawdown(equity_series)
+    metrics = compute_performance_metrics(equity_series, drawdown_series)
+    ending_value = float(metrics.get("ending_equity", initial_capital))
+    total_return_value = float(ending_value / initial_capital - 1.0) if initial_capital else 0.0
+    total_fees_value = float(trades_df["fees"].sum()) if not trades_df.empty else 0.0
+
+    def _to_timeseries_local(series: pd.Series) -> TimeSeries:
+        if series is None or series.empty:
+            return TimeSeries(dates=[], values=[])
+        cleaned = series.replace([np.inf, -np.inf], np.nan).dropna()
+        if cleaned.empty:
+            return TimeSeries(dates=[], values=[])
+        cleaned = cleaned.sort_index()
+        return TimeSeries(
+            dates=[d.strftime("%Y-%m-%d") for d in cleaned.index],
+            values=[float(round(val, 6)) for val in cleaned],
+        )
+
+    horizon_result = HorizonResult(
+        equity_curve=_to_timeseries_local(equity_series),
+        drawdown_curve=_to_timeseries_local(drawdown_series),
+        metrics={k: float(v) for k, v in metrics.items()},
+        trades_count=int(trades_df.shape[0]),
+        ending_equity=ending_value,
+        total_return=total_return_value,
+        total_fees=total_fees_value,
+    )
+
+    return horizon, horizon_result, execution_result, trades_df
+
+
 def _build_config(indicators: Dict[str, Any]) -> Dict[str, Any]:
     cfg: Dict[str, Any] = {
         "use_rsi": False,
@@ -479,42 +531,34 @@ def run_backtest(payload: BacktestParams) -> BacktestResponse:
     ending_equity = float(initial_capital)
     total_return = 0.0
 
-    for horizon in expected_horizons:
-        trade_config = TradeBuilderConfig(
-            hold_days=horizon,
-            fee_model=fee_model,
-            initial_capital=initial_capital,
-            stop_loss_pct=stop_loss_pct,
-            take_profit_pct=take_profit_pct,
-            compound=True,
-        )
-        execution_result = build_trades_from_picks(picks, trade_config)
-        trades_df = execution_result.trades
-        equity_series = build_equity_curve(trades_df, initial_capital=initial_capital, column="net_pnl")
-        drawdown_series = compute_drawdown(equity_series)
-        metrics = compute_performance_metrics(equity_series, drawdown_series)
-        ending_value = float(metrics.get("ending_equity", initial_capital))
-        total_return_value = float(ending_value / initial_capital - 1.0) if initial_capital else 0.0
-        total_fees_value = float(trades_df["fees"].sum()) if not trades_df.empty else 0.0
+    # Parallel processing of horizons for better performance
+    with ThreadPoolExecutor(max_workers=min(len(expected_horizons), 4)) as executor:
+        futures = {
+            executor.submit(
+                _process_single_horizon,
+                horizon,
+                picks,
+                initial_capital,
+                fee_model,
+                stop_loss_pct,
+                take_profit_pct,
+            ): horizon
+            for horizon in expected_horizons
+        }
 
-        horizon_results[horizon] = HorizonResult(
-            equity_curve=_to_timeseries(equity_series),
-            drawdown_curve=_to_timeseries(drawdown_series),
-            metrics={k: float(v) for k, v in metrics.items()},
-            trades_count=int(trades_df.shape[0]),
-            ending_equity=ending_value,
-            total_return=total_return_value,
-            total_fees=total_fees_value,
-        )
+        for future in as_completed(futures):
+            horizon, horizon_result, execution_result, trades_df = future.result()
+            horizon_results[horizon] = horizon_result
 
-        if horizon == hold_days:
-            selected_execution = execution_result
-            selected_trades = trades_df
-            selected_metrics = metrics
-            selected_equity = equity_series
-            selected_drawdown = drawdown_series
-            ending_equity = ending_value
-            total_return = total_return_value
+            if horizon == hold_days:
+                selected_execution = execution_result
+                selected_trades = trades_df
+                selected_metrics = {k: float(v) for k, v in horizon_result.metrics.items()}
+                # Rebuild equity/drawdown from trades for consistency
+                selected_equity = build_equity_curve(trades_df, initial_capital=initial_capital, column="net_pnl")
+                selected_drawdown = compute_drawdown(selected_equity)
+                ending_equity = float(horizon_result.ending_equity)
+                total_return = float(horizon_result.total_return)
 
     selected_result = horizon_results.get(hold_days)
     if selected_result is None:
