@@ -6,5 +6,5 @@ const fallbackBaseUrl = import.meta.env.PROD
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || fallbackBaseUrl,
-  timeout: 60000,
+  timeout: 300000, // 5 minutes - increased for large backtests
 });
