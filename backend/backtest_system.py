@@ -347,8 +347,8 @@ def calculate_adx(
     tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
 
     atr = tr.rolling(window=n, min_periods=n).mean()
-    plus_di = 100.0 * (pd.Series(plus_dm).rolling(window=n, min_periods=n).sum() / atr)
-    minus_di = 100.0 * (pd.Series(minus_dm).rolling(window=n, min_periods=n).sum() / atr)
+    plus_di = 100.0 * (pd.Series(plus_dm, index=high.index).rolling(window=n, min_periods=n).sum() / atr)
+    minus_di = 100.0 * (pd.Series(minus_dm, index=high.index).rolling(window=n, min_periods=n).sum() / atr)
     dx = (abs(plus_di - minus_di) / (plus_di + minus_di)) * 100.0
     adx = dx.rolling(window=n, min_periods=n).mean()
     signal = adx >= min_adx
