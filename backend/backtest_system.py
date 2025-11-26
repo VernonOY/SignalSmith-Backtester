@@ -337,7 +337,7 @@ def calculate_adx(
     close = pd.Series(close).astype(float)
 
     plus_dm = high.diff()
-    minus_dm = low.diff()
+    minus_dm = -low.diff()  # Previous Low - Current Low (negative of diff)
     plus_dm = np.where((plus_dm > minus_dm) & (plus_dm > 0), plus_dm, 0.0)
     minus_dm = np.where((minus_dm > plus_dm) & (minus_dm > 0), minus_dm, 0.0)
 
