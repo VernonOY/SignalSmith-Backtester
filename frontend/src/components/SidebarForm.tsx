@@ -61,7 +61,7 @@ const getEarliestAllowed = () => {
 };
 
 const DEFAULT_STRATEGY_VALUES: Record<string, unknown> = {
-  enable_rsi: true,
+  enable_rsi: false,
   use_macd: false,
   use_obv: false,
   use_ema: false,
@@ -163,7 +163,7 @@ const SidebarForm = ({ loading, onSubmit, compact = false }: SidebarFormProps) =
     }
   };
 
-  const enableRsi = Form.useWatch("enable_rsi", form) ?? true;
+  const enableRsi = Form.useWatch("enable_rsi", form) ?? false;
   const useMacd = Form.useWatch("use_macd", form) ?? false;
   const useObv = Form.useWatch("use_obv", form) ?? false;
   const useEma = Form.useWatch("use_ema", form) ?? false;
